@@ -1,6 +1,7 @@
+import { safeHref } from "../api/safe-link";
 import { useState } from "react";
 import { newRequestId } from "../api/client";
-import type { DeskItem, StudioThread, TodayTask } from "../api/types";
+import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n } from "../i18n";
 import { taskDone } from "../queue/keys";
 import { useAct } from "./act";
@@ -57,19 +58,9 @@ export function AgentCard({ item }: { item: DeskItem }) {
   );
 }
 
-export function ThreadCard({ thread }: { thread: StudioThread }) {
-  const { t } = useI18n();
-  return (
-    <Card eyebrow={t("card.thread.eyebrow")} pill={<span className="pill think">{t("card.thread.waits")}</span>}>
-      <span className="q">{thread.question}</span>
-      {thread.stand && <span className="sub">{thread.stand}</span>}
-    </Card>
-  );
-}
-
 export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
   const { t } = useI18n();
-  const links = item.actions.filter((a) => a.url);
+  const links = item.actions.flatMap((a) => { const url = safeHref(a.url); return url ? [{ ...a, url }] : []; });
   return (
     <Card eyebrow={item.source || t("card.item.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>
       <span className="q">{item.title}</span>

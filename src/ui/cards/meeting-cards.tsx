@@ -1,3 +1,4 @@
+import { safeHref } from "../api/safe-link";
 import { useState } from "react";
 import { captureText, NOT_A_CARD } from "../api/capture";
 import type { DeskEvent, DeskItem } from "../api/types";
@@ -13,7 +14,7 @@ function When({ event }: { event: DeskEvent }) {
 
 export function MeetingSoonCard({ item, event }: { item: DeskItem; event: DeskEvent | null }) {
   const { t } = useI18n();
-  const join = item.actions.find((a) => a.id === "open" && a.url)?.url ?? event?.url;
+  const join = safeHref(item.actions.find((a) => a.id === "open" && a.url)?.url) ?? safeHref(event?.url);
   return (
     <Card eyebrow={t("meeting.soon.eyebrow")} pill={<span className="pill wait">{t("meeting.soon.pill")}</span>}>
       <span className="q">{event?.title ?? item.title}</span>

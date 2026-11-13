@@ -1,16 +1,24 @@
 import { useEffect, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
-import { MailCard, SweepCard, UndoLine } from "../cards/mail-cards";
+import { MailCard, RuleOfferCard, SweepCard, UndoLine } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
-import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards";
+import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
+import { StudioCard } from "../studio/card";
 import { useI18n } from "../i18n";
 import { around, type ThenLine, type WhyNow } from "./around";
 import { allowsCardKey, keyMap } from "./keys";
-import { buildQueue, pin, skip, type Entry, type Session } from "./order";
+import { buildQueue, openStudio, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
 
-export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismissMeeting: (key: string) => void }) {
+export interface StudioOpenState {
+  open: string | null;
+  setOpen: (slug: string | null) => void;
+}
+
+const NO_STUDIO: StudioOpenState = { open: null, setOpen: () => {} };
+
+export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO }: { entry: Entry; onDismissMeeting: (key: string) => void; studio?: StudioOpenState }) {
   switch (entry.type) {
     case "soon":
       return <MeetingSoonCard item={entry.item} event={entry.event} />;
@@ -19,11 +27,21 @@ export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismiss
     case "agent":
       return <AgentCard item={entry.item} />;
     case "thread":
-      return <ThreadCard thread={entry.thread} />;
+      return (
+        <StudioCard
+          thread={entry.thread}
+          waits={entry.waits}
+          open={studio.open === entry.thread.slug}
+          onOpen={() => studio.setOpen(entry.thread.slug)}
+          onHide={() => studio.setOpen(null)}
+        />
+      );
     case "item":
       return <ItemCard item={entry.item} fresh={entry.fresh} />;
     case "mail":
-      return <MailCard item={entry.item} />;
+      return <MailCard item={entry.item} learning={entry.learning} />;
+    case "rule":
+      return <RuleOfferCard item={entry.item} />;
     case "sweep":
       return <SweepCard sweep={entry.sweep} />;
     case "task":
@@ -72,7 +90,7 @@ export interface QueueBodyProps {
 
 export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: QueueBodyProps) {
   const { t, tn } = useI18n();
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const first = queue[0];
   const keys = keyMap(first);
   const escape = () => {
@@ -108,7 +126,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
       </div>
       {first ? (
         <>
-          <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} />
+          <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }} />
           {keys && <div className="keyhint">
             {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
             <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>

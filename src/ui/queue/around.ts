@@ -30,6 +30,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "agent":
     case "item":
     case "mail":
+    case "rule":
     case "soon":
       return entry.item.why ? { kind: "cortex", text: entry.item.why } : null;
     case "sweep":
@@ -37,7 +38,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "after":
       return { kind: "after", title: entry.event.title };
     case "thread":
-      return { kind: "thread" };
+      return entry.waits ? { kind: "thread" } : null;
     case "task":
       return { kind: "task" };
   }
@@ -48,6 +49,7 @@ export function entryTitle(entry: Entry): string {
     case "agent":
     case "item":
     case "mail":
+    case "rule":
     case "soon":
       return entry.item.title;
     case "sweep":

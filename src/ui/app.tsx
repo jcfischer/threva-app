@@ -43,7 +43,7 @@ export function DayView({ client, state, session, setSession, now, dismissed = [
   dismissed?: readonly string[];
   onDismissMeeting?: (key: string) => void;
 }) {
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const onPull = (k: string) => setSession(session.pin === k ? session : pin(session, k));
   return (
     <div className="daygrid one">

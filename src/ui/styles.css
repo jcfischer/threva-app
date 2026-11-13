@@ -226,6 +226,7 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .stbelow .stside{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
 .strel{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 .strel .lk,.stnote .lk{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer;text-align:left}
+.sttog{flex-direction:row;align-items:center;gap:6px;font-weight:500}
 .barlabel{display:block;font-size:13px;color:var(--dim);margin-bottom:6px}
 .whyline{display:flex;gap:12px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;font-size:13px;color:var(--dim);padding:0 2px 4px}
 .whyline b{font-weight:600;color:var(--text,inherit)}
