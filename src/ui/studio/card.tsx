@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { StudioAct, StudioMaterial, StudioNote, StudioOutcome, StudioResponse, StudioThread } from "../api/types";
+import { safeHref } from "../api/safe-link";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "./act";
@@ -86,8 +87,8 @@ function MaterialRail({ material }: { material: readonly StudioMaterial[] }) {
         {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
         {material.map((m, i) => (
           <span key={i}>
-            {m.href ? (
-              <a className="lk" href={m.href} target="_blank" rel="noreferrer">
+            {safeHref(m.href) ? (
+              <a className="lk" href={safeHref(m.href)} target="_blank" rel="noreferrer">
                 {m.label}
               </a>
             ) : (
