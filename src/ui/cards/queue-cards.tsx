@@ -1,3 +1,4 @@
+import { safeHref } from "../api/safe-link";
 import { useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, TodayTask } from "../api/types";
@@ -58,7 +59,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
 
 export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
   const { t } = useI18n();
-  const links = item.actions.filter((a) => a.url);
+  const links = item.actions.flatMap((a) => { const url = safeHref(a.url); return url ? [{ ...a, url }] : []; });
   return (
     <Card eyebrow={item.source || t("card.item.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>
       <span className="q">{item.title}</span>
