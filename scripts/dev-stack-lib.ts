@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { STUDIO_AREA } from "./dev-stack-studio";
 
 export const DEFAULT_PORT = 8790;
 
@@ -51,6 +52,7 @@ export function renderConfig(p: DevStackPaths): string {
     `  ui: {dir: ${q(p.uiDir)}}`,
     "  desk:",
     "    enabled: true",
+    `    areas: [{id: ${STUDIO_AREA.id}, label: ${STUDIO_AREA.label}}]`,
     "    sources:",
     `      - {id: calendar, command: [${q(p.bun)}, ${q(join(p.adaptersDir, "bin", "desk-ics.ts"))}, ${q(join(p.stateDir, "sample", "calendar.ics"))}]}`,
     `      - {id: sample-mail, command: [/bin/cat, ${q(join(p.stateDir, "sample", "mail.json"))}]}`,

@@ -33,6 +33,8 @@ describe("renderConfig", () => {
     expect(yaml).toContain('ui: {dir: "/repo/dist/ui"}');
     expect(yaml).toContain('"/a/bin/desk-ics.ts", "/s/sample/calendar.ics"');
     expect(yaml).toContain('[/bin/cat, "/s/sample/mail.json"]');
+    expect(yaml).toContain('studio: {dir: "/s/studio"}');
+    expect(yaml).toContain("areas: [{id: work, label: Work}]");
   });
 
   test("has no bus, Discord or Ranger", () => {
