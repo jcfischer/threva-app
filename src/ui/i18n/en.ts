@@ -9,6 +9,8 @@ export const en = {
   "queue.skip": "Not now",
   "queue.pin": "Keep on top",
   "queue.unpin": "Let it move",
+  "queue.key.enter": "Enter",
+  "queue.key.esc": "Esc",
   "queue.why": "Why now:",
   "queue.why.after": "“{title}” just ended. Now is when you know best what follows from it.",
   "queue.why.thread": "A question in the Studio waits for your answer.",

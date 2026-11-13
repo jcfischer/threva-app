@@ -1,5 +1,7 @@
 import type { DeskEvent, TodayTask } from "../api/types";
 import { useI18n, type I18n } from "../i18n";
+import { meetingCard } from "../queue/around";
+import type { Entry } from "../queue/order";
 import { buildTimeline, clockAt, type Clock, type TimelineRow } from "./timeline";
 
 const MINUTE = 60_000;
@@ -12,22 +14,26 @@ export function formatLength(i18n: Pick<I18n, "t">, ms: number): string {
   return m === 0 ? i18n.t("day.length.h", { h }) : i18n.t("day.length.hm", { h, m });
 }
 
-function TaskChip({ task }: { task: TodayTask }) {
+function TaskChip({ task, onPull }: { task: TodayTask; onPull?: (k: string) => void }) {
+  const Chip = onPull ? "button" : "div";
   return (
-    <div className="chip">
+    <Chip className="chip" type={onPull ? "button" : undefined} onClick={onPull ? () => onPull(`d:${task.task.id}`) : undefined}>
       <span>{task.task.title}</span>
       <span className="faint">{task.areaTitle}</span>
-    </div>
+    </Chip>
   );
 }
 
-function Row({ row, now }: { row: TimelineRow; now: number }) {
+function Row({ row, now, queue, onPull }: { row: TimelineRow; now: number; queue: readonly Entry[]; onPull?: (k: string) => void }) {
   const i18n = useI18n();
   const { t, time } = i18n;
   const pill = row.now ? <span className="pill think">{t("day.now")}</span> : null;
   if (row.type === "meeting") {
+    const card = meetingCard(queue, row.event.key);
+    const pull = card && onPull ? () => onPull(card.k) : undefined;
+    const Slot = pull ? "button" : "div";
     return (
-      <div className={`slot ev${row.past ? " past" : ""}${row.now ? " cur" : ""}`}>
+      <Slot type={pull ? "button" : undefined} onClick={pull} className={`slot ev${row.past ? " past" : ""}${row.now ? " cur" : ""}`}>
         <span className="tm">{time(new Date(row.start))}</span>
         <span className="row">
           {pill}
@@ -36,7 +42,7 @@ function Row({ row, now }: { row: TimelineRow; now: number }) {
           </span>
           {row.now && <span className="faint">{t("day.left", { length: formatLength(i18n, row.end - now) })}</span>}
         </span>
-      </div>
+      </Slot>
     );
   }
   const free = t("day.free", { time: time(new Date(row.end)), length: formatLength(i18n, row.end - row.start) });
@@ -48,13 +54,13 @@ function Row({ row, now }: { row: TimelineRow; now: number }) {
           {pill}
           <span className="faint">{row.now ? `${free} · ${t("day.left", { length: formatLength(i18n, row.end - now) })}` : free}</span>
         </span>
-        {row.tasks.map((task) => <TaskChip key={task.task.id} task={task} />)}
+        {row.tasks.map((task) => <TaskChip key={task.task.id} task={task} onPull={onPull} />)}
       </div>
     </div>
   );
 }
 
-export function TimelineView({ today, tasks, clock }: { today: readonly DeskEvent[]; tasks: readonly TodayTask[]; clock?: Clock }) {
+export function TimelineView({ today, tasks, clock, queue = [], onPull }: { today: readonly DeskEvent[]; tasks: readonly TodayTask[]; clock?: Clock; queue?: readonly Entry[]; onPull?: (k: string) => void }) {
   const { t } = useI18n();
   const c = clock ?? clockAt(Date.now());
   const timeline = buildTimeline(today, tasks, c);
@@ -71,14 +77,14 @@ export function TimelineView({ today, tasks, clock }: { today: readonly DeskEven
       {timeline.empty ? (
         <p className="sub">{t("day.empty")}</p>
       ) : (
-        timeline.rows.map((row) => <Row key={`${row.type}:${row.start}:${row.type === "meeting" ? row.event.key : ""}`} row={row} now={c.now} />)
+        timeline.rows.map((row) => <Row key={`${row.type}:${row.start}:${row.type === "meeting" ? row.event.key : ""}`} row={row} now={c.now} queue={queue} onPull={onPull} />)
       )}
       {timeline.unplaced.length > 0 && (
         <div className="slot free">
           <span className="tm" />
           <div>
             <span className="faint">{t("day.stillOpen")}</span>
-            {timeline.unplaced.map((task) => <TaskChip key={task.task.id} task={task} />)}
+            {timeline.unplaced.map((task) => <TaskChip key={task.task.id} task={task} onPull={onPull} />)}
           </div>
         </div>
       )}

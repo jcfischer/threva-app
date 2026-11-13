@@ -2,6 +2,7 @@ import { useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, StudioThread, TodayTask } from "../api/types";
 import { useI18n } from "../i18n";
+import { taskDone } from "../queue/keys";
 import { useAct } from "./act";
 import { Card, ErrorLine } from "./parts";
 
@@ -88,12 +89,12 @@ export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
 
 export function TaskCard({ task }: { task: TodayTask }) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const { busy, error, perform } = useAct(taskDone(task));
   return (
     <Card eyebrow={task.areaTitle || t("card.task.eyebrow")}>
       <span className="q">{task.task.title}</span>
       <div className="row">
-        <button type="button" className="btn pri" disabled={busy} onClick={() => run("/api/desk/my-day", { op: "done", id: task.task.id })}>
+        <button type="button" className="btn pri" disabled={busy} onClick={perform}>
           {t("card.task.done")}
         </button>
       </div>

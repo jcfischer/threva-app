@@ -15,7 +15,7 @@ export interface SweepLink {
 }
 
 export interface ThenLine {
-  titles: string[];
+  titles: { k: string; title: string }[];
   more: number;
   sweeps: SweepLink[];
 }
@@ -69,6 +69,14 @@ export function around(queue: readonly Entry[]): Around {
   const sweeps = rest.flatMap((e): SweepLink[] => (e.type === "sweep" ? [{ k: e.k, label: e.sweep.label || e.sweep.title, count: e.sweep.mails.length }] : []));
   return {
     why: whyNow(first),
-    then: { titles: cards.slice(0, THEN_TITLES).map(entryTitle), more: Math.max(0, cards.length - THEN_TITLES), sweeps },
+    then: { titles: cards.slice(0, THEN_TITLES).map((e) => ({ k: e.k, title: entryTitle(e) })), more: Math.max(0, cards.length - THEN_TITLES), sweeps },
   };
+}
+
+export function meetingCard(queue: readonly Entry[], eventKey: string): Entry | undefined {
+  return queue.find((e) => (e.type === "soon" && e.item.eventKey === eventKey) || (e.type === "after" && e.event.key === eventKey));
+}
+
+export function inboxCard(queue: readonly Entry[]): Entry | undefined {
+  return queue.find((e) => e.type === "sweep") ?? queue.find((e) => e.type === "mail");
 }
