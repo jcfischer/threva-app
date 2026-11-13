@@ -24,13 +24,20 @@ export function suggestedOutcome(item: DeskItem): Outcome | null {
 export const SNOOZE_TIMES = ["later", "tomorrow", "next-week"] as const;
 export type SnoozeTime = (typeof SNOOZE_TIMES)[number];
 
+// The thread the card names and studio.add sends. A proposed slug missing from the offered threads
+// counts as no thread, so the label and the request never disagree.
+export function proposedThread(proposal: StudioProposal): StudioProposal["threads"][number] | null {
+  return proposal.thread ? (proposal.threads.find((th) => th.slug === proposal.thread) ?? null) : null;
+}
+
 // Request bodies for POST /api/desk/mail, /api/desk/my-day and /api/desk/mail/rules.
 export const requests = {
   letGo: (key: string) => ({ action: "move", key, target: "archive" }),
   propose: (key: string) => ({ action: "studio.propose", key }),
   attach: (key: string, proposal: StudioProposal, requestId: string) => {
-    const reason = proposal.thread ? proposal.reason.trim() : "";
-    return { action: "studio.add", key, requestId, thread: proposal.thread, includeText: false, ...(reason ? { reason } : {}) };
+    const thread = proposedThread(proposal)?.slug ?? null;
+    const reason = thread ? proposal.reason.trim() : "";
+    return { action: "studio.add", key, requestId, thread, includeText: false, ...(reason ? { reason } : {}) };
   },
   draft: (key: string, body: string) => ({ action: "draft", key, body }),
   keep: (key: string, fingerprint: string) => ({ op: "todo", key, fingerprint }),

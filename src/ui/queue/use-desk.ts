@@ -17,7 +17,7 @@ export async function loadDesk(client: DeskClient, previous: DeskState): Promise
   return {
     view: desk.data,
     studio: studio.ok ? studio.data : previous.studio,
-    rules: rules.ok ? rules.data.rules : (previous.rules ?? null),
+    rules: rules.ok ? rules.data.rules : null,
     error: null,
   };
 }

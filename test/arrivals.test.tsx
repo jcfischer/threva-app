@@ -68,8 +68,10 @@ describe("learning phase", () => {
     const answer = (rules: Response) => async (input: string) => (input === "/api/desk/mail/rules" ? rules : Response.json(input === "/api/desk" ? view() : { studio: null }));
     const read = await loadDesk(createClient(answer(Response.json({ ok: true, rules: [rule] }))), { view: null, studio: null, error: null });
     expect(read.rules).toEqual([rule]);
-    const refused = await loadDesk(createClient(answer(Response.json({ ok: false, error: "Mail rules need the move command." }, { status: 409 }))), { view: null, studio: null, error: null });
+    const refused = await loadDesk(createClient(answer(Response.json({ ok: false, error: "Mail rules need the move command." }, { status: 409 }))), read);
+    expect(read.rules).toEqual([rule]);
     expect(refused.rules).toBeNull();
+    expect(inLearningPhase(refused.rules)).toBe(true);
   });
 
   test("marks every mail entry while no rule exists", () => {
@@ -116,6 +118,14 @@ describe("mail card", () => {
     expect(none).toContain("Start a new thread");
   });
 
+  test("a proposed slug missing from the offered threads is labelled and sent as a new thread", () => {
+    const stray = { thread: "gone", reason: "It fits.", threads: [{ slug: "other", question: "Something else?" }] };
+    const html = render({ item: fixtures.meeting, initialPanel: "attach", initialProposal: stray });
+    expect(html).toContain("Start a new thread");
+    expect(html).not.toContain("Something else?");
+    expect(requests.attach("mail:1", stray, "abcdefgh12")).toEqual({ action: "studio.add", key: "mail:1", requestId: "abcdefgh12", thread: null, includeText: false });
+  });
+
   test("draft opens the reply field and says nothing is sent", () => {
     const html = render({ item: fixtures.reply, initialPanel: "draft" });
     expect(html).toContain("<textarea");
@@ -131,10 +141,10 @@ describe("mail card", () => {
 });
 
 describe("write requests", () => {
-  test("match Cortex's request schema", () => {
+  test("build the bodies this slice sends, as hand-copied from desk-mail.ts and desk-mail-rules.ts (not checked against Cortex)", () => {
     expect(requests.letGo("mail:1")).toEqual({ action: "move", key: "mail:1", target: "archive" });
     expect(requests.propose("mail:1")).toEqual({ action: "studio.propose", key: "mail:1" });
-    expect(requests.attach("mail:1", { thread: "t", reason: " fits ", threads: [] }, "abcdefgh12")).toEqual({
+    expect(requests.attach("mail:1", { thread: "t", reason: " fits ", threads: [{ slug: "t", question: "T?" }] }, "abcdefgh12")).toEqual({
       action: "studio.add",
       key: "mail:1",
       requestId: "abcdefgh12",

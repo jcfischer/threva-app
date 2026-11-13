@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
-import { OUTCOMES, requests, SNOOZE_TIMES, suggestedOutcome, type Outcome, type SnoozeTime } from "../arrivals/outcomes";
+import { OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, type Outcome, type SnoozeTime } from "../arrivals/outcomes";
 import { useI18n, type TextKey } from "../i18n";
 import { useAct } from "./act";
 import { Card, ErrorLine } from "./parts";
@@ -75,7 +75,7 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
     const result = await run<{ message?: string }>("/api/desk/mail", requests.snooze(item.key, kind));
     if (result.ok) finish(result.data.message, t("card.mail.snoozed"));
   };
-  const thread = proposal?.thread ? proposal.threads.find((th) => th.slug === proposal.thread) : undefined;
+  const thread = proposal ? proposedThread(proposal) : null;
 
   return (
     <Card eyebrow={t("card.mail.eyebrow")} pill={item.suspicious ? <span className="pill wait">{t("card.mail.suspicious")}</span> : undefined}>
