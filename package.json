@@ -5,6 +5,7 @@
   "scripts": {
     "build": "bun build src/ui/index.html --outdir dist/ui --target browser --splitting",
     "check": "bun scripts/check.ts",
+    "dev:stack": "bun scripts/dev-stack.ts",
     "test": "bun test test"
   },
   "dependencies": {

@@ -27,3 +27,15 @@ bun run check
 ## Work
 
 The route lives on the work graph: the map root issue in this repository, labelled `orienteer:map`. Cortex-side work for Threva lives on a map in `the-metafactory/cortex`. Reference nodes in commits and pull requests with `Refs #N`, never a closing keyword.
+
+## Run it locally
+
+`bun run dev:stack` starts a separate development Cortex stack that serves the built UI with sample calendar and mail data. It needs a Cortex checkout that supports `mc.ui.dir` and a `cortex-desk-adapters` checkout:
+
+```bash
+export CORTEX_DIR=/path/to/cortex CORTEX_ADAPTERS_DIR=/path/to/cortex-desk-adapters
+bun run dev:stack          # builds dist/ui, starts Cortex on http://127.0.0.1:8790/
+bun run dev:stack stop
+```
+
+The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus, no Discord and no Ranger. `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
