@@ -1,3 +1,4 @@
+import { safeHref } from "../api/safe-link";
 import { useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
@@ -7,7 +8,7 @@ import { useAct } from "./act";
 import { Card, ErrorLine } from "./parts";
 
 function mailLink(item: DeskItem): string | undefined {
-  return item.detail.links.find((l) => /^(message|https?):/.test(l.url))?.url ?? item.actions.find((a) => a.url)?.url;
+  return item.detail.links.map((l) => safeHref(l.url)).find(Boolean) ?? item.actions.map((a) => safeHref(a.url)).find(Boolean);
 }
 
 const OUTCOME_LABEL: Record<Outcome, TextKey> = {
