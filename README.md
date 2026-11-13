@@ -39,3 +39,24 @@ bun run dev:stack stop
 ```
 
 The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus, no Discord and no Ranger. `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
+
+### Conversations and the parser
+
+Without more configuration, the dev stack has no model: the bar falls back to Cortex's built-in rules, and a conversation refuses its first turn. Two files, kept outside this repository, add the models you already use:
+
+- `THREVA_DEV_LANES` names a YAML file with Cortex's `mc.desk.conversations` block. The stack copies it into its config and runs `pi` through a wrapper in `THREVA_DEV_DIR/bin`, so pi uses your own `HOME`, configuration and credentials.
+- `THREVA_DEV_PARSER_ROUTING` names a `desk-parse` routing file (see `docs/parser-routing.md` in cortex-desk-adapters). The stack runs `desk-parse --routing-config <file>` as the Desk's parser, with your own `HOME`, and permits the providers in the file that Cortex accepts as parsers (`codex` and `pi`). The parser asks the Ranger command and config that the file names which provider to use.
+
+```yaml
+# lanes.yaml: replace the models with your own
+local: {provider: local-provider, model: local-model}
+cloud:
+  - {id: codex, provider: openai-codex, model: codex-model}
+  - {id: claude, provider: anthropic, model: claude-model}
+```
+
+```bash
+THREVA_DEV_LANES=~/threva-dev/lanes.yaml THREVA_DEV_PARSER_ROUTING=~/threva-dev/parser-routing.json bun run dev:stack
+```
+
+With either file, the command runs `cortex config validate` on the generated config and stops with Cortex's error if it is refused. A file that is missing or cannot be parsed stops the command before it writes anything.
