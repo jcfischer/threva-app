@@ -32,5 +32,7 @@ export function keyMap(front: Entry | undefined): KeyMap | null {
 export function allowsCardKey(event: KeyboardEvent): boolean {
   if (event.defaultPrevented || event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
   const target = event.target;
-  return !(target instanceof HTMLElement && (target.isContentEditable || target.closest("input, textarea, select, [role=textbox]")));
+  if (!(target instanceof Element)) return true;
+  if ((target instanceof HTMLElement && target.isContentEditable) || target.closest("input, textarea, select, [role=textbox]")) return false;
+  return event.key !== "Enter" || !target.closest("button, a[href], [role=button]");
 }
