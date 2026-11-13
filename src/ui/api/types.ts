@@ -11,6 +11,7 @@ export interface DeskAction {
   role: "primary" | "secondary";
   wired: boolean;
   url?: string;
+  target?: string;
 }
 
 export interface DeskLink {
@@ -43,6 +44,7 @@ export interface DeskItem {
   explanation?: { sentence: string; choices: RulingChoice[] };
   reply?: { to: string; subject: string };
   suspicious?: boolean;
+  attention?: "action" | "update";
 }
 
 export interface DeskEvent {
@@ -116,4 +118,23 @@ export interface StudioThread {
 
 export interface StudioList {
   studio: { active: StudioThread[] } | null;
+}
+
+export interface MailRule {
+  id: string;
+  match: string;
+  value: string;
+  action: string;
+  on: boolean;
+  sentence: string;
+}
+
+export interface MailRules {
+  rules: MailRule[];
+}
+
+export interface StudioProposal {
+  thread: string | null;
+  reason: string;
+  threads: { slug: string; question: string }[];
 }

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
-import { MailCard, SweepCard, UndoLine } from "../cards/mail-cards";
+import { MailCard, RuleOfferCard, SweepCard, UndoLine } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards";
 import { useI18n } from "../i18n";
@@ -23,7 +23,9 @@ export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismiss
     case "item":
       return <ItemCard item={entry.item} fresh={entry.fresh} />;
     case "mail":
-      return <MailCard item={entry.item} />;
+      return <MailCard item={entry.item} learning={entry.learning} />;
+    case "rule":
+      return <RuleOfferCard item={entry.item} />;
     case "sweep":
       return <SweepCard sweep={entry.sweep} />;
     case "task":
@@ -75,7 +77,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   if (!state.view) {
     return <p className="faint">{state.error ? (state.error.message ?? t("error.network")) : t("queue.loading")}</p>;
   }
-  const queue = buildQueue(state.view, state.studio, session, now, dismissed);
+  const queue = buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null);
   const first = queue[0];
   const { why, then } = around(queue);
   return (
