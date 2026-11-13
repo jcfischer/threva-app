@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { deskExtras, operatorHome, readOperatorFiles, renderHomeWrapper, wrapperPaths, type DeskExtras, type OperatorFiles } from "./dev-stack-lanes";
+import { seedStudio } from "./dev-stack-studio";
 import { devEnv, renderCalendar, renderConfig, renderMail, resolvePaths, type DevStackPaths } from "./dev-stack-lib";
 
 const repoDir = resolve(import.meta.dir, "..");
@@ -13,17 +15,52 @@ const configFile = join(paths.stateDir, "config", "threva-dev.yaml");
 const pidFile = join(paths.stateDir, "cortex.pid");
 const env = devEnv(paths.stateDir, process.env);
 
+function readable(path: string): string | null {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+function operatorExtras(files: OperatorFiles): DeskExtras {
+  if (!files.conversations && !files.routing) return {};
+  const operator = operatorHome(process.env);
+  if (!operator) {
+    console.error("Set HOME, so pi and the parser can find the operator's own configuration.");
+    process.exit(2);
+  }
+  const pi = Bun.which("pi") ?? [join(operator.home, ".local", "bin", "pi")].find((p) => existsSync(p));
+  if (files.conversations && !pi) {
+    console.error("THREVA_DEV_LANES needs pi on PATH or in ~/.local/bin.");
+    process.exit(2);
+  }
+  const wrappers = wrapperPaths(paths.stateDir);
+  mkdirSync(join(paths.stateDir, "bin"), { recursive: true });
+  if (pi) writeFileSync(wrappers.pi, renderHomeWrapper(operator, pi), { mode: 0o755 });
+  writeFileSync(wrappers.withHome, renderHomeWrapper(operator), { mode: 0o755 });
+  return deskExtras(files, wrappers, paths.bun, paths.adaptersDir);
+}
+
 function cortex(args: string[]) {
   return Bun.spawnSync([paths.bun, "src/cortex.ts", ...args, "--config", configFile], { cwd: paths.cortexDir, env, stdout: "inherit", stderr: "inherit" });
 }
 
-function writeStack(p: DevStackPaths): void {
+function writeStack(p: DevStackPaths, extras: DeskExtras): void {
   for (const dir of ["config", "state", "data", "studio", "sample", "logs", join("home", ".config")]) mkdirSync(join(p.stateDir, dir), { recursive: true });
-  writeFileSync(configFile, renderConfig(p), { mode: 0o600 });
+  writeFileSync(configFile, renderConfig(p, extras), { mode: 0o600 });
   writeFileSync(join(p.stateDir, "config", "assistant.md"), "# Threva dev assistant\n");
   const now = Date.now();
   writeFileSync(join(p.stateDir, "sample", "calendar.ics"), renderCalendar(now));
   writeFileSync(join(p.stateDir, "sample", "mail.json"), renderMail(now));
+  const studio = seedStudio(join(p.stateDir, "studio"), now, (args, cwd) => {
+    const r = Bun.spawnSync(["git", "-C", cwd, ...args], { env, stdout: "ignore", stderr: "pipe" });
+    return { exitCode: r.exitCode, stderr: r.stderr.toString() };
+  });
+  if (studio.error) {
+    console.error(`Could not set up the Studio: ${studio.error}`);
+    process.exit(1);
+  }
 }
 
 async function waitForDesk(port: number, ms: number): Promise<boolean> {
@@ -42,7 +79,17 @@ async function start(): Promise<void> {
     console.error(`A dev stack may already run (pid file ${pidFile}). Run "bun run dev:stack stop" first.`);
     process.exit(1);
   }
-  writeStack(paths);
+  const files = readOperatorFiles(process.env, readable);
+  if (!files.ok) {
+    console.error(files.error);
+    process.exit(2);
+  }
+  const extras = operatorExtras(files.value);
+  writeStack(paths, extras);
+  if ((extras.conversations || extras.ask) && cortex(["config", "validate"]).exitCode !== 0) {
+    console.error("Cortex refused the generated config; the stack was not started.");
+    process.exit(1);
+  }
   rmSync(paths.uiDir, { recursive: true, force: true });
   const build = Bun.spawnSync(["bun", "run", "build"], { cwd: repoDir, stdout: "inherit", stderr: "inherit" });
   if (build.exitCode !== 0) process.exit(build.exitCode ?? 1);

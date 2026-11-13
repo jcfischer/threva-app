@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
 import { MailCard, SweepCard, UndoLine } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards";
 import { useI18n } from "../i18n";
+import { around, type ThenLine, type WhyNow } from "./around";
 import { useDismissedMeetings } from "./dismissed";
 import { buildQueue, EMPTY_SESSION, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
@@ -30,6 +31,36 @@ export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismiss
   }
 }
 
+function WhyNowText({ why }: { why: WhyNow }) {
+  const { t } = useI18n();
+  const text =
+    why.kind === "cortex" ? why.text : why.kind === "after" ? t("queue.why.after", { title: why.title }) : why.kind === "thread" ? t("queue.why.thread") : t("queue.why.task");
+  return (
+    <span>
+      <b>{t("queue.why")}</b> {text}
+    </span>
+  );
+}
+
+function ThenLineView({ then, onPull }: { then: ThenLine; onPull: (k: string) => void }) {
+  const { t, tn } = useI18n();
+  const parts: ReactNode[] = [
+    ...then.titles.map((title, i) => <span key={`t${i}`}>{title}</span>),
+    ...(then.more > 0 ? [<span key="more" className="faint">{tn("queue.then.more", then.more)}</span>] : []),
+    ...then.sweeps.map((s) => (
+      <button key={s.k} type="button" className="lk" onClick={() => onPull(s.k)}>
+        {tn("queue.then.sweep", s.count, { label: s.label })}
+      </button>
+    )),
+  ];
+  return (
+    <div className="nextline">
+      <span className="eyebrow">{t("queue.then")}</span>
+      {parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`d${i}`} className="faint">·</span>, part]))}
+    </div>
+  );
+}
+
 export interface QueueBodyProps {
   state: DeskState;
   session: Session;
@@ -46,6 +77,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   }
   const queue = buildQueue(state.view, state.studio, session, now, dismissed);
   const first = queue[0];
+  const { why, then } = around(queue);
   return (
     <section className="cards" aria-label={t("queue.label")}>
       {state.error && (
@@ -55,6 +87,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
       )}
       <UndoLine done={state.view.autonomy?.done ?? []} now={now} />
       <div className="whyline">
+        {why && <WhyNowText why={why} />}
         <span>{tn("queue.count", queue.length)}</span>
       </div>
       {first ? (
@@ -68,6 +101,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
               {session.pin === first.k ? t("queue.unpin") : t("queue.pin")}
             </button>
           </div>
+          {then && <ThenLineView then={then} onPull={(k) => setSession(pin(session, k))} />}
         </>
       ) : (
         <p className="sub">{t("queue.empty")}</p>

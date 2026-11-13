@@ -1,4 +1,6 @@
 import { join } from "node:path";
+import { renderDeskExtras, type DeskExtras } from "./dev-stack-lanes";
+import { STUDIO_AREA } from "./dev-stack-studio";
 
 export const DEFAULT_PORT = 8790;
 
@@ -37,7 +39,7 @@ export function resolvePaths(
 
 const q = (s: string) => JSON.stringify(s);
 
-export function renderConfig(p: DevStackPaths): string {
+export function renderConfig(p: DevStackPaths, extras: DeskExtras = {}): string {
   return [
     "principal: {id: threva-dev}",
     "stack: {id: threva-dev/dev}",
@@ -51,11 +53,13 @@ export function renderConfig(p: DevStackPaths): string {
     `  ui: {dir: ${q(p.uiDir)}}`,
     "  desk:",
     "    enabled: true",
+    `    areas: [{id: ${STUDIO_AREA.id}, label: ${STUDIO_AREA.label}}]`,
     "    sources:",
     `      - {id: calendar, command: [${q(p.bun)}, ${q(join(p.adaptersDir, "bin", "desk-ics.ts"))}, ${q(join(p.stateDir, "sample", "calendar.ics"))}]}`,
     `      - {id: sample-mail, command: [/bin/cat, ${q(join(p.stateDir, "sample", "mail.json"))}]}`,
     `    studio: {dir: ${q(join(p.stateDir, "studio"))}}`,
     "    interruptions: {transport: none}",
+    ...renderDeskExtras(extras),
     "",
   ].join("\n");
 }
