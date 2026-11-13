@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
+import { MailCard, SweepCard, UndoLine } from "../cards/mail-cards";
 import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards";
 import { useI18n } from "../i18n";
 import { buildQueue, EMPTY_SESSION, pin, skip, type Entry, type Session } from "./order";
@@ -14,6 +15,10 @@ export function EntryCard({ entry }: { entry: Entry }) {
       return <ThreadCard thread={entry.thread} />;
     case "item":
       return <ItemCard item={entry.item} fresh={entry.fresh} />;
+    case "mail":
+      return <MailCard item={entry.item} />;
+    case "sweep":
+      return <SweepCard sweep={entry.sweep} />;
     case "task":
       return <TaskCard task={entry.task} />;
   }
@@ -33,6 +38,7 @@ export function QueueBody({ state, session, setSession, now }: { state: DeskStat
           {state.error.message ?? t("error.network")}
         </p>
       )}
+      <UndoLine done={state.view.autonomy?.done ?? []} now={now} />
       <div className="whyline">
         <span>{tn("queue.count", queue.length)}</span>
       </div>

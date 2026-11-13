@@ -62,18 +62,30 @@ export interface TodayTask {
 }
 
 export interface MailSweepMail {
-  key?: string;
-  from?: string;
-  subject?: string;
+  key: string;
+  from: string;
+  subject: string;
+  url?: string;
 }
 
 export interface MailSweep {
-  key?: string;
-  id?: string;
-  kind?: string;
-  why?: string;
-  label?: string;
-  mails?: MailSweepMail[];
+  id: string;
+  kind: string;
+  target: "archive" | "junk" | "trash";
+  label: string;
+  title: string;
+  why: string;
+  mails: MailSweepMail[];
+}
+
+export interface DoneEntry {
+  key: string;
+  action?: string;
+  undo?: string;
+  title: string;
+  message: string;
+  at: number;
+  ok: boolean;
 }
 
 export interface DeskView {
@@ -84,6 +96,7 @@ export interface DeskView {
   myDay?: { items: TodayTask[] };
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
+  autonomy?: { done: DoneEntry[] };
 }
 
 export interface StudioNote {
