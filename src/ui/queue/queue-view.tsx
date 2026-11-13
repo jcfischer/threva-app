@@ -32,7 +32,7 @@ export function QueueBody({ state, session, setSession, now }: { state: DeskStat
   const queue = buildQueue(state.view, state.studio, session, now);
   const first = queue[0];
   return (
-    <section className="queue" aria-label={t("queue.label")}>
+    <section className="cards" aria-label={t("queue.label")}>
       {state.error && (
         <p className="faint" role="alert">
           {state.error.message ?? t("error.network")}
