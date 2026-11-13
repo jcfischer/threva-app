@@ -2,13 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
 import { createClient } from "../src/ui/api/client";
-import type { DeskView, MailSweep } from "../src/ui/api/types";
+import type { DeskView } from "../src/ui/api/types";
 import { inboxCard, meetingCard } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
-import { NOW, item, view } from "./fixtures/desk";
+import { NOW, item, sweep, view } from "./fixtures/desk";
 
 const MIN = 60_000;
-const group: MailSweep = { id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [] };
+const group = sweep();
 const desk = view({
   items: [item({ key: "soon-card", kind: "meeting", eventKey: "soon", title: "Team standup" }), item({ key: "mail", kind: "mail", title: "Workshop dates" })],
   today: [

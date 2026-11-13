@@ -2,18 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
 import { createClient } from "../src/ui/api/client";
-import type { DeskView, MailSweep } from "../src/ui/api/types";
+import type { DeskView } from "../src/ui/api/types";
 import { I18nProvider, createI18n } from "../src/ui/i18n";
 import { keyMap } from "../src/ui/queue/keys";
 import { buildQueue, EMPTY_SESSION, pin } from "../src/ui/queue/order";
-import { NOW, item, studio, thread, view } from "./fixtures/desk";
+import { NOW, item, studio, sweep, thread, view } from "./fixtures/desk";
 
-const sweep: MailSweep = { id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [{ key: "m1", from: "News", subject: "Issue" }] };
+const group = sweep({ mails: [{ key: "m1", from: "News", subject: "Issue" }] });
 const task = { task: { id: "todo", title: "Write the report" }, areaTitle: "Work" };
 const ended = { key: "ended", kind: "meeting" as const, title: "Board call", at: NOW - 60 * 60_000, end: NOW - 5 * 60_000 };
 const desk = view({
   items: [item({ key: "soon", kind: "meeting" }), item({ key: "agent", kind: "decision" }), item({ key: "mail", kind: "mail" }), item({ key: "item", kind: "sensor" })],
-  today: [ended], mailSweeps: [sweep], myDay: { items: [task] },
+  today: [ended], mailSweeps: [group], myDay: { items: [task] },
 });
 
 const render = (data: DeskView, key?: string, locale: "en" | "de" = "en") => renderToStaticMarkup(

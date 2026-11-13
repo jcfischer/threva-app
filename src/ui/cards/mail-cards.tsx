@@ -109,7 +109,11 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
       {panel === "attach" && (
         <div className="ivy">
           {!proposal ? (
-            <span className="faint">{busy ? t("card.mail.attach.looking") : ""}</span>
+            busy ? <span className="faint">{t("card.mail.attach.looking")}</span> : (
+              <button type="button" className="btn quiet" onClick={() => setPanel(null)}>
+                {t("card.mail.cancel")}
+              </button>
+            )
           ) : (
             <>
               <span className="from">{thread ? t("card.mail.attach.to") : t("card.mail.attach.none")}</span>

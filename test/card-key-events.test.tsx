@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { DayView } from "../src/ui/app";
 import { createClient } from "../src/ui/api/client";
 import { EMPTY_SESSION, pin } from "../src/ui/queue/order";
-import { NOW, item, view } from "./fixtures/desk";
+import { NOW, item, sweep, view } from "./fixtures/desk";
 
 describe("front-card keyboard events", () => {
   let dom: Window;
@@ -37,7 +37,7 @@ describe("front-card keyboard events", () => {
     const desk = view({
       items: [item({ key: "mail", kind: "mail", title: "Workshop dates" })],
       myDay: { items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
-      mailSweeps: [{ id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [] }],
+      mailSweeps: [sweep()],
     });
     const client = createClient(async (_url, init) => {
       writes.push(JSON.parse(init!.body as string));
