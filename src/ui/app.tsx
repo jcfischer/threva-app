@@ -1,8 +1,11 @@
+import { useI18n } from "./i18n";
+
 export function App() {
+  const { t } = useI18n();
   return (
     <main>
-      <h1>Threva</h1>
-      <p>Ein Ort für den Faden deiner Arbeit.</p>
+      <h1>{t("app.title")}</h1>
+      <p>{t("app.tagline")}</p>
     </main>
   );
 }
