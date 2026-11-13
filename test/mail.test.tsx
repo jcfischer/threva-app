@@ -56,13 +56,13 @@ describe("mail in the queue", () => {
         })}
       />,
     );
-    for (const text of ['Ada wrote: "Budget"', "Can we talk about the budget?", "It arrived today.", "Let go", "Keep as a task", "Draft a reply", "Open in Mail"]) {
+    for (const text of ['Ada wrote: "Budget"', "Can we talk about the budget?", "It arrived today.", "Let go", "Attach", "Draft a reply", "Ask me", "Open in Mail"]) {
       expect(html).toContain(text.replaceAll('"', "&quot;"));
     }
   });
 
   test("keep as a task is offered only with a fingerprint, and a suspicious mail is marked", () => {
-    const html = wrap(<MailCard item={item({ key: "m", kind: "mail", suspicious: true })} />);
+    const html = wrap(<MailCard item={item({ key: "m", kind: "mail", suspicious: true })} initialPanel="ask" />);
     expect(html).not.toContain("Keep as a task");
     expect(html).toContain("Looks suspicious");
   });

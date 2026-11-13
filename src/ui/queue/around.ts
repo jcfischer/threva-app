@@ -30,6 +30,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "agent":
     case "item":
     case "mail":
+    case "rule":
     case "soon":
       return entry.item.why ? { kind: "cortex", text: entry.item.why } : null;
     case "sweep":
@@ -48,6 +49,7 @@ export function entryTitle(entry: Entry): string {
     case "agent":
     case "item":
     case "mail":
+    case "rule":
     case "soon":
       return entry.item.title;
     case "sweep":

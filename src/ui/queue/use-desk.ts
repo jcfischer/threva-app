@@ -1,23 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeskClient } from "../api/client";
-import type { DeskView, StudioList } from "../api/types";
+import type { DeskView, MailRule, StudioList } from "../api/types";
 
 export const POLL_MS = 15_000;
 
 export interface DeskState {
   view: DeskView | null;
   studio: StudioList | null;
+  rules?: MailRule[] | null;
   error: { message: string | null } | null;
 }
 
 export async function loadDesk(client: DeskClient, previous: DeskState): Promise<DeskState> {
-  const [desk, studio] = await Promise.all([client.desk(), client.studio()]);
+  const [desk, studio, rules] = await Promise.all([client.desk(), client.studio(), client.rules()]);
   if (!desk.ok) return { ...previous, error: { message: desk.message } };
-  return { view: desk.data, studio: studio.ok ? studio.data : previous.studio, error: null };
+  return {
+    view: desk.data,
+    studio: studio.ok ? studio.data : previous.studio,
+    rules: rules.ok ? rules.data.rules : null,
+    error: null,
+  };
 }
 
 export function useDesk(client: DeskClient): DeskState & { refresh: () => void } {
-  const [state, setState] = useState<DeskState>({ view: null, studio: null, error: null });
+  const [state, setState] = useState<DeskState>({ view: null, studio: null, rules: null, error: null });
   const latest = useRef(state);
   latest.current = state;
 
