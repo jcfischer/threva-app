@@ -7,7 +7,7 @@ import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards"
 import { useI18n } from "../i18n";
 import { useDismissedMeetings } from "./dismissed";
 import { buildQueue, EMPTY_SESSION, pin, skip, type Entry, type Session } from "./order";
-import { useDesk, type DeskState } from "./use-desk";
+import type { DeskState } from "./use-desk";
 
 export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismissMeeting: (key: string) => void }) {
   switch (entry.type) {
@@ -76,8 +76,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   );
 }
 
-export function QueueView({ client }: { client: DeskClient }) {
-  const state = useDesk(client);
+export function QueueView({ client, state }: { client: DeskClient; state: DeskState & { refresh: () => void } }) {
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
   return (
