@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { createClient, type DeskClient } from "./api/client";
 import { Bar } from "./bar/bar";
+import { TimelineView } from "./day/timeline-view";
 import { useI18n } from "./i18n";
 import { QueueView } from "./queue/queue-view";
 import { useDesk } from "./queue/use-desk";
@@ -23,6 +24,7 @@ export function App({ client }: { client?: DeskClient }) {
       <Header />
       <Bar client={desk} onChange={state.refresh} />
       <QueueView client={desk} state={state} />
+      {state.view && <TimelineView today={state.view.today} tasks={state.view.myDay?.items ?? []} />}
     </main>
   );
 }

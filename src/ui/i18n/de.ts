@@ -61,4 +61,13 @@ export const de: Messages = {
   "meeting.after.done": "Fertig",
   "meeting.after.nothing": "Nichts zu notieren",
   "meeting.after.notACard": "Cortex hat das als Frage gelesen, nicht als Notiz. Schreib es als Aufgabe oder Notiz.",
+  "day.label": "Heute",
+  "day.allDay": "ganztägig",
+  "day.now": "Jetzt",
+  "day.free": "Frei bis {time} · {length}",
+  "day.left": "noch {length}",
+  "day.empty": "Heute stehen keine Termine an.",
+  "day.length.m": "{m} Min.",
+  "day.length.h": "{h} Std.",
+  "day.length.hm": "{h} Std. {m} Min.",
 };
