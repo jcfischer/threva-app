@@ -2,7 +2,7 @@ import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailSweep, StudioList
 
 export type Entry =
   | { k: string; type: "agent"; item: DeskItem }
-  | { k: string; type: "thread"; thread: StudioThread }
+  | { k: string; type: "thread"; thread: StudioThread; waits: boolean }
   | { k: string; type: "item"; item: DeskItem; fresh: boolean }
   | { k: string; type: "task"; task: TodayTask }
   | { k: string; type: "mail"; item: DeskItem }
@@ -15,9 +15,11 @@ export const AFTER_WINDOW_MS = 60 * 60 * 1000;
 export interface Session {
   readonly skip: readonly string[];
   readonly pin: string | null;
+  // The Studio thread opened inside its card. It stays first while open, also after it stops waiting or is parked.
+  readonly open: string | null;
 }
 
-export const EMPTY_SESSION: Session = { skip: [], pin: null };
+export const EMPTY_SESSION: Session = { skip: [], pin: null, open: null };
 
 const AGENT_KINDS: ReadonlySet<DeskItemKind> = new Set(["agent-blocked", "decision", "grilling", "escalation", "agent-failed"]);
 
@@ -63,13 +65,21 @@ export function buildQueue(view: DeskView, studio: StudioList | null, session: S
     ...items.filter(isAgentItem).map((item): Entry => ({ k: `i:${item.key}`, type: "agent", item })),
     ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
     ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item })),
-    ...(studio?.studio?.active ?? []).filter(threadWaits).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread })),
+    ...(studio?.studio?.active ?? []).filter(threadWaits).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread, waits: true })),
     ...items.filter((i) => other(i) && isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: true })),
     ...items.filter((i) => other(i) && !isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: false })),
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
   ];
 
-  return applySession(queue, session);
+  const ordered = applySession(queue, session);
+  const held = openThread(studio, session.open);
+  if (!held) return ordered;
+  return [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: threadWaits(held) }, ...ordered.filter((e) => e.k !== `t:${held.slug}`)];
+}
+
+function openThread(studio: StudioList | null, slug: string | null): StudioThread | null {
+  if (!slug || !studio?.studio) return null;
+  return [...studio.studio.active, ...(studio.studio.parked ?? [])].find((t) => t.slug === slug) ?? null;
 }
 
 export function applySession(queue: readonly Entry[], session: Session): Entry[] {
@@ -80,10 +90,16 @@ export function applySession(queue: readonly Entry[], session: Session): Entry[]
   return ordered;
 }
 
+const openKey = (session: Session): string | null => (session.open ? `t:${session.open}` : null);
+
 export function skip(session: Session, k: string): Session {
-  return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin };
+  return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin, open: openKey(session) === k ? null : session.open };
 }
 
 export function pin(session: Session, k: string): Session {
-  return { skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k };
+  return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k };
+}
+
+export function openStudio(session: Session, slug: string | null): Session {
+  return { ...session, open: slug };
 }

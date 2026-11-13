@@ -99,21 +99,52 @@ export interface DeskView {
   autonomy?: { done: DoneEntry[] };
 }
 
+export type StudioNoteKind = "note" | "stand" | "idea" | "relation";
+export type StudioNoteStatus = "open" | "kept" | "dismissed";
+
 export interface StudioNote {
   at: string;
-  kind: string;
-  status: string;
-  text?: string;
+  trigger?: string;
+  kind: StudioNoteKind;
+  status: StudioNoteStatus;
+  because?: string;
+  text: string;
 }
+
+export interface StudioResponse {
+  at: string;
+  re?: string;
+  text: string;
+}
+
+export interface StudioMaterial {
+  kind: string;
+  label: string;
+  href?: string;
+}
+
+export type StudioOutcome = "decided" | "shipped" | "dropped";
 
 export interface StudioThread {
   slug: string;
+  state?: "active" | "parked" | "closed";
+  thinkTonight?: boolean;
   question: string;
   stand: string;
   notes: StudioNote[];
-  responses: { at: string; re?: string; text: string }[];
+  responses: StudioResponse[];
+  material?: StudioMaterial[];
 }
 
 export interface StudioList {
-  studio: { active: StudioThread[] } | null;
+  studio: { active: StudioThread[]; parked?: StudioThread[] } | null;
 }
+
+// The `POST /api/desk/studio/act` bodies Threva sends, without the request id.
+export type StudioAct =
+  | { act: "respond"; thread: string; text: string }
+  | { act: "keep" | "dismiss"; thread: string; note: string }
+  | { act: "park"; thread: string }
+  | { act: "unpark"; thread: string }
+  | { act: "think"; thread: string; on: boolean }
+  | { act: "close"; thread: string; outcome: StudioOutcome; text: string; expect?: string; reviewOn?: string };

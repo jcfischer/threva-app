@@ -3,14 +3,22 @@ import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
 import { MailCard, SweepCard, UndoLine } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
-import { AgentCard, ItemCard, TaskCard, ThreadCard } from "../cards/queue-cards";
+import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
+import { StudioCard } from "../studio/card";
 import { useI18n } from "../i18n";
 import { around, type ThenLine, type WhyNow } from "./around";
 import { useDismissedMeetings } from "./dismissed";
-import { buildQueue, EMPTY_SESSION, pin, skip, type Entry, type Session } from "./order";
+import { buildQueue, EMPTY_SESSION, openStudio, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
 
-export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismissMeeting: (key: string) => void }) {
+export interface StudioOpenState {
+  open: string | null;
+  setOpen: (slug: string | null) => void;
+}
+
+const NO_STUDIO: StudioOpenState = { open: null, setOpen: () => {} };
+
+export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO }: { entry: Entry; onDismissMeeting: (key: string) => void; studio?: StudioOpenState }) {
   switch (entry.type) {
     case "soon":
       return <MeetingSoonCard item={entry.item} event={entry.event} />;
@@ -19,7 +27,15 @@ export function EntryCard({ entry, onDismissMeeting }: { entry: Entry; onDismiss
     case "agent":
       return <AgentCard item={entry.item} />;
     case "thread":
-      return <ThreadCard thread={entry.thread} />;
+      return (
+        <StudioCard
+          thread={entry.thread}
+          waits={entry.waits}
+          open={studio.open === entry.thread.slug}
+          onOpen={() => studio.setOpen(entry.thread.slug)}
+          onHide={() => studio.setOpen(null)}
+        />
+      );
     case "item":
       return <ItemCard item={entry.item} fresh={entry.fresh} />;
     case "mail":
@@ -92,7 +108,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
       </div>
       {first ? (
         <>
-          <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} />
+          <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }} />
           <div className="row">
             <button type="button" className="btn quiet" disabled={queue.length < 2} onClick={() => setSession(skip(session, first.k))}>
               {t("queue.skip")}

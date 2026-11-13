@@ -37,7 +37,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "after":
       return { kind: "after", title: entry.event.title };
     case "thread":
-      return { kind: "thread" };
+      return entry.waits ? { kind: "thread" } : null;
     case "task":
       return { kind: "task" };
   }
