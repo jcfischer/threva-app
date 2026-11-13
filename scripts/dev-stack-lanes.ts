@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { Checked } from "./dev-stack-lib";
 
 export type ParserProvider = "codex" | "pi";
@@ -72,12 +72,12 @@ function readRouting(file: string, read: Read): Checked<ParserRouting> {
 export function readOperatorFiles(env: Readonly<Record<string, string | undefined>>, read: Read): Checked<OperatorFiles> {
   const out: OperatorFiles = {};
   if (env.THREVA_DEV_LANES) {
-    const lanes = readLanes(env.THREVA_DEV_LANES, read);
+    const lanes = readLanes(resolve(env.THREVA_DEV_LANES), read);
     if (!lanes.ok) return lanes;
     out.conversations = lanes.value;
   }
   if (env.THREVA_DEV_PARSER_ROUTING) {
-    const routing = readRouting(env.THREVA_DEV_PARSER_ROUTING, read);
+    const routing = readRouting(resolve(env.THREVA_DEV_PARSER_ROUTING), read);
     if (!routing.ok) return routing;
     out.routing = routing.value;
   }

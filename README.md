@@ -38,7 +38,7 @@ bun run dev:stack          # builds dist/ui, starts Cortex on http://127.0.0.1:8
 bun run dev:stack stop
 ```
 
-The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus, no Discord and no Ranger. `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
+The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus and no Discord, and it runs Ranger only when a parser-routing file names it (see below). `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
 
 ### Conversations and the parser
 

@@ -26,6 +26,17 @@ describe("readOperatorFiles", () => {
     expect(readOperatorFiles({ THREVA_DEV_PARSER_ROUTING: "/op/lanes.yaml" }, read)).toEqual({ ok: false, error: expect.stringContaining("THREVA_DEV_PARSER_ROUTING") });
   });
 
+  test("resolves a relative routing path, so the parser Cortex starts can read it", () => {
+    const seen: string[] = [];
+    const r = readOperatorFiles({ THREVA_DEV_PARSER_ROUTING: "routing.json" }, (path) => {
+      seen.push(path);
+      return ROUTING;
+    });
+    const expected = `${process.cwd()}/routing.json`;
+    expect(seen).toEqual([expected]);
+    expect(r.ok && r.value.routing?.file).toBe(expected);
+  });
+
   test("keeps only the parser providers Cortex accepts and allows the parser's deadline", () => {
     const r = readOperatorFiles({ THREVA_DEV_PARSER_ROUTING: "/op/routing.json" }, read);
     expect(r).toEqual({ ok: true, value: { routing: { file: "/op/routing.json", permitted: ["codex", "pi"], timeoutSeconds: 30 } } });
