@@ -26,3 +26,11 @@ test("no card renders a javascript: link from Cortex data", () => {
   ].join("");
   expect(html).not.toContain("javascript:");
 });
+
+test("a safe link after a bad one still renders on every card", () => {
+  const ok = { ...action, id: "open", url: "https://ok.example/" };
+  expect(wrap(<ItemCard item={item({ key: "i", kind: "sensor", actions: [action, { ...ok, id: "o2" }] })} fresh={false} />)).toContain('href="https://ok.example/"');
+  expect(wrap(<MeetingSoonCard item={item({ key: "m", kind: "meeting", actions: [action] })} event={{ key: "e", at: NOW, end: NOW + 1, title: "Call", kind: "meeting", url: "https://ok.example/" }} />)).toContain('href="https://ok.example/"');
+  const mail = wrap(<MailCard item={item({ key: "mail", kind: "mail", detail: { summary: "", links: [{ label: "x", url: bad }, { label: "y", url: "message:%3Cid@example.org%3E" }] } })} />);
+  expect(mail).toContain('href="message:%3Cid@example.org%3E"');
+});
