@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { seedStudio } from "./dev-stack-studio";
 import { devEnv, renderCalendar, renderConfig, renderMail, resolvePaths, type DevStackPaths } from "./dev-stack-lib";
 
 const repoDir = resolve(import.meta.dir, "..");
@@ -24,6 +25,14 @@ function writeStack(p: DevStackPaths): void {
   const now = Date.now();
   writeFileSync(join(p.stateDir, "sample", "calendar.ics"), renderCalendar(now));
   writeFileSync(join(p.stateDir, "sample", "mail.json"), renderMail(now));
+  const studio = seedStudio(join(p.stateDir, "studio"), now, (args, cwd) => {
+    const r = Bun.spawnSync(["git", "-C", cwd, ...args], { env, stdout: "ignore", stderr: "pipe" });
+    return { exitCode: r.exitCode, stderr: r.stderr.toString() };
+  });
+  if (studio.error) {
+    console.error(`Could not set up the Studio: ${studio.error}`);
+    process.exit(1);
+  }
 }
 
 async function waitForDesk(port: number, ms: number): Promise<boolean> {
