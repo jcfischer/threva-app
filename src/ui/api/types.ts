@@ -97,6 +97,19 @@ export interface DeskView {
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
   autonomy?: { done: DoneEntry[] };
+  routines?: RoutineView | null;
+  agents?: DeskAgents;
+}
+
+export interface RoutineView {
+  installed: { title: string }[];
+  pending: { decisionId: string; impulseSummary: string }[];
+}
+
+export interface DeskAgents {
+  line: string;
+  working: { title: string; note: string; since: number }[];
+  waiting: number;
 }
 
 export interface StudioNote {
