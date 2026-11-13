@@ -1,11 +1,13 @@
-import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailSweep, StudioList, StudioThread, TodayTask } from "../api/types";
+import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailRule, MailSweep, StudioList, StudioThread, TodayTask } from "../api/types";
+import { inLearningPhase, isRuleOffer } from "../arrivals/outcomes";
 
 export type Entry =
   | { k: string; type: "agent"; item: DeskItem }
   | { k: string; type: "thread"; thread: StudioThread; waits: boolean }
   | { k: string; type: "item"; item: DeskItem; fresh: boolean }
   | { k: string; type: "task"; task: TodayTask }
-  | { k: string; type: "mail"; item: DeskItem }
+  | { k: string; type: "mail"; item: DeskItem; learning: boolean }
+  | { k: string; type: "rule"; item: DeskItem }
   | { k: string; type: "sweep"; sweep: MailSweep }
   | { k: string; type: "soon"; item: DeskItem; event: DeskEvent | null }
   | { k: string; type: "after"; event: DeskEvent };
@@ -53,18 +55,27 @@ export function threadWaits(thread: StudioThread): boolean {
   return !thread.responses.some((r) => Date.parse(r.at) >= noteAt);
 }
 
-export function buildQueue(view: DeskView, studio: StudioList | null, session: Session, now: number, dismissed: readonly string[] = []): Entry[] {
+export function buildQueue(
+  view: DeskView,
+  studio: StudioList | null,
+  session: Session,
+  now: number,
+  dismissed: readonly string[] = [],
+  rules: readonly MailRule[] | null = null,
+): Entry[] {
   const items = [...view.items].sort((a, b) => b.score - a.score);
   const isFresh = (item: DeskItem) => item.since !== undefined && now - item.since < DAY;
   const eventFor = (item: DeskItem) => view.today.find((e) => e.key === item.eventKey) ?? null;
-  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i);
+  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i) && !isRuleOffer(i);
+  const learning = inLearningPhase(rules);
 
   const queue: Entry[] = [
     ...items.filter(isMeetingItem).map((item): Entry => ({ k: `i:${item.key}`, type: "soon", item, event: eventFor(item) })),
     ...endedMeetings(view, now, dismissed).map((event): Entry => ({ k: `a:${event.key}`, type: "after", event })),
     ...items.filter(isAgentItem).map((item): Entry => ({ k: `i:${item.key}`, type: "agent", item })),
     ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
-    ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item })),
+    ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item, learning })),
+    ...items.filter(isRuleOffer).map((item): Entry => ({ k: `i:${item.key}`, type: "rule", item })),
     ...(studio?.studio?.active ?? []).filter(threadWaits).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread, waits: true })),
     ...items.filter((i) => other(i) && isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: true })),
     ...items.filter((i) => other(i) && !isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: false })),

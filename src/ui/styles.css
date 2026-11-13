@@ -242,3 +242,5 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 @media (max-width:900px){.daygrid.one .rail{order:1}}
 .nextline .lk,.card .lk{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer;text-align:left}
 .proto-ctl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.timeline .slot{grid-template-columns:64px minmax(0,1fr)}
+.timeline .tm{white-space:nowrap}

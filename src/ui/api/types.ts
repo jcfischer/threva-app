@@ -11,6 +11,7 @@ export interface DeskAction {
   role: "primary" | "secondary";
   wired: boolean;
   url?: string;
+  target?: string;
 }
 
 export interface DeskLink {
@@ -43,6 +44,7 @@ export interface DeskItem {
   explanation?: { sentence: string; choices: RulingChoice[] };
   reply?: { to: string; subject: string };
   suspicious?: boolean;
+  attention?: "action" | "update";
 }
 
 export interface DeskEvent {
@@ -97,6 +99,19 @@ export interface DeskView {
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
   autonomy?: { done: DoneEntry[] };
+  routines?: RoutineView | null;
+  agents?: DeskAgents;
+}
+
+export interface RoutineView {
+  installed: { title: string }[];
+  pending: { decisionId: string; impulseSummary: string }[];
+}
+
+export interface DeskAgents {
+  line: string;
+  working: { title: string; note: string; since: number }[];
+  waiting: number;
 }
 
 export type StudioNoteKind = "note" | "stand" | "idea" | "relation";
@@ -148,3 +163,22 @@ export type StudioAct =
   | { act: "unpark"; thread: string }
   | { act: "think"; thread: string; on: boolean }
   | { act: "close"; thread: string; outcome: StudioOutcome; text: string; expect?: string; reviewOn?: string };
+
+export interface MailRule {
+  id: string;
+  match: string;
+  value: string;
+  action: string;
+  on: boolean;
+  sentence: string;
+}
+
+export interface MailRules {
+  rules: MailRule[];
+}
+
+export interface StudioProposal {
+  thread: string | null;
+  reason: string;
+  threads: { slug: string; question: string }[];
+}

@@ -1,4 +1,4 @@
-import type { DeskView, StudioList } from "./types";
+import type { DeskView, MailRules, StudioList } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
 
@@ -35,6 +35,7 @@ export function newRequestId(): string {
 export interface DeskClient {
   desk(): Promise<Result<DeskView>>;
   studio(): Promise<Result<StudioList>>;
+  rules(): Promise<Result<MailRules>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
 }
 
@@ -42,6 +43,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
   return {
     desk: () => call<DeskView>(fetchImpl, "/api/desk"),
     studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
+    rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
     post: <T,>(path: string, body: unknown) =>
       call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
   };
