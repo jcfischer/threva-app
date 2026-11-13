@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { newRequestId } from "../api/client";
-import type { DeskItem, StudioThread, TodayTask } from "../api/types";
+import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n } from "../i18n";
 import { useAct } from "./act";
 import { Card, ErrorLine } from "./parts";
@@ -52,16 +52,6 @@ export function AgentCard({ item }: { item: DeskItem }) {
         </>
       )}
       <ErrorLine error={error} />
-    </Card>
-  );
-}
-
-export function ThreadCard({ thread }: { thread: StudioThread }) {
-  const { t } = useI18n();
-  return (
-    <Card eyebrow={t("card.thread.eyebrow")} pill={<span className="pill think">{t("card.thread.waits")}</span>}>
-      <span className="q">{thread.question}</span>
-      {thread.stand && <span className="sub">{thread.stand}</span>}
     </Card>
   );
 }

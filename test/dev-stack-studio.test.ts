@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderStudioThreads, seedStudio, STUDIO_AREA, type Git } from "../scripts/dev-stack-studio";
+import type { StudioNote } from "../src/ui/api/types";
 import { threadWaits } from "../src/ui/queue/order";
 
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -50,7 +51,7 @@ const NOTE_META = /^(trigger|model|mode|run|kind|status|sample|because|relates):
 const RESPONSE_META = /^(re):[ \t]*(.*)$/;
 
 function asThread(slug: string, p: Parsed) {
-  const notes = entries(p.sections.get("ivy's notes") ?? "", NOTE_META).map((n) => ({ at: n.at, kind: n.meta.kind ?? "note", status: n.meta.status ?? "open", text: n.text, trigger: n.meta.trigger, model: n.meta.model }));
+  const notes = entries(p.sections.get("ivy's notes") ?? "", NOTE_META).map((n) => ({ at: n.at, kind: (n.meta.kind ?? "note") as StudioNote["kind"], status: (n.meta.status ?? "open") as StudioNote["status"], text: n.text, trigger: n.meta.trigger, model: n.meta.model }));
   const responses = entries(p.sections.get("responses") ?? "", RESPONSE_META).map((r) => ({ at: r.at, re: r.meta.re, text: r.text }));
   return { slug, question: (p.sections.get("question") ?? "").trim(), stand: (p.sections.get("where i stand") ?? "").trim(), notes, responses };
 }
