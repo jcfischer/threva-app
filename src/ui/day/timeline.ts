@@ -10,6 +10,7 @@ export type TimelineRow =
 export interface Timeline {
   allDay: DeskEvent[];
   rows: TimelineRow[];
+  unplaced: TodayTask[];
   empty: boolean;
 }
 
@@ -36,7 +37,7 @@ export function buildTimeline(today: readonly DeskEvent[], tasks: readonly Today
   const { now, evening } = clock;
   const allDay = today.filter((e) => e.kind === "all-day");
   const timed = today.filter(isTimed).sort((a, b) => a.at - b.at || a.end - b.end);
-  if (timed.length === 0 && allDay.length === 0 && tasks.length === 0) return { allDay, rows: [], empty: true };
+  if (timed.length === 0 && allDay.length === 0 && tasks.length === 0) return { allDay, rows: [], unplaced: [], empty: true };
 
   const dayStart = Math.min(now, timed[0]?.at ?? now);
   const dayEnd = Math.max(evening, ...timed.map((e) => e.end));
@@ -55,5 +56,6 @@ export function buildTimeline(today: readonly DeskEvent[], tasks: readonly Today
 
   const home = rows.find((r) => r.type === "free" && r.now) ?? rows.find((r) => r.type === "free" && r.start > now);
   if (home?.type === "free") home.tasks = [...tasks];
-  return { allDay, rows, empty: false };
+  const unplaced = home?.type === "free" ? [] : [...tasks];
+  return { allDay, rows, unplaced, empty: rows.length === 0 && allDay.length === 0 };
 }

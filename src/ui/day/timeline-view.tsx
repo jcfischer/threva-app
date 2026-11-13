@@ -69,6 +69,20 @@ export function TimelineView({ today, tasks, clock }: { today: readonly DeskEven
       ) : (
         timeline.rows.map((row) => <Row key={`${row.type}:${row.start}:${row.type === "meeting" ? row.event.key : ""}`} row={row} now={c.now} />)
       )}
+      {timeline.unplaced.length > 0 && (
+        <div className="slot free">
+          <span className="tm" />
+          <div>
+            <span className="faint">{t("day.stillOpen")}</span>
+            {timeline.unplaced.map((task) => (
+              <div className="chip" key={task.task.id}>
+                <span>{task.task.title}</span>
+                <span className="faint">{task.areaTitle}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

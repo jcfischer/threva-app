@@ -59,7 +59,7 @@ describe("buildTimeline", () => {
   });
 
   test("no meetings and no tasks make an empty day", () => {
-    expect(buildTimeline([], [], CLOCK)).toEqual({ allDay: [], rows: [], empty: true });
+    expect(buildTimeline([], [], CLOCK)).toEqual({ allDay: [], rows: [], unplaced: [], empty: true });
   });
 
   test("an all-day event is kept apart from the timed rows", () => {
@@ -100,5 +100,26 @@ describe("TimelineView", () => {
     const html = render(today, [task("t")], CLOCK, "de");
     expect(html).toContain("Frei bis 11:15 · 2 Std. 15 Min. · noch 1 Std. 15 Min.");
     expect(html).toContain(">Jetzt<");
+  });
+});
+
+describe("tasks with no free slot", () => {
+  test("after the evening with no meetings left, tasks show as still open and the section is not blank", () => {
+    const late: Clock = { now: at("19:00"), evening: at("18:00") };
+    const timeline = buildTimeline([], [task("t1")], late);
+    expect(timeline.rows).toEqual([]);
+    expect(timeline.unplaced.map((t) => t.task.id)).toEqual(["t1"]);
+    expect(timeline.empty).toBe(true);
+    const html = render([], [task("t1")], late);
+    expect(html).toContain("The day has no meetings.");
+    expect(html).toContain("Still open today");
+    expect(html).toContain("Task t1");
+  });
+
+  test("inside the last meeting with no slot after it, tasks show as still open", () => {
+    const clock: Clock = { now: at("17:30"), evening: at("18:00") };
+    const timeline = buildTimeline([meeting("m", "17:00", "19:00")], [task("t1")], clock);
+    expect(timeline.unplaced.map((t) => t.task.id)).toEqual(["t1"]);
+    expect(render([meeting("m", "17:00", "19:00")], [task("t1")], clock)).toContain("Still open today");
   });
 });

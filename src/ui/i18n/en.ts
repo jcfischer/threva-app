@@ -65,6 +65,7 @@ export const en = {
   "day.free": "Free until {time} · {length}",
   "day.left": "{length} left",
   "day.empty": "The day has no meetings.",
+  "day.stillOpen": "Still open today",
   "day.length.m": "{m} min",
   "day.length.h": "{h} h",
   "day.length.hm": "{h} h {m} min",

@@ -67,6 +67,7 @@ export const de: Messages = {
   "day.free": "Frei bis {time} · {length}",
   "day.left": "noch {length}",
   "day.empty": "Heute stehen keine Termine an.",
+  "day.stillOpen": "Heute noch offen",
   "day.length.m": "{m} Min.",
   "day.length.h": "{h} Std.",
   "day.length.hm": "{h} Std. {m} Min.",
