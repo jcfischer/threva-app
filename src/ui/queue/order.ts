@@ -1,10 +1,12 @@
-import type { DeskItem, DeskItemKind, DeskView, StudioList, StudioThread, TodayTask } from "../api/types";
+import type { DeskItem, DeskItemKind, DeskView, MailSweep, StudioList, StudioThread, TodayTask } from "../api/types";
 
 export type Entry =
   | { k: string; type: "agent"; item: DeskItem }
   | { k: string; type: "thread"; thread: StudioThread }
   | { k: string; type: "item"; item: DeskItem; fresh: boolean }
-  | { k: string; type: "task"; task: TodayTask };
+  | { k: string; type: "task"; task: TodayTask }
+  | { k: string; type: "mail"; item: DeskItem }
+  | { k: string; type: "sweep"; sweep: MailSweep };
 
 export interface Session {
   readonly skip: readonly string[];
@@ -16,6 +18,10 @@ export const EMPTY_SESSION: Session = { skip: [], pin: null };
 const AGENT_KINDS: ReadonlySet<DeskItemKind> = new Set(["agent-blocked", "decision", "grilling", "escalation", "agent-failed"]);
 
 const DAY = 24 * 60 * 60 * 1000;
+
+export function isMailItem(item: DeskItem): boolean {
+  return item.kind === "mail";
+}
 
 export function isAgentItem(item: DeskItem): boolean {
   return AGENT_KINDS.has(item.kind);
@@ -37,9 +43,11 @@ export function buildQueue(view: DeskView, studio: StudioList | null, session: S
 
   const queue: Entry[] = [
     ...items.filter(isAgentItem).map((item): Entry => ({ k: `i:${item.key}`, type: "agent", item })),
+    ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
+    ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item })),
     ...(studio?.studio?.active ?? []).filter(threadWaits).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread })),
-    ...items.filter((i) => !isAgentItem(i) && isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: true })),
-    ...items.filter((i) => !isAgentItem(i) && !isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: false })),
+    ...items.filter((i) => !isAgentItem(i) && !isMailItem(i) && isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: true })),
+    ...items.filter((i) => !isAgentItem(i) && !isMailItem(i) && !isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: false })),
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
   ];
 
