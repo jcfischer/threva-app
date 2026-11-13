@@ -12,6 +12,15 @@ export function formatLength(i18n: Pick<I18n, "t">, ms: number): string {
   return m === 0 ? i18n.t("day.length.h", { h }) : i18n.t("day.length.hm", { h, m });
 }
 
+function TaskChip({ task }: { task: TodayTask }) {
+  return (
+    <div className="chip">
+      <span>{task.task.title}</span>
+      <span className="faint">{task.areaTitle}</span>
+    </div>
+  );
+}
+
 function Row({ row, now }: { row: TimelineRow; now: number }) {
   const i18n = useI18n();
   const { t, time } = i18n;
@@ -39,12 +48,7 @@ function Row({ row, now }: { row: TimelineRow; now: number }) {
           {pill}
           <span className="faint">{row.now ? `${free} · ${t("day.left", { length: formatLength(i18n, row.end - now) })}` : free}</span>
         </span>
-        {row.tasks.map((task) => (
-          <div className="chip" key={task.task.id}>
-            <span>{task.task.title}</span>
-            <span className="faint">{task.areaTitle}</span>
-          </div>
-        ))}
+        {row.tasks.map((task) => <TaskChip key={task.task.id} task={task} />)}
       </div>
     </div>
   );
@@ -74,12 +78,7 @@ export function TimelineView({ today, tasks, clock }: { today: readonly DeskEven
           <span className="tm" />
           <div>
             <span className="faint">{t("day.stillOpen")}</span>
-            {timeline.unplaced.map((task) => (
-              <div className="chip" key={task.task.id}>
-                <span>{task.task.title}</span>
-                <span className="faint">{task.areaTitle}</span>
-              </div>
-            ))}
+            {timeline.unplaced.map((task) => <TaskChip key={task.task.id} task={task} />)}
           </div>
         </div>
       )}
