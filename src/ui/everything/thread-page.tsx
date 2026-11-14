@@ -24,13 +24,14 @@ export function orderedThreadEntries(thread: StudioThread): ThreadEntry[] {
   ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
-export function ThreadPage({ client, project, assistantName, active = true, initialStudio = null, onChange }: {
+export function ThreadPage({ client, project, assistantName, active = true, initialStudio = null, onChange, onDesk }: {
   client: DeskClient;
   project: StudioProject;
   assistantName?: string;
   active?: boolean;
   initialStudio?: StudioList | null;
   onChange: () => void;
+  onDesk?: () => void;
 }) {
   const { t } = useI18n();
   const [studio, setStudio] = useState(initialStudio);
@@ -58,6 +59,7 @@ export function ThreadPage({ client, project, assistantName, active = true, init
   if (loading) return <p role="status">{t("thread.loading")}</p>;
   if (!thread) return <p role="status">{t("thread.unavailable")}</p>;
   return <QueueContext.Provider value={{ client, refresh }}>
+    {onDesk && <div className="row"><button type="button" className="btn" onClick={onDesk}>{t("desk.open")}</button></div>}
     <ThreadDocument thread={thread} closed={project.state === "closed" || thread.state === "closed"} assistantName={assistantName} text={text} setText={setText} />
   </QueueContext.Provider>;
 }

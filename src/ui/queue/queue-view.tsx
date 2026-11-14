@@ -14,6 +14,7 @@ import type { DeskState } from "./use-desk";
 export interface StudioOpenState {
   open: string | null;
   setOpen: (slug: string | null) => void;
+  openDesk?: (slug: string) => void;
 }
 
 const NO_STUDIO: StudioOpenState = { open: null, setOpen: () => {} };
@@ -39,6 +40,7 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, persona
           open={studio.open === entry.thread.slug}
           onOpen={() => studio.setOpen(entry.thread.slug)}
           onHide={() => studio.setOpen(null)}
+          onDesk={studio.openDesk && (() => studio.openDesk?.(entry.thread.slug))}
           personas={personas}
         />
       );
@@ -92,9 +94,10 @@ export interface QueueBodyProps {
   now: number;
   dismissed?: readonly string[];
   onDismissMeeting?: (key: string) => void;
+  onOpenDesk?: (slug: string) => void;
 }
 
-export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: QueueBodyProps) {
+export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, onOpenDesk }: QueueBodyProps) {
   const { t, tn } = useI18n();
   const outer = useQueue();
   // The last item made a task. Its card leaves the queue, so the queue says where it went. Cortex returns no undo
@@ -150,7 +153,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
               key={first.k}
               entry={first}
               onDismissMeeting={onDismissMeeting}
-              studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }}
+              studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)), openDesk: onOpenDesk }}
               personas={state.studio?.studio?.personas ?? []}
             />
             {keys && <div className="keyhint">

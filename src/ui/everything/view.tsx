@@ -51,13 +51,14 @@ function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: 
   </span>;
 }
 
-export function EverythingView({ client, active = true, initialDay = null, shares = [], assistantName, onChange = () => {} }: {
+export function EverythingView({ client, active = true, initialDay = null, shares = [], assistantName, onChange = () => {}, onOpenDesk }: {
   client: DeskClient;
   active?: boolean;
   initialDay?: MyDayOutline | null;
   shares?: readonly AreaShare[];
   assistantName?: string;
   onChange?: () => void;
+  onOpenDesk?: (slug: string) => void;
 }) {
   const i18n = useI18n();
   const { t, tn } = i18n;
@@ -286,7 +287,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
         }
       }}
       onLeave={(text, at) => { keepPlace(store, current.id, at); setTexts(previous => ({ ...previous, [current.id]: text })); saver.leave(current.id, text); }} />}
-    {currentProject && <ThreadPage key={current.id} client={client} project={currentProject} assistantName={assistantName} active={active} onChange={() => { void retry(); onChange(); }} />}
+    {currentProject && <ThreadPage key={current.id} client={client} project={currentProject} assistantName={assistantName} active={active} onDesk={onOpenDesk && (() => onOpenDesk(currentProject.slug))} onChange={() => { void retry(); onChange(); }} />}
     <div>{open.map(line)}{!open.length && <p className="muted">{t("everything.empty")}</p>}</div>
     {done.length > 0 && <details className="outline-done"><summary>{tn("everything.doneCount", done.length)}</summary>{done.map(line)}</details>}
     {current.id !== root.id && !currentProject && <form className="outline-add" onSubmit={event => {
