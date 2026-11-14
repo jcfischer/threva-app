@@ -20,7 +20,7 @@ test("renders English from the catalog by default", () => {
 
 test("renders German from the German catalog", () => {
   const html = render("de");
-  expect(html).toContain("Ein Ort für den Faden deiner Arbeit.");
+  expect(html).toContain("Ein Ort für die Themen deiner Arbeit.");
   expect(html).not.toContain("A place for the thread");
 });
 
