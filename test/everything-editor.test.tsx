@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { EditorView } from "@codemirror/view";
 import { NoteEditor, type LineDecoration } from "../src/ui/everything/editor";
-import { mountDom } from "./fixtures/dom";
+import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
 
 // CodeMirror needs the DOM globals of a browser window, including the observers happy-dom provides.
-const RICH = ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] as const;
+const RICH = CODEMIRROR_GLOBALS;
 const PLAIN = [] as const;
 
 interface Surface {

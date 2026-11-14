@@ -5,7 +5,7 @@ import { createClient } from "../src/ui/api/client";
 import { AssistantNotes, askAssistant, findPassage, layoutNotes, lineAbove, pageAfterKeep, pageAfterReplace, type OpenNote } from "../src/ui/everything/assistant";
 import { NotePage } from "../src/ui/everything/page";
 import { row } from "./fixtures/outline";
-import { mountDom } from "./fixtures/dom";
+import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
 
 const memoryStorage = () => {
   const kept = new Map<string, string>();
@@ -103,7 +103,7 @@ describe("open notes", () => {
   });
 });
 
-const RICH = ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"];
+const RICH = CODEMIRROR_GLOBALS;
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
   const { root, container, cleanup } = mountDom(RICH);

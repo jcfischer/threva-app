@@ -2,6 +2,9 @@ import { Window } from "happy-dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
+// CodeMirror needs these browser globals beyond window and document.
+export const CODEMIRROR_GLOBALS = ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] as const;
+
 export interface MountedDom {
   root: Root;
   container: HTMLElement;

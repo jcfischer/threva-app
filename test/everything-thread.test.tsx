@@ -8,7 +8,7 @@ import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
 import { row } from "./fixtures/outline";
-import { mountDom } from "./fixtures/dom";
+import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
 import { budgetThread, closedThread, studioList } from "./fixtures/studio";
 
 const mapping: StudioProject = { id: "thread", slug: budgetThread.slug, state: "active", openNotes: 3 };
@@ -76,7 +76,7 @@ test("address marks use the runtime name literally and strip only the leading ma
 });
 
 async function surface(run: (container: HTMLElement, render: (element: ReactNode) => Promise<void>) => Promise<void>, rich = false) {
-  const { root, container, cleanup } = mountDom(rich ? ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] : []);
+  const { root, container, cleanup } = mountDom(rich ? CODEMIRROR_GLOBALS : []);
   try { await run(container, async element => { await act(async () => root.render(element)); }); }
   finally {
     await cleanup();
