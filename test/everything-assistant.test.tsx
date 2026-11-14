@@ -146,6 +146,19 @@ describe("the assistant on a page", () => {
     expect(editor.state.doc.toString()).toBe("The plan\n\nMore");
   }));
 
+  test("an answer that arrives after the page closed is still stored for the row", async () => surface(async (container, render) => {
+    let answer: (response: Response) => void = () => {};
+    const subject = page({ reply: () => new Promise<Response>(resolve => { answer = resolve; }) });
+    await render(subject.element("The plan\n/ what?\nMore"));
+    const content = container.querySelector<HTMLElement>(".cm-content")!;
+    const editor = EditorView.findFromDOM(content)!;
+    await act(async () => { editor.focus(); editor.dispatch({ selection: { anchor: editor.state.doc.line(2).to } }); enter(content); });
+    await render(<div />);
+    answer(Response.json({ ok: true, reply: "Add a date." }));
+    await flush();
+    expect(new AssistantNotes(subject.storage).list("r").map(item => item.reply)).toEqual(["Add a date."]);
+  }));
+
   test("Keep writes the quote into the page and saves it; Dismiss changes nothing and sends nothing", async () => surface(async (container, render) => {
     const storage = memoryStorage();
     const notes = new AssistantNotes(storage);

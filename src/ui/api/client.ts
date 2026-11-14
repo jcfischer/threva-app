@@ -43,7 +43,6 @@ export interface DeskClient {
   studio(): Promise<Result<StudioList>>;
   rules(): Promise<Result<MailRules>>;
   myDay(): Promise<Result<MyDayOutline>>;
-  // The one way to change My Day: Cortex takes the day's date, a fresh request id and the command.
   changeMyDay(date: string, command: MyDayCommand): Promise<Result<MyDayChange>>;
   get<T = Record<string, unknown>>(path: string): Promise<Result<T>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;

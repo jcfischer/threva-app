@@ -31,7 +31,6 @@ export function useAddressedLines(name: string | null, hint: string, send: (text
       const sent = pending.current;
       const doc = line.read();
       if (!ok || !sent || doc === null || sent.from > sent.to || doc.slice(sent.from, sent.to) !== sent.text) return;
-      // Text added at either edge belongs to the newer line and must survive the response.
       const end = doc.indexOf("\n", sent.from);
       if ((sent.from > 0 && doc[sent.from - 1] !== "\n") || (end === -1 ? doc.length : end) !== sent.to) return;
       line.remove(lineRemovalRange(sent.from, sent.to, doc.length));

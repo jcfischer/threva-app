@@ -36,7 +36,6 @@ export function ThreadPage({ client, project, assistantName, active = true, init
   const { t } = useI18n();
   const [studio, setStudio] = useState(initialStudio);
   const [loading, setLoading] = useState(initialStudio === null);
-  // Keep the draft while an unreadable or closed thread hides its editor.
   const [text, setText] = useState("");
   const version = useRef(0);
   const read = useCallback(async () => {
@@ -103,7 +102,6 @@ function ThreadDocument({ thread, closed, assistantName, text, setText }: { thre
           <button type="button" className="btn" disabled={busy || !text.trim()} onClick={async () => {
             const sent = draft.current;
             if (await respond(sent)) {
-              // An answer to an earlier draft must not erase text typed while Cortex was writing.
               setText(current => current === sent ? "" : current);
             }
           }}>{t("thread.add")}</button>

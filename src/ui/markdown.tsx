@@ -5,7 +5,6 @@ import { safeHref } from "./api/safe-link";
 const markdown = parser.configure([Autolink, Strikethrough]);
 type SyntaxNode = ReturnType<typeof markdown.parse>["topNode"];
 
-// Syntax that only marks where something starts or ends; its text is never shown.
 const MARKS = new Set(["EmphasisMark", "CodeMark", "QuoteMark", "ListMark", "HeaderMark", "LinkMark", "StrikethroughMark", "URL", "LinkTitle", "LinkLabel", "CodeInfo"]);
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " " };
 
@@ -44,7 +43,6 @@ export function Markdown({ text }: { text: string }) {
     },
   });
 
-  // Inline content between from and to: the text between child nodes, with soft line breaks kept as breaks.
   function inline(node: SyntaxNode, from = node.from, to = node.to, trim = false): ReactNode[] {
     const out: ReactNode[] = [];
     let at = from;
@@ -122,7 +120,6 @@ export function Markdown({ text }: { text: string }) {
       let end = node.name.startsWith("Setext") && node.lastChild ? node.lastChild.from : node.to;
       while (end > node.from && /\s/.test(text[end - 1]!)) end--;
       const content = inline(node, node.from, end, true);
-      // Headings are demoted so the largest still fits inside a card.
       return level === 1 ? <h4 key={key}>{content}</h4> : level === 2 ? <h5 key={key}>{content}</h5> : <h6 key={key}>{content}</h6>;
     }
     switch (node.name) {

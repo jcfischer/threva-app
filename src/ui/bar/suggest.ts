@@ -1,5 +1,3 @@
-// What the bar offers under the input, and which row Enter takes. The shape follows oneSuggest in
-// the prototype: the row Enter takes is first, so one arrow press down reaches the first match.
 import { entryTitle } from "../queue/around";
 import type { Entry } from "../queue/order";
 import { looksLikeQuestion } from "./state";
@@ -18,7 +16,6 @@ export function typedWords(text: string): string[] {
   return (text.toLowerCase().match(WORD) ?? []).filter((word) => word.length >= MIN_WORD);
 }
 
-// Every typed word of two or more letters has to occur in the title, ignoring case.
 export function matchEntries(text: string, entries: readonly Entry[], limit = MATCH_LIMIT): { entry: Entry; index: number }[] {
   const words = typedWords(text);
   if (!words.length) return [];
@@ -32,7 +29,6 @@ export function matchEntries(text: string, entries: readonly Entry[], limit = MA
   return hits;
 }
 
-// A question asks first, one or two words with a match start at that match, anything else notes the text.
 export function suggest(text: string, entries: readonly Entry[]): Suggestion[] {
   const typed = text.trim();
   if (!typed) return [];
@@ -44,7 +40,6 @@ export function suggest(text: string, entries: readonly Entry[]): Suggestion[] {
   return [note, ...hits, ask];
 }
 
-// What Enter does with the row it takes: the note flow, the conversation, or bringing a card to the front.
 export type BarAct = { kind: "note" } | { kind: "ask" } | { kind: "match"; k: string };
 
 export function actFor(row: Suggestion | undefined): BarAct {

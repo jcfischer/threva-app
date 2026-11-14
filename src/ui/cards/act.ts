@@ -6,9 +6,7 @@ import { allowsCardKey, type EnterAct } from "../queue/keys";
 export interface QueueContextValue {
   client: DeskClient;
   refresh: () => void;
-  // The My Day date Cortex returned with the Desk. Without it a card cannot change My Day.
   myDayDate?: string;
-  // Tells the queue that a card's item became a task, so the queue can say so after the card is gone.
   onTask?: (title: string) => void;
 }
 
@@ -22,7 +20,6 @@ export function useQueue(): QueueContextValue {
 
 export type ActError = { message: string | null } | null;
 
-// An item Cortex lets the person move into today's Inbox: it carries a fingerprint and is not read-only.
 function canMakeTask(item: DeskItem): boolean {
   return !!item.todoFingerprint && !item.readOnly;
 }
@@ -65,7 +62,6 @@ export function useAct(enter?: EnterAct) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  // Whether this card shows "Make it a task" for the item: Cortex allows it and the Desk carried the My Day date.
   const offersTask = (item: DeskItem) => canMakeTask(item) && !!myDayDate;
   return { busy, error, run, perform, makeTask, offersTask };
 }

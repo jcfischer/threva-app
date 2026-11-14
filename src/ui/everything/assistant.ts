@@ -141,7 +141,6 @@ export class AssistantNotes {
     }
   }
 
-  /** Calls `listener` with the row whenever any store changes a row's notes; returns the way to stop. */
   static subscribe(listener: (row: string) => void): () => void {
     AssistantNotes.#listeners.add(listener);
     return () => { AssistantNotes.#listeners.delete(listener); };
@@ -149,7 +148,6 @@ export class AssistantNotes {
 
   static readonly #listeners = new Set<(row: string) => void>();
 
-  /** False when the browser would not store the note. */
   add(row: string, note: OpenNote): boolean {
     return this.#write(row, [...this.list(row).filter(kept => kept.id !== note.id), note]);
   }

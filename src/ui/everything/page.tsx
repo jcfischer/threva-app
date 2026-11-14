@@ -60,7 +60,6 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
     });
   }, [store, row.id]);
   const passages = useMemo(() => [...open, ...waiting].flatMap(item => item.passage ? [{ id: item.id, text: item.passage }] : []), [open, waiting]);
-  // The answer is stored whether or not this page is still open, so leaving the row does not lose it.
   const send = async (kind: AskKind, question: string | undefined, passage: string | null): Promise<boolean> => {
     if (!client || !store) return false;
     const id = newRequestId();

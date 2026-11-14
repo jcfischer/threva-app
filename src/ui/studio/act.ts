@@ -10,8 +10,6 @@ export function sendStudioAct(client: DeskClient, act: StudioAct, requestId: str
   return client.post<{ message?: string }>(STUDIO_ACT_PATH, { ...act, requestId });
 }
 
-// No answer, or a server error, may mean the act was written. A retry of the same act reuses the request id, so
-// Cortex answers it with the first commit instead of writing it twice.
 const mayHaveBeenWritten = (result: Result<unknown>): boolean => !result.ok && (result.status === 0 || result.status >= 500);
 
 export function useStudioAct() {

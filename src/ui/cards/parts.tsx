@@ -4,7 +4,6 @@ import type { DeskItem, DeskMention } from "../api/types";
 import { useI18n } from "../i18n";
 import type { ActError, useAct } from "./act";
 
-// Queue-wide feedback belongs inside the current card, whatever kind of item it renders.
 export const CardFooterContext = createContext<ReactNode>(null);
 
 export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: ReactNode; children: ReactNode }) {
@@ -21,8 +20,6 @@ export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: Reac
   );
 }
 
-// Renders text with each substring Cortex mentions linked to its URL. Mentions with an unsafe URL stay plain;
-// where two mentions start at the same place, the longer one wins.
 export function Mentioned({ text, mentions = [] }: { text: string; mentions?: readonly DeskMention[] }) {
   const safe = mentions.flatMap((m) => {
     const url = safeHref(m.url);
@@ -55,8 +52,6 @@ export function ErrorLine({ error }: { error: ActError }) {
   );
 }
 
-// "Make it a task": one click moves the item into today's Inbox in My Day. It shows only on items Cortex lets the
-// person move, and only when the Desk carried the My Day date the change needs.
 export function MakeTaskButton({ item, act }: { item: DeskItem; act: Pick<ReturnType<typeof useAct>, "busy" | "makeTask" | "offersTask"> }) {
   const { t } = useI18n();
   if (!act.offersTask(item)) return null;
