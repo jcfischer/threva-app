@@ -65,6 +65,19 @@ describe("interruption Why now", () => {
     expect(html).toContain("<b>Why now:</b> A new reason from Cortex.");
     expect(html).not.toContain(code);
   });
+  test.each(["future.reason", "toString"])("unknown reason %s without why omits the Why now label", code => {
+    for (const locale of ["en", "de"] as const) {
+      const html = renderToStaticMarkup(card([interrupt("unknown", { reason: { code } }, { why: "" })], locale));
+      expect(html).not.toContain(createI18n(locale).t("queue.why"));
+      expect(html).toContain(createI18n(locale).t("interrupt.question"));
+    }
+  });
+  test("a known reason still shows its label without Cortex why", () => {
+    for (const [locale, expected] of [["en", "A reminder is due."], ["de", "Eine Erinnerung ist fällig."]] as const) {
+      const html = renderToStaticMarkup(card([interrupt("due", { reason: { code: "reminder.due" } }, { why: "" })], locale));
+      expect(html).toContain(`<b>${createI18n(locale).t("queue.why")}</b> ${expected}`);
+    }
+  });
   test("a held card shows the waiting text and does not ask for feedback yet", () => {
     const html = renderToStaticMarkup(card([interrupt("held", { delivery: "held" }, { why: "Waiting until the meeting ends." })]));
     expect(html).toContain("Waiting until the meeting ends.");

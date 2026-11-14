@@ -7,8 +7,8 @@ import { MailCard, RuleOfferCard, SweepCard, UndoLine, WaitingCard } from "../ca
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
 import { StudioCard } from "../studio/card";
-import { useI18n, type TextKey } from "../i18n";
-import { around, type ThenLine, type WhyNow } from "./around";
+import { useI18n, type I18n } from "../i18n";
+import { around, interruptionReasonMessage, type ThenLine, type WhyNow } from "./around";
 import { allowsCardKey, keyMap } from "./keys";
 import { buildQueue, openStudio, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
@@ -59,25 +59,30 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, persona
   }
 }
 
-const REASON_MESSAGES = new Map<string, TextKey>([
-  ["meeting.soon", "interrupt.reason.meetingSoon"],
-  ["reminder.due", "interrupt.reason.reminderDue"],
-  ["mail.meeting-today", "interrupt.reason.meetingToday"],
-  ["mail.deadline-today", "interrupt.reason.deadlineToday"],
-  ["mail.vip", "interrupt.reason.vip"],
-  ["mail.ranked", "interrupt.reason.ranked"],
-]);
+function whyText(why: WhyNow, t: I18n["t"]): string {
+  switch (why.kind) {
+    case "interrupt": {
+      const reasonKey = interruptionReasonMessage(why.reason.code);
+      if (!reasonKey) return why.text;
+      const label = t(reasonKey, { target: why.reason.target ?? "" });
+      return why.text ? `${label} · ${why.text}` : label;
+    }
+    case "cortex":
+      return why.text;
+    case "after":
+      return t("queue.why.after", { title: why.title });
+    case "thread":
+      return t("queue.why.thread");
+    case "task":
+      return t("queue.why.task");
+  }
+}
 
 function WhyNowText({ why }: { why: WhyNow }) {
   const { t } = useI18n();
-  const reasonKey = why.kind === "interrupt" ? REASON_MESSAGES.get(why.reason.code) : undefined;
-  const text =
-    why.kind === "interrupt" ? (reasonKey ? t(reasonKey, { target: why.reason.target ?? "" }) : why.text) :
-    why.kind === "cortex" ? why.text : why.kind === "after" ? t("queue.why.after", { title: why.title }) : why.kind === "thread" ? t("queue.why.thread") : t("queue.why.task");
   return (
     <span>
-      <b>{t("queue.why")}</b> {text}
-      {why.kind === "interrupt" && reasonKey && why.text && <> · {why.text}</>}
+      <b>{t("queue.why")}</b> {whyText(why, t)}
     </span>
   );
 }
