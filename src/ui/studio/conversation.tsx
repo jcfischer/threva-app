@@ -3,6 +3,7 @@ import { lines, linkedConversation, readExchange, sendInput, sessionCall, startC
 import { ErrorLine } from "../cards/parts";
 import { useQueue, type ActError } from "../cards/act";
 import { useI18n } from "../i18n";
+import { Markdown } from "../markdown";
 
 const POLL_MS = 1500;
 const POLL_LIMIT = 80;
@@ -17,7 +18,7 @@ export function ExchangeView({ exchange, outbox }: { exchange: Exchange; outbox?
         e.role === "user" ? (
           <div key={e.id} className="stnote">
             <span className="eyebrow">{t("studio.you")}</span>
-            <p>{e.text}</p>
+            <p className="typed">{e.text}</p>
           </div>
         ) : (
           <div key={e.id} className="stnote">
@@ -25,14 +26,14 @@ export function ExchangeView({ exchange, outbox }: { exchange: Exchange; outbox?
               {t("studio.assistant")}
               {(e.model ?? exchange.using) && ` · ${e.model ?? exchange.using}`}
             </span>
-            {e.error ? <p className="faint">{e.error}</p> : <p>{e.text}</p>}
+            {e.error ? <p className="faint">{e.error}</p> : <Markdown text={e.text ?? ""} />}
           </div>
         ),
       )}
       {sent && (
         <div className="stnote">
           <span className="eyebrow">{t("studio.you")}</span>
-          <p>{outbox}</p>
+          <p className="typed">{outbox}</p>
         </div>
       )}
       {exchange.working && <span className="faint">{t("talk.working")}</span>}
@@ -163,14 +164,14 @@ export function SessionView({ session }: { session: StudioSession }) {
         <div key={turn.id} className="stack" style={{ gap: 6 }}>
           <div className="stnote">
             <span className="eyebrow">{t("studio.you")}</span>
-            <p>{turn.text}</p>
+            <p className="typed">{turn.text}</p>
           </div>
           {turn.answer && (
             <div className="stnote">
               <span className="eyebrow">
                 {t("studio.assistant")} · {turn.model}
               </span>
-              <p>{turn.answer.reply}</p>
+              <Markdown text={turn.answer.reply} />
             </div>
           )}
         </div>

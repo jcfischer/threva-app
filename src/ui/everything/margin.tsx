@@ -4,6 +4,7 @@ import type { StudioNote } from "../api/types";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "../studio/act";
 import { ErrorLine } from "../cards/parts";
+import { Markdown } from "../markdown";
 
 const KINDS: Record<StudioNote["kind"], TextKey> = {
   note: "studio.kind.note", stand: "studio.kind.stand", idea: "studio.kind.idea", relation: "thread.kind.relation",
@@ -20,7 +21,7 @@ function MarginNote({ note, slug, name, writable }: { note: StudioNote; slug: st
   const { busy, error, run } = useStudioAct();
   return <div className="thread-margin-note">
     <span className="eyebrow">{name} · <ThreadDate at={note.at} /> · {t(KINDS[note.kind])}</span>
-    <p>{note.text}</p>
+    <Markdown text={note.text} />
     {note.because && <p className="faint">{t("studio.because", { text: note.because })}</p>}
     {writable && <div className="row">
       <button type="button" className="btn pri" disabled={busy} onClick={() => { void run({ act: "keep", thread: slug, note: note.at }); }}>{t("studio.keep")}</button>
@@ -77,8 +78,8 @@ export function AssistantMargin({ notes, waiting, tops, page, name, onKeep, onRe
         {note.replacement !== undefined ? <>
           <p className="assist-old"><span className="faint">{t("assist.old")}</span> {note.passage}</p>
           <p className="assist-new"><span className="faint">{t("assist.new")}</span> {note.replacement}</p>
-          {note.reply && <p>{note.reply}</p>}
-        </> : <p>{note.reply}</p>}
+          {note.reply && <Markdown text={note.reply} />}
+        </> : <Markdown text={note.reply} />}
         <div className="row">
           {note.replacement !== undefined
             ? <button type="button" className="btn pri" disabled={!replaceable} onClick={() => onReplace(note)}>{t("assist.replace")}</button>

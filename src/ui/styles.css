@@ -322,3 +322,14 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .cm-assist-quote{border-left:3px solid var(--accent);padding-left:10px;color:var(--accent)}
 @media(min-width:821px){.assist-note{position:absolute;left:0;right:0;top:var(--note-top,0)}}
 @media(max-width:820px){.assist-layout.has-notes{grid-template-columns:minmax(0,1fr)}.assist-margin{min-height:0;display:flex;flex-direction:column;gap:10px}}
+.typed{white-space:pre-wrap;overflow-wrap:anywhere}
+.md{display:flex;flex-direction:column;gap:6px;white-space:normal;overflow-wrap:anywhere;min-width:0}
+.md p,.md h4,.md h5,.md h6,.md ul,.md ol,.md blockquote,.md pre{margin:0}
+.md h4,.md h5,.md h6{font-size:inherit;font-weight:600}
+.md h4{font-size:1.08em}
+.md ul,.md ol{padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.md li>p+*{margin-top:3px}
+.md blockquote{border-left:3px solid var(--line);padding-left:10px;color:var(--dim)}
+.md code{font-family:var(--mono);font-size:.92em}
+.md pre{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.md a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
