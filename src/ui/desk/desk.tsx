@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import type { StudioList, StudioThread } from "../api/types";
 import { QueueContext } from "../cards/act";
@@ -118,12 +118,14 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
     });
     setOpen((current) => ({ ...current, [side]: current[side] === id ? null : id }));
   };
-  const close = (side: DeskSide) => setOpen((current) => ({ ...current, [side]: null }));
+  // Close the side only while it still shows the card whose act finished, so a slow act cannot put back a
+  // card opened in its place and throw away a draft typed there.
+  const close = (side: DeskSide, id: string) => setOpen((current) => (current[side] === id ? { ...current, [side]: null } : current));
   const frame = (id: string) => {
     const placed = placement[id];
     return placed?.mode === "out" ? { left: placed.left, top: placed.top, width: placed.width } : undefined;
   };
-  const placed = (id: string) => (placement[id] ? "true" : "false");
+  const placed = (id: string) => !!placement[id];
 
   return <section className="desk" aria-label={t("desk.label")}>
     <div className="desk-bar">{back}</div>
@@ -131,21 +133,23 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
       <aside className="desk-side desk-material" aria-label={t("studio.material")}>
         <span className="eyebrow">{t("studio.material")}</span>
         {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
-        {material.map((card) => <Fragment key={card.id}>
-          <button
-            type="button"
-            className={`desk-card${open.left === card.id ? " desk-held" : ""}`}
-            data-desk-card={card.id}
-            aria-expanded={open.left === card.id}
-            onClick={() => toggle("left", card.id)}
-          >
+        {material.map((card) => <DeskCardShell
+          key={card.id}
+          side="left"
+          id={card.id}
+          className={`desk-card${open.left === card.id ? " desk-held" : ""}`}
+          expanded={open.left === card.id}
+          onToggle={() => toggle("left", card.id)}
+          frame={frame(card.id)}
+          placed={placed(card.id)}
+          parked={<>
             <span>{card.label}</span>
             <span className="faint">{card.kind}</span>
-          </button>
-          {left?.id === card.id && <div className="desk-opened desk-opened-left" data-desk-opened="left" data-placed={placed(card.id)} style={frame(card.id)}>
-            <OpenCard thing={left} slug={slug} now={now} onClose={() => close("left")} run={run} busy={busy} />
-          </div>}
-        </Fragment>)}
+          </>}
+          opened={left?.id === card.id
+            ? <OpenCard thing={left} slug={slug} now={now} onClose={() => close("left", card.id)} run={run} busy={busy} />
+            : null}
+        />)}
       </aside>
       <div className="desk-topic stack" data-desk="middle">
         <h2 className="stq">{thread.question}</h2>
@@ -157,22 +161,50 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
       <aside className="desk-side desk-notes" aria-label={t("desk.notes")}>
         <span className="eyebrow">{t("desk.notes")}</span>
         {notes.length === 0 && <span className="faint">{t("desk.notes.none")}</span>}
-        {notes.map((card) => <Fragment key={card.id}>
-          <button
-            type="button"
-            className={`desk-card desk-${card.strength}${open.right === card.id ? " desk-held" : ""}`}
-            data-desk-card={card.id}
-            aria-expanded={open.right === card.id}
-            onClick={() => toggle("right", card.id)}
-          >
+        {notes.map((card) => <DeskCardShell
+          key={card.id}
+          side="right"
+          id={card.id}
+          className={`desk-card desk-${card.strength}${open.right === card.id ? " desk-held" : ""}`}
+          expanded={open.right === card.id}
+          onToggle={() => toggle("right", card.id)}
+          frame={frame(card.id)}
+          placed={placed(card.id)}
+          parked={<>
             <span>{card.sentence}</span>
             <span className="faint">{ago(i18n, card.at, now)}</span>
-          </button>
-          {right?.id === card.id && <div className="desk-opened desk-opened-right" data-desk-opened="right" data-placed={placed(card.id)} style={frame(card.id)}>
-            <OpenCard thing={right} slug={slug} now={now} onClose={() => close("right")} run={run} busy={busy} />
-          </div>}
-        </Fragment>)}
+          </>}
+          opened={right?.id === card.id
+            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => close("right", card.id)} run={run} busy={busy} />
+            : null}
+        />)}
       </aside>
     </div>
   </section>;
+}
+
+/**
+ * The shell every parked card shares: the card itself, which stays in place and dims while its card is open,
+ * and the opened card beside it, held level with it by the placed frame. Both sides render their own content
+ * and only their own open id, so opening and closing stay one implementation.
+ */
+function DeskCardShell({ side, id, className, expanded, onToggle, frame, placed, parked, opened }: {
+  side: DeskSide;
+  id: string;
+  className: string;
+  expanded: boolean;
+  onToggle: () => void;
+  frame: { left: number; top: number; width: number } | undefined;
+  placed: boolean;
+  parked: ReactNode;
+  opened: ReactNode;
+}) {
+  return <>
+    <button type="button" className={className} data-desk-card={id} aria-expanded={expanded} onClick={onToggle}>
+      {parked}
+    </button>
+    {opened && <div className={`desk-opened desk-opened-${side}`} data-desk-opened={side} data-placed={placed ? "true" : "false"} style={frame}>
+      {opened}
+    </div>}
+  </>;
 }

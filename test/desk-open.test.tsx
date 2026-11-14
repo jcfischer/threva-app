@@ -253,6 +253,28 @@ describe("acts on an opened note", () => {
     expect(body).toMatchObject({ act: "dismiss", thread: budgetThread.slug, note: stand.at });
   });
 
+  test("a finished act closes only its own card, not one opened while it was in flight", async () => {
+    let release!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => { release = resolve; });
+    await withDesk(async (container, click) => {
+      await click(stand.at);
+      const keep = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Take it as my stand")!;
+      await act(async () => { keep.click(); });
+
+      // While the act is still in flight, open another note and start a draft there.
+      await click(note.at);
+      const field = opened(container, "right")!.querySelector("input") as HTMLInputElement;
+      await inputText(field, "Keep drafting.");
+
+      await act(async () => { release(Response.json({ ok: true, message: "Kept." })); await pending; });
+
+      const card = opened(container, "right");
+      expect(card).not.toBeNull();
+      expect(card!.textContent).toContain("Ada's draft adds two hires.");
+      expect((card!.querySelector("input") as HTMLInputElement).value).toBe("Keep drafting.");
+    }, async () => pending);
+  });
+
   test("Enter on the answer field sends respond with what was typed", async () => {
     let body: Record<string, unknown> = {};
     const wired = await withDesk(async (container, click) => {
