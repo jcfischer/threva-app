@@ -304,3 +304,17 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .cm-thread-addressed,.thread-addressed{background:var(--accent-soft)}
 .cm-thread-addressed::after{content:attr(data-hint);color:var(--accent);font-size:12px;padding-left:10px}
 @media(max-width:819px){.thread-page{grid-template-columns:minmax(0,1fr)}}
+
+.assist-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.assist-layout.has-notes{grid-template-columns:minmax(0,1fr) 270px}
+.assist-margin{position:relative;min-width:0;min-height:var(--margin-height,0)}
+.assist-note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:8px 10px;border-radius:0 8px 8px 0;font-size:13.5px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere;white-space:pre-wrap}
+.assist-note p{margin:0}
+.assist-note .eyebrow{color:var(--accent)}
+.assist-waiting{opacity:.7}
+.assist-old{text-decoration:line-through;color:var(--dim)}
+.assist-error{color:var(--wait);font-size:13px}
+.cm-assist-passage{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
+.cm-assist-quote{border-left:3px solid var(--accent);padding-left:10px;color:var(--accent)}
+@media(min-width:821px){.assist-note{position:absolute;left:0;right:0;top:var(--note-top,0)}}
+@media(max-width:820px){.assist-layout.has-notes{grid-template-columns:minmax(0,1fr)}.assist-margin{min-height:0;display:flex;flex-direction:column;gap:10px}}

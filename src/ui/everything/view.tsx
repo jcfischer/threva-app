@@ -4,6 +4,7 @@ import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
 import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";
+import { AssistantNotes } from "./assistant";
 import { liftSelection } from "./lift";
 import { NotePage } from "./page";
 import { ThreadPage } from "./thread-page";
@@ -46,6 +47,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<NoteNotice | null>(null);
   const [store] = useState(placeStore);
+  const [assistantNotes] = useState(() => new AssistantNotes(store));
   const outline = useRef<MyDayOutline | null>(initialDay);
   const latest = useRef({ client, onChange, t });
   const [saver] = useState(() => new NoteSaver({
@@ -230,6 +232,9 @@ export function EverythingView({ client, active = true, initialDay = null, share
       place={keptPlace(store, current.id, pageText.length)}
       notice={notice?.row === current.id ? notice : null}
       clean={clean}
+      client={client}
+      notes={assistantNotes}
+      assistantName={assistantName}
       onType={text => {
         setTexts(previous => ({ ...previous, [current.id]: text }));
         setNotice(previous => previous?.row === current.id && previous.state !== "refused" ? null : previous);
