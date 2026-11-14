@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SparMode, StudioThread } from "../api/types";
 import { ErrorLine } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
@@ -53,19 +53,29 @@ export function Sparring({ thread, personas = [] }: SparringProps) {
   const { t } = useI18n();
   const { busy, error, run } = useStudioAct();
   const [sent, setSent] = useState<{ mode: SparMode; message?: string } | null>(null);
+  // The thread snapshot the click was sent against, so a newer snapshot can settle the local mark.
+  const sentFrom = useRef<StudioThread | null>(null);
   const thinking = thread.thinking;
   const availability = sparAvailability(thinking);
   const blocked = availability.ready ? null : (availability.reason ?? t("studio.spar.notLoaded"));
   const pending = pendingModes(thinking);
   const queued = sent ? [sent.mode, ...pending] : pending;
-  // Once Cortex serves the run, its own queue is the truth and the local mark can go.
+  // The local mark holds until a newer snapshot settles it: Cortex's own queue is the truth once it serves the run,
+  // and a snapshot without a pending run for the mode means the run failed or finished between refreshes.
   useEffect(() => {
-    if (sent && pendingModes(thread.thinking).includes(sent.mode)) setSent(null);
-  }, [sent, thread.thinking]);
+    if (!sent || !thread.thinking) return;
+    if (pendingModes(thread.thinking).includes(sent.mode)) return;
+    if (thread === sentFrom.current) return;
+    sentFrom.current = null;
+    setSent(null);
+  }, [sent, thread]);
   if (thread.state === "closed") return null;
   const send = async (mode: SparMode) => {
+    const from = thread;
     const result = await run({ act: "spar", thread: thread.slug, mode });
-    if (result.ok) setSent({ mode, ...(result.data.message ? { message: result.data.message } : {}) });
+    if (!result.ok) return;
+    sentFrom.current = from;
+    setSent({ mode, ...(result.data.message ? { message: result.data.message } : {}) });
   };
   return (
     <div className="strel" role="group" aria-label={t("studio.spar")}>

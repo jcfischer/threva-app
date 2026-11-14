@@ -31,6 +31,9 @@ const disabledButtons = (html: string) => buttons(html).filter((button) => butto
 
 const withThinking = (thinking: StudioThread["thinking"]): StudioThread => ({ ...budgetThread, thinking });
 
+const label = (container: HTMLElement, text: string) =>
+  Array.from(container.querySelectorAll("button")).find((button) => button.textContent === text);
+
 describe("the sparring rail", () => {
   test("offers the five modes and one question per name in studio.personas", () => {
     const html = render(budgetThread, ["Grace Hopper", "A skeptic"]);
@@ -107,7 +110,14 @@ describe("the sparring rail", () => {
   });
 });
 
-async function withDom(run: (click: (label: string) => Promise<void>, container: HTMLElement) => Promise<void>, fetchImpl: Fetch) {
+async function withDom(
+  run: (
+    click: (label: string) => Promise<void>,
+    container: HTMLElement,
+    show: (thread: StudioThread) => Promise<void>,
+  ) => Promise<void>,
+  fetchImpl: Fetch,
+) {
   const dom = new Window();
   const globals = { window: dom, document: dom.document, IS_REACT_ACT_ENVIRONMENT: true };
   const originals = new Map(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -122,17 +132,21 @@ async function withDom(run: (click: (label: string) => Promise<void>, container:
       button.click();
     });
   };
-  try {
+  const client = createClient(fetchImpl);
+  const show = async (thread: StudioThread) => {
     await act(async () => {
       root.render(
         <I18nProvider value={createI18n("en")}>
-          <QueueContext.Provider value={{ client: createClient(fetchImpl), refresh: () => {} }}>
-            <Sparring thread={budgetThread} personas={["Grace Hopper"]} />
+          <QueueContext.Provider value={{ client, refresh: () => {} }}>
+            <Sparring thread={thread} personas={["Grace Hopper"]} />
           </QueueContext.Provider>
         </I18nProvider>,
       );
     });
-    await run(click, container);
+  };
+  try {
+    await show(budgetThread);
+    await run(click, container, show);
   } finally {
     await act(async () => root.unmount());
     await dom.happyDOM.close();
@@ -152,7 +166,7 @@ describe("a click on the rail", () => {
     };
     await withDom(async (click, container) => {
       await click("Grill me");
-      const button = Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Queued: Grill me");
+      const button = label(container, "Queued: Grill me");
       expect(button).toBeDefined();
       expect(button?.hasAttribute("disabled")).toBe(true);
       expect(container.textContent).toContain("Asked Ivy: grill. The note will appear here when it lands.");
@@ -176,12 +190,56 @@ describe("a click on the rail", () => {
     expect(body).toMatchObject({ act: "spar", thread: "budget-next-year", mode: "persona:Grace Hopper" });
   });
 
+  test("a run that failed before a refresh settles the mark, so the mode can be asked again", async () => {
+    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: grill." });
+    const failed: StudioThread = {
+      ...budgetThread,
+      thinking: {
+        kind: "ready",
+        budget: "open",
+        reason: null,
+        runs: [{ id: "run-2", mode: "grill", status: "failed", reason: "Ranger stopped: the model is unavailable." }],
+      },
+    };
+    await withDom(async (click, container, show) => {
+      await click("Grill me");
+      expect(label(container, "Queued: Grill me")?.hasAttribute("disabled")).toBe(true);
+
+      await show(failed);
+      const button = label(container, "Grill me");
+      expect(button?.hasAttribute("disabled")).toBe(false);
+      expect(label(container, "Queued: Grill me")).toBeUndefined();
+      expect(container.textContent).toContain("Ranger stopped: the model is unavailable.");
+    }, fetchImpl);
+  });
+
+  test("a run that finished before a refresh settles the mark, so the mode can be asked again", async () => {
+    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: red-team." });
+    await withDom(async (click, container, show) => {
+      await click("Red team");
+      expect(label(container, "Queued: Red team")?.hasAttribute("disabled")).toBe(true);
+
+      await show({ ...budgetThread, thinking: { ...openThinking, runs: [] } });
+      const button = label(container, "Red team");
+      expect(button?.hasAttribute("disabled")).toBe(false);
+      expect(container.textContent).not.toContain("Asked Ivy: red-team.");
+    }, fetchImpl);
+  });
+
+  test("keeps the mark while the same snapshot shows no run yet", async () => {
+    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: think." });
+    await withDom(async (click, container) => {
+      await click("Think now");
+      expect(label(container, "Queued: Think now")?.hasAttribute("disabled")).toBe(true);
+    }, fetchImpl);
+  });
+
   test("shows Cortex's message when the act answers an error, and leaves the buttons alone", async () => {
     const fetchImpl: Fetch = async () => Response.json({ ok: false, error: "Ranger is configured for another Studio directory." }, { status: 503 });
     await withDom(async (click, container) => {
       await click("Red team");
       expect(container.querySelector('[role="alert"]')?.textContent).toBe("Ranger is configured for another Studio directory.");
-      const button = Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Red team");
+      const button = label(container, "Red team");
       expect(button?.hasAttribute("disabled")).toBe(false);
     }, fetchImpl);
   });
