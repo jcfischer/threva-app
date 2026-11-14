@@ -82,10 +82,12 @@ export function buildQueue(
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
   ];
 
-  const ordered = applySession(queue, session);
+  // The open Studio thread joins the queue before the session applies, so a pull still lands in front of it.
   const held = openThread(studio, session.open);
-  if (!held) return ordered;
-  return [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: threadWaits(held) }, ...ordered.filter((e) => e.k !== `t:${held.slug}`)];
+  const withHeld: Entry[] = !held
+    ? queue
+    : [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: threadWaits(held) }, ...queue.filter((e) => e.k !== `t:${held.slug}`)];
+  return applySession(withHeld, session);
 }
 
 function openThread(studio: StudioList | null, slug: string | null): StudioThread | null {
@@ -107,8 +109,9 @@ export function skip(session: Session, k: string): Session {
   return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin, open: openKey(session) === k ? null : session.open };
 }
 
+// A pull brings the named card to the front, so a Studio thread open in another card closes.
 export function pin(session: Session, k: string): Session {
-  return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k };
+  return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k, open: openKey(session) === k ? session.open : null };
 }
 
 export function openStudio(session: Session, slug: string | null): Session {
