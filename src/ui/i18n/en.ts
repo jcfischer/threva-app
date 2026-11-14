@@ -131,6 +131,8 @@ export const en = {
   "day.left": "{length} left",
   "day.empty": "The day has no meetings.",
   "day.stillOpen": "Still open today",
+  "day.earlier": "Earlier today",
+  "day.earlier.more": { one: "and {count} more", other: "and {count} more" },
   "day.length.m": "{m} min",
   "day.length.h": "{h} h",
   "day.length.hm": "{h} h {m} min",

@@ -46,4 +46,4 @@ export const budgetThread: StudioThread = {
   ],
 };
 
-export const studioList = (active: StudioThread[], parked: StudioThread[] = []): StudioList => ({ studio: { active, parked } });
+export const studioList = (active: StudioThread[], parked: StudioThread[] = [], closed: StudioThread[] = []): StudioList => ({ studio: { active, parked, closed } });

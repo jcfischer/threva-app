@@ -63,6 +63,12 @@ export interface TodayTask {
   areaTitle: string;
 }
 
+// A task the day is done with. Cortex keeps no time for it.
+export interface TodayWin {
+  taskId: string;
+  title: string;
+}
+
 export interface MailSweepMail {
   key: string;
   from: string;
@@ -95,7 +101,7 @@ export interface DeskView {
   displayName: string | null;
   items: DeskItem[];
   today: DeskEvent[];
-  myDay?: { items: TodayTask[] };
+  myDay?: { items: TodayTask[]; wins?: TodayWin[] };
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
   autonomy?: { done: DoneEntry[] };
@@ -143,6 +149,8 @@ export type StudioOutcome = "decided" | "shipped" | "dropped";
 export interface StudioThread {
   slug: string;
   state?: "active" | "parked" | "closed";
+  closed?: string;
+  outcome?: StudioOutcome;
   thinkTonight?: boolean;
   question: string;
   stand: string;
@@ -152,7 +160,7 @@ export interface StudioThread {
 }
 
 export interface StudioList {
-  studio: { active: StudioThread[]; parked?: StudioThread[] } | null;
+  studio: { active: StudioThread[]; parked?: StudioThread[]; closed?: StudioThread[] } | null;
 }
 
 // The `POST /api/desk/studio/act` bodies Threva sends, without the request id.

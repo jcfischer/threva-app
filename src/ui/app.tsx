@@ -25,7 +25,7 @@ export function App({ client }: { client?: DeskClient }) {
       <Header />
       <Bar client={desk} onChange={state.refresh} />
       <QueueView client={desk} state={state} />
-      {state.view && <TimelineView today={state.view.today} tasks={state.view.myDay?.items ?? []} />}
+      {state.view && <TimelineView view={state.view} studio={state.studio} />}
       {state.view && <Footer view={state.view} />}
     </main>
   );
