@@ -1,4 +1,4 @@
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { Checked } from "./dev-stack-lib";
 
 export type ParserProvider = "codex" | "pi";
@@ -19,7 +19,10 @@ export interface ParserRouting {
 export interface OperatorFiles {
   conversations?: Conversations;
   routing?: ParserRouting;
+  studioFiler?: StudioFiler;
 }
+
+export type StudioFiler = Record<string, unknown> & { local?: Record<string, unknown>; apiKeyFile?: string; caFile?: string };
 
 export interface OperatorHome {
   home: string;
@@ -69,6 +72,49 @@ function readRouting(file: string, read: Read): Checked<ParserRouting> {
   return { ok: true, value: { file, permitted, timeoutSeconds } };
 }
 
+const ENDPOINT_FIELDS: readonly string[] = ["baseUrl", "model", "apiKeyEnv", "apiKeyFile", "caFile", "timeoutSeconds"];
+const FILER_FIELDS: readonly string[] = [...ENDPOINT_FIELDS, "local"];
+const unknownKeys = (v: Record<string, unknown>, allowed: readonly string[], prefix: string): string[] =>
+  Object.keys(v)
+    .filter((k) => !allowed.includes(k))
+    .map((k) => `${prefix}${k}`);
+const isEndpoint = (v: Record<string, unknown>): boolean => typeof v.baseUrl === "string" && typeof v.model === "string";
+
+function withAbsoluteFiles(endpoint: Record<string, unknown>, base: string): Record<string, unknown> {
+  const out = { ...endpoint };
+  for (const key of ["apiKeyFile", "caFile"]) {
+    const value = out[key];
+    if (typeof value === "string") out[key] = resolve(base, value);
+  }
+  return out;
+}
+
+function readFiler(file: string, read: Read): Checked<StudioFiler> {
+  const text = read(file);
+  if (text === null) return { ok: false, error: `THREVA_DEV_STUDIO_FILER names a file that cannot be read: ${file}` };
+  let parsed: unknown;
+  try {
+    parsed = Bun.YAML.parse(text);
+  } catch (e) {
+    return { ok: false, error: `THREVA_DEV_STUDIO_FILER is not valid YAML (${file}): ${firstLine(e)}` };
+  }
+  if (!isRecord(parsed)) return { ok: false, error: `THREVA_DEV_STUDIO_FILER must hold Cortex's mc.desk.studio.filer block as a mapping: ${file}` };
+  const local = parsed.local;
+  const localOk = local === undefined || (isRecord(local) && isEndpoint(local));
+  const hasEndpoint = isEndpoint(parsed) || local !== undefined;
+  if (!localOk || !hasEndpoint) {
+    return { ok: false, error: `THREVA_DEV_STUDIO_FILER must hold Cortex's mc.desk.studio.filer block, with baseUrl and model or a local endpoint: ${file}` };
+  }
+  const unknown = [...unknownKeys(parsed, FILER_FIELDS, ""), ...(isRecord(local) ? unknownKeys(local, ENDPOINT_FIELDS, "local.") : [])];
+  if (unknown.length > 0) {
+    return { ok: false, error: `THREVA_DEV_STUDIO_FILER has fields Cortex's filer does not take (${unknown.join(", ")}); name a key only by apiKeyEnv or apiKeyFile: ${file}` };
+  }
+  const base = dirname(file);
+  const filer = withAbsoluteFiles(parsed, base);
+  if (isRecord(local)) filer.local = withAbsoluteFiles(local, base);
+  return { ok: true, value: filer as StudioFiler };
+}
+
 export function readOperatorFiles(env: Readonly<Record<string, string | undefined>>, read: Read): Checked<OperatorFiles> {
   const out: OperatorFiles = {};
   if (env.THREVA_DEV_LANES) {
@@ -80,6 +126,11 @@ export function readOperatorFiles(env: Readonly<Record<string, string | undefine
     const routing = readRouting(resolve(env.THREVA_DEV_PARSER_ROUTING), read);
     if (!routing.ok) return routing;
     out.routing = routing.value;
+  }
+  if (env.THREVA_DEV_STUDIO_FILER) {
+    const filer = readFiler(resolve(env.THREVA_DEV_STUDIO_FILER), read);
+    if (!filer.ok) return filer;
+    out.studioFiler = filer.value;
   }
   return { ok: true, value: out };
 }
@@ -113,11 +164,13 @@ export const wrapperPaths = (stateDir: string): WrapperPaths => ({ pi: join(stat
 export interface DeskExtras {
   conversations?: Conversations;
   ask?: { parser: string[]; routing: { permitted: ParserProvider[] }; timeoutSeconds: number };
+  studioFiler?: StudioFiler;
 }
 
 export function deskExtras(files: OperatorFiles, wrappers: WrapperPaths, bun: string, adaptersDir: string): DeskExtras {
   const extras: DeskExtras = {};
   if (files.conversations) extras.conversations = { ...files.conversations, pi: { ...files.conversations.pi, bin: wrappers.pi } };
+  if (files.studioFiler) extras.studioFiler = files.studioFiler;
   if (files.routing) {
     extras.ask = {
       parser: [wrappers.withHome, bun, join(adaptersDir, "bin", "desk-parse.ts"), "--routing-config", files.routing.file],

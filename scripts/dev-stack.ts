@@ -24,7 +24,8 @@ function readable(path: string): string | null {
 }
 
 function operatorExtras(files: OperatorFiles): DeskExtras {
-  if (!files.conversations && !files.routing) return {};
+  const wrappers = wrapperPaths(paths.stateDir);
+  if (!files.conversations && !files.routing) return deskExtras(files, wrappers, paths.bun, paths.adaptersDir);
   const operator = operatorHome(process.env);
   if (!operator) {
     console.error("Set HOME, so pi and the parser can find the operator's own configuration.");
@@ -35,7 +36,6 @@ function operatorExtras(files: OperatorFiles): DeskExtras {
     console.error("THREVA_DEV_LANES needs pi on PATH or in ~/.local/bin.");
     process.exit(2);
   }
-  const wrappers = wrapperPaths(paths.stateDir);
   mkdirSync(join(paths.stateDir, "bin"), { recursive: true });
   if (pi) writeFileSync(wrappers.pi, renderHomeWrapper(operator, pi), { mode: 0o755 });
   writeFileSync(wrappers.withHome, renderHomeWrapper(operator), { mode: 0o755 });
@@ -86,7 +86,7 @@ async function start(): Promise<void> {
   }
   const extras = operatorExtras(files.value);
   writeStack(paths, extras);
-  if ((extras.conversations || extras.ask) && cortex(["config", "validate"]).exitCode !== 0) {
+  if ((extras.conversations || extras.ask || extras.studioFiler) && cortex(["config", "validate"]).exitCode !== 0) {
     console.error("Cortex refused the generated config; the stack was not started.");
     process.exit(1);
   }
