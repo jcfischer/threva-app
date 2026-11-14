@@ -1,12 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { EditorView } from "@codemirror/view";
 import { createClient } from "../src/ui/api/client";
 import { AssistantNotes, askAssistant, findPassage, layoutNotes, lineAbove, pageAfterKeep, pageAfterReplace, type OpenNote } from "../src/ui/everything/assistant";
 import { NotePage } from "../src/ui/everything/page";
 import { row } from "./fixtures/outline";
+import { mountDom } from "./fixtures/dom";
 
 const memoryStorage = () => {
   const kept = new Map<string, string>();
@@ -104,23 +103,13 @@ describe("open notes", () => {
   });
 });
 
-const RICH = ["window", "document", "IS_REACT_ACT_ENVIRONMENT", "MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"];
+const RICH = ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"];
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
-  const dom = new Window();
-  const originals = new Map(RICH.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
-  for (const name of RICH) Object.defineProperty(globalThis, name, { configurable: true, writable: true, value: name === "window" ? dom : name === "document" ? dom.document : name === "IS_REACT_ACT_ENVIRONMENT" ? true : (dom as unknown as Record<string, unknown>)[name] });
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { root, container, cleanup } = mountDom(RICH);
   try { await run(container, async element => { await act(async () => root.render(element)); }); }
   finally {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [name, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-      else Reflect.deleteProperty(globalThis, name);
-    }
+    await cleanup();
   }
 }
 

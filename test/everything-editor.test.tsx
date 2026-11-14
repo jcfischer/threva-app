@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { EditorView } from "@codemirror/view";
 import { NoteEditor, type LineDecoration } from "../src/ui/everything/editor";
+import { mountDom } from "./fixtures/dom";
 
 // CodeMirror needs the DOM globals of a browser window, including the observers happy-dom provides.
-const RICH = ["window", "document", "MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] as const;
-const PLAIN = ["window", "document"] as const;
+const RICH = ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] as const;
+const PLAIN = [] as const;
 
 interface Surface {
   container: HTMLElement;
@@ -25,18 +24,7 @@ afterEach(async () => {
 });
 
 async function surface(globals: readonly string[], value: string, place: number | null, decoration?: LineDecoration): Promise<Surface> {
-  const dom = new Window();
-  const originals = new Map<string, PropertyDescriptor | undefined>();
-  for (const name of globals) {
-    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
-    const value = name === "window" ? dom : name === "document" ? dom.document : (dom as unknown as Record<string, unknown>)[name];
-    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value });
-  }
-  const actFlag = Object.getOwnPropertyDescriptor(globalThis, "IS_REACT_ACT_ENVIRONMENT");
-  Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", { configurable: true, writable: true, value: true });
-  const container = dom.document.createElement("div") as unknown as HTMLElement;
-  dom.document.body.append(container as unknown as never);
-  const root = createRoot(container);
+  const { root, container, cleanup } = mountDom(globals);
   const changes: string[] = [];
   const leaves: { text: string; at: number }[] = [];
   const render = async (text: string, clean = true, lineDecoration = decoration) => {
@@ -46,16 +34,7 @@ async function surface(globals: readonly string[], value: string, place: number 
     });
   };
   await render(value);
-  const close = async () => {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [name, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-      else Reflect.deleteProperty(globalThis, name);
-    }
-    if (actFlag) Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", actFlag);
-    else Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
-  };
+  const close = cleanup;
   open = close;
   return { container, changes, leaves, render, close };
 }

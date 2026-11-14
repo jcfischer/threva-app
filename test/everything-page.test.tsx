@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "../src/ui/api/client";
 import { pathTo } from "../src/ui/everything/moves";
@@ -10,6 +8,7 @@ import { NoteSaver, detailsOf, keepPlace, keptPlace, pageLine, wordCount, type N
 import { NotePage } from "../src/ui/everything/page";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { DATE, outlineClient, outlineFixture, row } from "./fixtures/outline";
+import { mountDom } from "./fixtures/dom";
 
 describe("what a page says about its text", () => {
   test("counts words, not Markdown marks, and is quiet about an empty page", () => {
@@ -222,22 +221,11 @@ describe("the page surface", () => {
 });
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
-  const dom = new Window();
-  const globals = { window: dom, document: dom.document, IS_REACT_ACT_ENVIRONMENT: true };
-  const originals = new Map(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-  const container = dom.document.createElement("div") as unknown as HTMLElement;
-  dom.document.body.append(container as unknown as never);
-  const root = createRoot(container);
+  const { root, container, cleanup } = mountDom();
   try {
     await run(container, async element => { await act(async () => root.render(element)); });
   } finally {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [key, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
+    await cleanup();
   }
 }
 
