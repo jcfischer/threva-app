@@ -11,6 +11,8 @@ export const de: Messages = {
   "queue.skip": "Nicht jetzt",
   "queue.pin": "Oben behalten",
   "queue.unpin": "Wieder einreihen",
+  "queue.key.enter": "Enter",
+  "queue.key.esc": "Esc",
   "queue.why": "Warum jetzt:",
   "queue.why.after": "«{title}» ist gerade zu Ende. Jetzt weisst du noch am besten, was daraus folgt.",
   "queue.why.thread": "Im Studio wartet eine Frage auf deine Antwort.",

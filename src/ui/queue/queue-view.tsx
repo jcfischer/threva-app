@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
 import { MailCard, RuleOfferCard, SweepCard, UndoLine } from "../cards/mail-cards";
@@ -7,8 +7,8 @@ import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
 import { StudioCard } from "../studio/card";
 import { useI18n } from "../i18n";
 import { around, type ThenLine, type WhyNow } from "./around";
-import { useDismissedMeetings } from "./dismissed";
-import { buildQueue, EMPTY_SESSION, openStudio, pin, skip, type Entry, type Session } from "./order";
+import { allowsCardKey, keyMap } from "./keys";
+import { buildQueue, openStudio, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
 
 export interface StudioOpenState {
@@ -63,7 +63,7 @@ function WhyNowText({ why }: { why: WhyNow }) {
 function ThenLineView({ then, onPull }: { then: ThenLine; onPull: (k: string) => void }) {
   const { t, tn } = useI18n();
   const parts: ReactNode[] = [
-    ...then.titles.map((title, i) => <span key={`t${i}`}>{title}</span>),
+    ...then.titles.map(({ k, title }) => <button key={k} type="button" className="lk" onClick={() => onPull(k)}>{title}</button>),
     ...(then.more > 0 ? [<span key="more" className="faint">{tn("queue.then.more", then.more)}</span>] : []),
     ...then.sweeps.map((s) => (
       <button key={s.k} type="button" className="lk" onClick={() => onPull(s.k)}>
@@ -90,11 +90,27 @@ export interface QueueBodyProps {
 
 export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: QueueBodyProps) {
   const { t, tn } = useI18n();
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
+  const first = queue[0];
+  const keys = keyMap(first);
+  const escape = () => {
+    if (!first || !keys) return;
+    if (keys.esc.kind === "dismiss" && first.type === "after") onDismissMeeting(first.event.key);
+    else setSession(skip(session, first.k));
+  };
+  useEffect(() => {
+    if (!first) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !allowsCardKey(event)) return;
+      event.preventDefault();
+      escape();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   if (!state.view) {
     return <p className="faint">{state.error ? (state.error.message ?? t("error.network")) : t("queue.loading")}</p>;
   }
-  const queue = buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null);
-  const first = queue[0];
   const { why, then } = around(queue);
   return (
     <section className="cards" aria-label={t("queue.label")}>
@@ -111,6 +127,10 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
       {first ? (
         <>
           <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }} />
+          {keys && <div className="keyhint">
+            {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
+            <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
+          </div>}
           <div className="row">
             <button type="button" className="btn quiet" disabled={queue.length < 2} onClick={() => setSession(skip(session, first.k))}>
               {t("queue.skip")}
@@ -128,12 +148,10 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   );
 }
 
-export function QueueView({ client, state }: { client: DeskClient; state: DeskState & { refresh: () => void } }) {
-  const [session, setSession] = useState<Session>(EMPTY_SESSION);
-  const [dismissed, dismiss] = useDismissedMeetings();
+export function QueueView({ client, state, ...body }: QueueBodyProps & { client: DeskClient; state: DeskState & { refresh: () => void } }) {
   return (
     <QueueContext.Provider value={{ client, refresh: state.refresh }}>
-      <QueueBody state={state} session={session} setSession={setSession} now={Date.now()} dismissed={dismissed} onDismissMeeting={dismiss} />
+      <QueueBody state={state} {...body} />
     </QueueContext.Provider>
   );
 }
