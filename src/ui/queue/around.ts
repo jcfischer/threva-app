@@ -1,9 +1,25 @@
+import type { InterruptReason } from "../api/types";
+import type { TextKey } from "../i18n";
 import type { Entry } from "./order";
 
 export const THEN_TITLES = 3;
 
+const REASON_MESSAGES = new Map<string, TextKey>([
+  ["meeting.soon", "interrupt.reason.meetingSoon"],
+  ["reminder.due", "interrupt.reason.reminderDue"],
+  ["mail.meeting-today", "interrupt.reason.meetingToday"],
+  ["mail.deadline-today", "interrupt.reason.deadlineToday"],
+  ["mail.vip", "interrupt.reason.vip"],
+  ["mail.ranked", "interrupt.reason.ranked"],
+]);
+
+export function interruptionReasonMessage(code: string): TextKey | undefined {
+  return REASON_MESSAGES.get(code);
+}
+
 export type WhyNow =
   | { kind: "cortex"; text: string }
+  | { kind: "interrupt"; reason: InterruptReason; text: string }
   | { kind: "after"; title: string }
   | { kind: "thread" }
   | { kind: "task" };
@@ -33,6 +49,11 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "mail":
     case "rule":
     case "soon":
+      if (entry.item.interrupt?.reason) {
+        const reason = entry.item.interrupt.reason;
+        if (!interruptionReasonMessage(reason.code) && !entry.item.why) return null;
+        return { kind: "interrupt", reason, text: entry.item.why };
+      }
       return entry.item.why ? { kind: "cortex", text: entry.item.why } : null;
     case "sweep":
       return entry.sweep.why ? { kind: "cortex", text: entry.sweep.why } : null;

@@ -23,6 +23,10 @@ export interface Session {
 
 export const EMPTY_SESSION: Session = { skip: [], pin: null, open: null };
 
+export function isInterrupting(item: DeskItem): boolean {
+  return item.interrupt?.reason !== undefined && item.interrupt.delivery !== "held";
+}
+
 const AGENT_KINDS: ReadonlySet<DeskItemKind> = new Set(["agent-blocked", "decision", "grilling", "escalation", "agent-failed"]);
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -87,7 +91,21 @@ export function buildQueue(
   const withHeld: Entry[] = !held
     ? queue
     : [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: threadWaits(held) }, ...queue.filter((e) => e.k !== `t:${held.slug}`)];
-  return applySession(withHeld, session);
+  return promoteInterruptions(applySession(withHeld, session), view.items, session.pin);
+}
+
+function promoteInterruptions(ordered: readonly Entry[], items: readonly DeskItem[], pin: string | null): Entry[] {
+  const byKey = new Map(ordered.map(entry => [entry.k, entry]));
+  // Read interruptions from the unsorted response: Cortex's order wins over kind and score.
+  const urgent = items.filter(isInterrupting).flatMap(item => {
+    const entry = byKey.get(`i:${item.key}`);
+    return entry ? [entry] : [];
+  });
+  // An explicit pull (including a notification click) can select another urgent card.
+  const selected = urgent.findIndex(entry => entry.k === pin);
+  if (selected > 0) urgent.unshift(...urgent.splice(selected, 1));
+  const urgentKeys = new Set(urgent.map(entry => entry.k));
+  return [...urgent, ...ordered.filter(entry => !urgentKeys.has(entry.k))];
 }
 
 function openThread(studio: StudioList | null, slug: string | null): StudioThread | null {

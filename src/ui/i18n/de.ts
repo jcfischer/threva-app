@@ -1,6 +1,17 @@
 import type { Messages } from "./catalog";
 
 export const de: Messages = {
+  "interrupt.question": "War das wichtig genug?",
+  "interrupt.yes": "Ja",
+  "interrupt.no": "Nein",
+  "interrupt.stopped": "Dieser Grund wird dich nicht mehr unterbrechen.",
+  "interrupt.notify": "Benachrichtige mich, wenn etwas nicht warten kann",
+  "interrupt.reason.meetingSoon": "Ein Termin beginnt gleich.",
+  "interrupt.reason.reminderDue": "Eine Erinnerung ist fällig.",
+  "interrupt.reason.meetingToday": "Mail zu einem heutigen Termin.",
+  "interrupt.reason.deadlineToday": "Mail mit einer Frist für heute.",
+  "interrupt.reason.vip": "Mail von VIP {target}.",
+  "interrupt.reason.ranked": "Mail mit Vorrang für heute.",
   "view.label": "Ansicht",
   "view.day": "Tag",
   "view.everything": "Alles",

@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext, useQueue } from "../cards/act";
+import { InterruptionFeedback } from "../cards/interruption";
+import { CardFooterContext } from "../cards/parts";
 import { MailCard, RuleOfferCard, SweepCard, UndoLine, WaitingCard } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
 import { StudioCard } from "../studio/card";
-import { useI18n } from "../i18n";
-import { around, type ThenLine, type WhyNow } from "./around";
+import { useI18n, type I18n } from "../i18n";
+import { around, interruptionReasonMessage, type ThenLine, type WhyNow } from "./around";
 import { allowsCardKey, keyMap } from "./keys";
 import { buildQueue, openStudio, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
@@ -57,13 +59,30 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, persona
   }
 }
 
+function whyText(why: WhyNow, t: I18n["t"]): string {
+  switch (why.kind) {
+    case "interrupt": {
+      const reasonKey = interruptionReasonMessage(why.reason.code);
+      if (!reasonKey) return why.text;
+      const label = t(reasonKey, { target: why.reason.target ?? "" });
+      return why.text ? `${label} · ${why.text}` : label;
+    }
+    case "cortex":
+      return why.text;
+    case "after":
+      return t("queue.why.after", { title: why.title });
+    case "thread":
+      return t("queue.why.thread");
+    case "task":
+      return t("queue.why.task");
+  }
+}
+
 function WhyNowText({ why }: { why: WhyNow }) {
   const { t } = useI18n();
-  const text =
-    why.kind === "cortex" ? why.text : why.kind === "after" ? t("queue.why.after", { title: why.title }) : why.kind === "thread" ? t("queue.why.thread") : t("queue.why.task");
   return (
     <span>
-      <b>{t("queue.why")}</b> {text}
+      <b>{t("queue.why")}</b> {whyText(why, t)}
     </span>
   );
 }
@@ -103,6 +122,8 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   // The last item made a task. Its card leaves the queue, so the queue says where it went. Cortex returns no undo
   // receipt for that move, so the line offers no Undo. It stays on the card that came next and goes when that one does.
   const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
+  // Retain successful feedback while navigating cards, including before the next poll arrives.
+  const [answers, setAnswers] = useState<ReadonlyMap<string, "yes" | "no">>(() => new Map());
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const first = queue[0];
   const front = first?.k ?? "";
@@ -149,13 +170,20 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
         </div>
         {first ? (
           <>
-            <EntryCard
+            <CardFooterContext.Provider value={"item" in first ? <InterruptionFeedback
               key={first.k}
-              entry={first}
-              onDismissMeeting={onDismissMeeting}
-              studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)), openDesk: onOpenDesk }}
-              personas={state.studio?.studio?.personas ?? []}
-            />
+              item={first.item}
+              answer={answers.get(first.item.key)}
+              onAnswer={answer => setAnswers(current => new Map(current).set(first.item.key, answer))}
+            /> : null}>
+              <EntryCard
+                key={first.k}
+                entry={first}
+                onDismissMeeting={onDismissMeeting}
+                studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)), openDesk: onOpenDesk }}
+                personas={state.studio?.studio?.personas ?? []}
+              />
+            </CardFooterContext.Provider>
             {keys && <div className="keyhint">
               {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
               <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
