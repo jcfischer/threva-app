@@ -2,57 +2,81 @@ import { safeHref } from "../api/safe-link";
 import { useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, TodayTask } from "../api/types";
-import { useI18n } from "../i18n";
+import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
 import { useAct } from "./act";
-import { Card, ErrorLine } from "./parts";
+import { Card, ErrorLine, Mentioned } from "./parts";
 
+// Actions the agent card sends to POST /api/desk/action, labelled by action id.
+const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
+  "ranger.retry": "card.agent.action.ranger.retry",
+  "ranger.approve": "card.agent.action.ranger.approve",
+  "ranger.park": "card.agent.action.ranger.park",
+};
+
+// The card always shows the detail, and the queue's own "Not now" skips it, so "detail" and "snooze" need no button here.
 export function AgentCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
   const { busy, error, run } = useAct();
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
-  const choices = item.explanation?.choices ?? [];
+  const wired = item.actions.filter((a) => a.wired);
+  const rules = wired.some((a) => a.id === "ranger.rule");
+  const choices = rules ? (item.explanation?.choices ?? []) : [];
+  const links = item.detail.links.flatMap((l) => { const url = safeHref(l.url); return url ? [{ label: l.label, url }] : []; });
+  const opens = wired.flatMap((a) => { const url = a.id === "open" ? safeHref(a.url) : undefined; return url && !links.some((l) => l.url === url) ? [{ id: a.id, url }] : []; });
+  const sends = wired.flatMap((a) => { const label = RANGER_ACTION_LABEL[a.id]; return label && !a.url ? [{ ...a, label }] : []; });
+  const [own, ...related] = item.detail.refs ?? [];
+  const refs = [...new Set(related)].filter((r) => r && r !== own);
+  const body = item.kind === "agent-failed" && item.detail.summary ? item.detail.summary : (item.explanation?.sentence ?? item.question?.reason ?? item.why);
   const send = async () => {
     const result = await run("/api/desk/ruling", { key: item.key, text: text.trim(), requestId: newRequestId() });
     if (result.ok) setSent(true);
   };
   return (
     <Card eyebrow={t("card.agent.eyebrow")} pill={<span className="pill wait">{t("card.agent.waits")}</span>}>
-      <span className="q">{item.title}</span>
-      <span className="sub">{item.explanation?.sentence ?? item.question?.reason ?? item.why}</span>
-      {choices.length > 0 && (
-        <ul className="plain">
+      <span className="q"><Mentioned text={item.title} mentions={item.mentions} /></span>
+      <span className="sub"><Mentioned text={body}mentions={item.mentions} /></span>
+      {choices.length > 0 && !sent && (
+        <div role="group" aria-label={t("card.agent.choices")}>
           {choices.map((c) => (
-            <li key={c.label}>
-              <button type="button" className="lk" onClick={() => setText(c.ruling)}>
-                {c.label}
-              </button>
-              <span className="faint"> {c.consequence}</span>
-            </li>
+            <button key={c.label} type="button" className="chip" aria-pressed={text === c.ruling} onClick={() => setText(c.ruling)}>
+              <b>{c.label}</b>
+              <span className="faint">{c.consequence}</span>
+            </button>
           ))}
-        </ul>
+        </div>
       )}
-      {sent ? (
+      {rules && (sent ? (
         <span className="faint">{t("card.agent.sent")}</span>
       ) : (
-        <>
-          <textarea aria-label={t("card.agent.ruling")} placeholder={t("card.agent.ruling")} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
-          <div className="row">
+        <textarea aria-label={t("card.agent.ruling")} placeholder={t("card.agent.ruling")} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+      ))}
+      {(rules && !sent) || sends.length > 0 || opens.length > 0 || links.length > 0 ? (
+        <div className="row">
+          {rules && !sent && (
             <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={send}>
-              {t("card.agent.send")}
+              {t("card.agent.action.ranger.rule")}
             </button>
-            <button type="button" className="btn quiet" disabled={busy} onClick={() => run("/api/desk/action", { action: "ranger.approve", key: item.key })}>
-              {t("card.agent.approve")}
+          )}
+          {sends.map((a) => (
+            <button key={a.id} type="button" className={a.role === "primary" ? "btn pri" : "btn"} disabled={busy} onClick={() => run("/api/desk/action", { action: a.id, key: item.key })}>
+              {t(a.label)}
             </button>
-            {item.kind === "agent-failed" && (
-              <button type="button" className="btn quiet" disabled={busy} onClick={() => run("/api/desk/action", { action: "ranger.retry", key: item.key })}>
-                {t("card.agent.retry")}
-              </button>
-            )}
-          </div>
-        </>
-      )}
+          ))}
+          {opens.map((a) => (
+            <a key={a.id} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
+              {t("card.agent.action.open")}
+            </a>
+          ))}
+          {links.map((l) => (
+            <a key={l.url} className="btn quiet" href={l.url} target="_blank" rel="noreferrer">
+              {l.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
+      {refs.length > 0 && <span className="faint">{t("card.agent.refs")} {refs.join(", ")}</span>}
       <ErrorLine error={error} />
     </Card>
   );

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { safeHref } from "../api/safe-link";
+import type { DeskMention } from "../api/types";
 import { useI18n } from "../i18n";
 import type { ActError } from "./act";
 
@@ -12,6 +14,30 @@ export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: Reac
       {children}
     </div>
   );
+}
+
+// Renders text with each substring Cortex mentions linked to its URL. Mentions with an unsafe URL stay plain;
+// where two mentions start at the same place, the longer one wins.
+export function Mentioned({ text, mentions = [] }: { text: string; mentions?: readonly DeskMention[] }) {
+  const safe = mentions.flatMap((m) => {
+    const url = safeHref(m.url);
+    return url && m.text ? [{ text: m.text, url }] : [];
+  });
+  const parts: ReactNode[] = [];
+  let rest = 0;
+  while (safe.length > 0) {
+    let best: { at: number; text: string; url: string } | null = null;
+    for (const m of safe) {
+      const at = text.indexOf(m.text, rest);
+      if (at >= 0 && (!best || at < best.at || (at === best.at && m.text.length > best.text.length))) best = { at, ...m };
+    }
+    if (!best) break;
+    if (best.at > rest) parts.push(text.slice(rest, best.at));
+    parts.push(<a key={best.at} href={best.url} target="_blank" rel="noreferrer">{best.text}</a>);
+    rest = best.at + best.text.length;
+  }
+  parts.push(text.slice(rest));
+  return <>{parts}</>;
 }
 
 export function ErrorLine({ error }: { error: ActError }) {
