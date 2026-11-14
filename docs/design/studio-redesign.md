@@ -1,6 +1,6 @@
 # Studio redesign: brief for a UI/UX session
 
-Status: direction decided (variant H, the work desk); build nodes and Cortex gaps proposed, not filed. Owner: Jens-Christian. Written 2026-11-14 from the live stack, for a working session with a design agent.
+Status: decided (variant H, the work desk) and filed. Decision jcfischer/threva-app#89; open work is on the Threva and Cortex maps. Owner: Jens-Christian. Written 2026-11-14 from the live stack, for a working session with a design agent.
 
 This document is the starting point, not the answer. Work through the questions in "Decisions to make" together, record each answer here, and end with a plan of build nodes on the Threva map (`Refs #1`).
 
@@ -203,7 +203,7 @@ A research pass on augmented work (Engelbart, Licklider, Kay, Flores, Raskin and
 
 ### Proposed build nodes
 
-Not filed. One vertical slice each, in this order.
+First proposal; what was filed is listed under "Filed" below. One vertical slice each, in this order.
 
 1. **The desk opens, read-only:** from a Studio Day card and from the topic's row. Question, stand, notes on the right with waiting ones lit, material on the left, on today's API.
 2. **Cards open outwards (D3)** with answer, keep and dismiss on a note card.
@@ -216,7 +216,7 @@ Not filed. One vertical slice each, in this order.
 
 ### Cortex gaps this design needs
 
-Not filed. They replace the list under "Known Cortex gaps" where they overlap.
+First proposal; what was filed is listed under "Filed" below. They replace the list under "Known Cortex gaps" where they overlap.
 
 - **A draft per topic:** a Markdown work document Cortex stores with the topic. The largest gap; nodes 4 to 6 wait on it.
 - **The question a note asks,** and a one-line gist of each note (Q3, D2).
@@ -278,5 +278,5 @@ What exists for Q20, from a read of Cortex, Soma and ranger on 2026-11-14 (by an
 - Threva build nodes under jcfischer/threva-app#89: #96 (think tonight, park and finish from the desk, by type; after #91), #97 (the Day card shows the waiting note and takes the answer in place; after #90), #98 (retire the Studio card's open view; after #96 and #97).
 - Rulings: on #90 the stand is one quiet line on `question` topics (D11); on #91 a card opens in place when the zones stack (Q13).
 - Cortex nodes under the-metafactory/cortex#3555: #3655 (one draft per thread), #3656 (a thread starts a research or prototype job under a grant and receives its artifact; after #3653), #3657 (what a thread's type means: due dates, review dates and outcomes), #3658 (ask about a passage and get questions; after #3655).
-- Not filed, because they cannot be specified before their Cortex node is settled: the draft in the middle and working in (wait on #3655), passage requests on the desk (wait on #3658), work requests, grants and exceptions on the desk (wait on #3656), the due and review reasons for a Day card (wait on #3657).
+- Held as placeholder nodes under jcfischer/threva-app#89, each blocked by its Cortex node, so they reach the frontier when that node closes: #102 (the draft and working in; after cortex#3655), #103 (passage requests and the request list; after cortex#3658 and #3653), #104 (work requests, grants and exceptions; after cortex#3656), #105 (the due and review reasons for a Day card; after cortex#3657). #106 (overnight thinking: its limit and notes from other topics) is open and unblocked.
 - Node #90 merged (pull request #93) before its stand ruling was applied, so the desk on main still shows the stand as a lead on every topic. A ruling on #96 carries the fix.
