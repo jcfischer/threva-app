@@ -47,6 +47,7 @@ export const en = {
   "talk.continue": "Continue the conversation",
   "talk.message": "Your message to the assistant",
   "talk.working": "The assistant is answering …",
+  "talk.stalled": "The answer is taking longer than expected. Send another message or reopen the card to check again.",
   "talk.leave": "Leave the discussion",
   "studio.dismiss": "Dismiss",
   "studio.response": "Your answer to the assistant",

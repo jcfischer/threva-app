@@ -49,6 +49,7 @@ export const de: Messages = {
   "talk.continue": "Gespräch fortsetzen",
   "talk.message": "Deine Nachricht an den Assistenten",
   "talk.working": "Der Assistent antwortet …",
+  "talk.stalled": "Die Antwort dauert länger als erwartet. Sende eine weitere Nachricht oder öffne die Karte erneut.",
   "talk.leave": "Diskussion verlassen",
   "studio.dismiss": "Verwerfen",
   "studio.response": "Deine Antwort an den Assistenten",

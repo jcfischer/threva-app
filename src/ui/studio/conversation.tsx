@@ -56,6 +56,7 @@ export function TalkItThrough({ thread }: { thread: string }) {
   const startId = useRef(crypto.randomUUID());
   const input = useRef<{ text: string; id: string } | null>(null);
   const alive = useRef(true);
+  const loop = useRef(0);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -74,9 +75,10 @@ export function TalkItThrough({ thread }: { thread: string }) {
   }, [client, thread]);
 
   async function follow(id: string) {
-    for (let i = 0; i < POLL_LIMIT && alive.current; i++) {
+    const mine = ++loop.current;
+    for (let i = 0; i < POLL_LIMIT && alive.current && loop.current === mine; i++) {
       const r = await readExchange(client, id);
-      if (!alive.current) return;
+      if (!alive.current || loop.current !== mine) return;
       if (!r.ok) {
         setError({ message: r.message });
         return;
@@ -84,6 +86,10 @@ export function TalkItThrough({ thread }: { thread: string }) {
       setExchange(r.data);
       if (!r.data.working) return;
       await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    }
+    if (alive.current && loop.current === mine) {
+      setExchange((x) => (x ? { ...x, working: false } : x));
+      setError({ message: t("talk.stalled") });
     }
   }
 
@@ -217,6 +223,10 @@ export function DiscussNote({ thread, note }: { thread: string; note: string }) 
     const r = await sessionCall(client, { action: "end", id: id.current, outcome: { kind: "leave" } });
     setBusy(false);
     if (!r.ok) return setError({ message: r.message });
+    id.current = crypto.randomUUID();
+    turn.current = null;
+    setSession(null);
+    setText("");
     setOpen(false);
     refresh();
   }
