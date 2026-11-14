@@ -84,7 +84,7 @@ export const de: Messages = {
   "lift.keysOther": "Strg+Enter",
 
   "app.title": "Threva",
-  "app.tagline": "Ein Ort für den Faden deiner Arbeit.",
+  "app.tagline": "Ein Ort für die Themen deiner Arbeit.",
   "error.network": "Cortex ist nicht erreichbar. Threva behält, was es zuletzt gesehen hat, und versucht es wieder.",
   "queue.label": "Karten",
   "queue.loading": "Deine Karten werden geladen …",
