@@ -333,3 +333,19 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .md code{font-family:var(--mono);font-size:.92em}
 .md pre{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 .md a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+
+.wrap.wide{max-width:none}
+.wrap-body{display:flex;flex-direction:column;gap:22px}
+.desk{display:flex;flex-direction:column;gap:14px}
+.desk-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
+.desk-topic{order:1}.desk-notes{order:2}.desk-material{order:3}
+.desk-side{display:flex;flex-direction:column;gap:8px;min-width:0}
+.desk-card{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel);display:flex;flex-direction:column;gap:2px;font-size:13.5px;overflow-wrap:anywhere}
+.desk-card.desk-open{border-color:var(--accent);border-width:2px}
+.desk-card.desk-dim{opacity:.6}
+.desk-card.desk-faint{opacity:.4;font-size:12px;padding:5px 8px}
+.desk-lead{margin:0;font-size:16px;color:var(--dim)}
+@media (min-width:1100px){
+  .desk-grid{grid-template-columns:minmax(180px,1fr) minmax(480px,720px) minmax(180px,1fr);justify-content:center}
+  .desk-material{order:1}.desk-topic{order:2}.desk-notes{order:3}
+}

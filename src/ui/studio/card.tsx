@@ -167,6 +167,7 @@ export interface StudioCardProps {
   open: boolean;
   onOpen: () => void;
   onHide: () => void;
+  onDesk?: () => void;
   /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
   personas?: readonly string[];
 }
@@ -185,7 +186,7 @@ function Pills({ thread, waits }: { thread: StudioThread; waits: boolean }) {
   );
 }
 
-function StudioClosed({ thread, waits, onOpen }: StudioCardProps) {
+function StudioClosed({ thread, waits, onOpen, onDesk }: StudioCardProps) {
   const { t } = useI18n();
   return (
     <Card eyebrow={t("card.thread.eyebrow")} pill={<Pills thread={thread} waits={waits} />}>
@@ -195,6 +196,11 @@ function StudioClosed({ thread, waits, onOpen }: StudioCardProps) {
         <button type="button" className="btn pri" onClick={onOpen}>
           {t("studio.open")}
         </button>
+        {onDesk && (
+          <button type="button" className="btn" onClick={onDesk}>
+            {t("desk.open")}
+          </button>
+        )}
       </div>
     </Card>
   );

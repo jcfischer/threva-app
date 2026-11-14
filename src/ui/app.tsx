@@ -10,6 +10,9 @@ import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
 import { EverythingView } from "./everything/view";
+import { Desk } from "./desk/desk";
+
+type Place = "day" | "everything";
 
 export function ViewSwitch({ view, onChange }: { view: "day" | "everything"; onChange: (view: "day" | "everything") => void }) {
   const { t } = useI18n();
@@ -29,27 +32,36 @@ export function Header() {
 }
 
 export function App({ client }: { client?: DeskClient }) {
-  const desk = useMemo(() => client ?? createClient(), [client]);
-  const state = useDesk(desk);
+  const api = useMemo(() => client ?? createClient(), [client]);
+  const state = useDesk(api);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
   const [view, setView] = useState<"day" | "everything">("day");
   const [openedEverything, setOpenedEverything] = useState(false);
+  const [desk, setDesk] = useState<{ slug: string; from: Place } | null>(null);
   const now = Date.now();
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const pull = (k: string) => setSession((current) => (current.pin === k ? current : pin(current, k)));
   return (
-    <main className="wrap">
-      <Header />
-      <Bar client={desk} entries={queue} onPull={pull} onChange={state.refresh} />
-      <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
-      {view === "day" && <DayView client={desk} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} />}
-      {openedEverything && <div hidden={view !== "everything"}><EverythingView client={desk} active={view === "everything"} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} /></div>}
+    <main className={`wrap${desk ? " wide" : ""}`}>
+      <div className="wrap-body" hidden={desk !== null}>
+        <Header />
+        <Bar client={api} entries={queue} onPull={pull} onChange={state.refresh} />
+        <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
+        {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} onOpenDesk={slug => setDesk({ slug, from: "day" })} />}
+        {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => setDesk({ slug, from: "everything" })} /></div>}
+      </div>
+      {desk && <DeskScreen slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => setDesk(null)} />}
     </main>
   );
 }
 
-export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, queue: given }: {
+function DeskScreen({ slug, from, state, now, onBack }: { slug: string; from: Place; state: DeskState; now: number; onBack: () => void }) {
+  const { t } = useI18n();
+  return <Desk studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} />;
+}
+
+export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, queue: given, onOpenDesk }: {
   client: DeskClient;
   state: DeskState & { refresh: () => void };
   session: Session;
@@ -58,12 +70,13 @@ export function DayView({ client, state, session, setSession, now, dismissed = [
   dismissed?: readonly string[];
   onDismissMeeting?: (key: string) => void;
   queue?: readonly Entry[];
+  onOpenDesk?: (slug: string) => void;
 }) {
   const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : []);
   const onPull = (k: string) => setSession(session.pin === k ? session : pin(session, k));
   return (
     <div className="daygrid one">
-      <QueueView client={client} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={onDismissMeeting} />
+      <QueueView client={client} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={onDismissMeeting} onOpenDesk={onOpenDesk} />
       {state.view && <aside className="rail">
         <TimelineView view={state.view} studio={state.studio} clock={clockAt(now)} queue={queue} onPull={onPull} />
         <Footer view={state.view} now={now} queue={queue} onPull={onPull} />
