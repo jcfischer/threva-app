@@ -67,6 +67,7 @@ export const de: Messages = {
   "assist.shorten": "Kürzen",
   "assist.ask": "Fragen",
   "assist.standing": "Was hältst du von dieser Stelle?",
+  "assist.notStored": "Die Antwort konnte nicht behalten werden: Dieser Browser hat keinen Platz mehr dafür. Dein Text wurde zurückgesetzt.",
   "assist.margin": "Notizen von {name} zu dieser Seite",
   "assist.waiting": "{name} liest diese Stelle …",
   "assist.keep": "Behalten",

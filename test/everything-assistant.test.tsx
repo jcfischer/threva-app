@@ -77,6 +77,17 @@ describe("asking", () => {
 });
 
 describe("open notes", () => {
+  test("a refused write reports false and a change reaches subscribers", () => {
+    const seen: string[] = [];
+    const stop = AssistantNotes.subscribe(row => seen.push(row));
+    const full = new AssistantNotes({ getItem: () => null, setItem: () => { throw new Error("quota"); }, removeItem: () => {} });
+    expect(full.add("r", note())).toBe(false);
+    expect(seen).toEqual([]);
+    expect(new AssistantNotes(memoryStorage()).add("r", note())).toBe(true);
+    expect(seen).toEqual(["r"]);
+    stop();
+  });
+
   test("stay in storage per row until dismissed, and unreadable storage gives none", () => {
     const storage = memoryStorage();
     const notes = new AssistantNotes(storage);

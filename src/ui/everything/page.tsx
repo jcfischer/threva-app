@@ -4,7 +4,7 @@ import { newRequestId, type DeskClient } from "../api/client";
 import type { OutlineRow } from "../api/types";
 import { useI18n } from "../i18n";
 import { addressedText, lineRemovalRange } from "./addressed";
-import { askAssistant, lineAbove, localDate, pageAfterKeep, pageAfterReplace, type AskKind, type AssistantNotes, type OpenNote } from "./assistant";
+import { askAssistant, lineAbove, localDate, pageAfterKeep, pageAfterReplace, type AskKind, AssistantNotes, type OpenNote } from "./assistant";
 import { NoteEditor, type EnterLine, type LineDecoration, type PageController } from "./editor";
 import { AssistantMargin } from "./margin";
 import type { LiftOutcome } from "./lift";
@@ -52,6 +52,13 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+  useEffect(() => {
+    if (!store) return;
+    setOpen(store.list(row.id));
+    return AssistantNotes.subscribe(changed => {
+      if (changed === row.id) setOpen(store.list(row.id));
+    });
+  }, [store, row.id]);
   const passages = useMemo(() => [...open, ...waiting].flatMap(item => item.passage ? [{ id: item.id, text: item.passage }] : []), [open, waiting]);
   // The answer is stored whether or not this page is still open, so leaving the row does not lose it.
   const send = async (kind: AskKind, question: string | undefined, passage: string | null): Promise<boolean> => {
@@ -65,8 +72,11 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
         if (mounted.current) setAsked(outcome.message ?? t("error.network"));
         return false;
       }
-      store.add(row.id, { id, kind, question: question ?? "", passage, reply: outcome.reply, ...(outcome.replacement === undefined ? {} : { replacement: outcome.replacement }), at: new Date().toISOString() });
-      if (mounted.current) setOpen(store.list(row.id));
+      const stored = store.add(row.id, { id, kind, question: question ?? "", passage, reply: outcome.reply, ...(outcome.replacement === undefined ? {} : { replacement: outcome.replacement }), at: new Date().toISOString() });
+      if (!stored) {
+        if (mounted.current) setAsked(t("assist.notStored"));
+        return false;
+      }
       return true;
     } finally {
       if (mounted.current) setWaiting(previous => previous.filter(item => item.id !== id));

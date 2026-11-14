@@ -65,6 +65,7 @@ export const en = {
   "assist.shorten": "Shorten",
   "assist.ask": "Ask",
   "assist.standing": "What do you make of this passage?",
+  "assist.notStored": "The answer could not be kept: this browser has no room left to store it. Your text was put back.",
   "assist.margin": "Notes from {name} on this page",
   "assist.waiting": "{name} is reading this passage …",
   "assist.keep": "Keep",

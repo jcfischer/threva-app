@@ -141,19 +141,32 @@ export class AssistantNotes {
     }
   }
 
-  add(row: string, note: OpenNote): void {
-    this.#write(row, [...this.list(row).filter(kept => kept.id !== note.id), note]);
+  /** Calls `listener` with the row whenever any store changes a row's notes; returns the way to stop. */
+  static subscribe(listener: (row: string) => void): () => void {
+    AssistantNotes.#listeners.add(listener);
+    return () => { AssistantNotes.#listeners.delete(listener); };
   }
 
-  remove(row: string, id: string): void {
-    this.#write(row, this.list(row).filter(note => note.id !== id));
+  static readonly #listeners = new Set<(row: string) => void>();
+
+  /** False when the browser would not store the note. */
+  add(row: string, note: OpenNote): boolean {
+    return this.#write(row, [...this.list(row).filter(kept => kept.id !== note.id), note]);
   }
 
-  #write(row: string, notes: OpenNote[]): void {
+  remove(row: string, id: string): boolean {
+    return this.#write(row, this.list(row).filter(note => note.id !== id));
+  }
+
+  #write(row: string, notes: OpenNote[]): boolean {
     try {
       if (notes.length) this.#storage.setItem(notesKey(row), JSON.stringify(notes));
       else this.#storage.removeItem(notesKey(row));
-    } catch {}
+    } catch {
+      return false;
+    }
+    for (const listener of AssistantNotes.#listeners) listener(row);
+    return true;
   }
 }
 
