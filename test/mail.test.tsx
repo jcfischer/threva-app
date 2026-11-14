@@ -56,7 +56,7 @@ describe("mail in the queue", () => {
         })}
       />,
     );
-    for (const text of ['Ada wrote: "Budget"', "Can we talk about the budget?", "It arrived today.", "Let go", "Attach", "Draft a reply", "Ask me", "Open in Mail"]) {
+    for (const text of ['Ada wrote: "Budget"', "Can we talk about the budget?", "It arrived today.", "Archive", "Attach", "Draft a reply", "Ask me", "Open in Mail"]) {
       expect(html).toContain(text.replaceAll('"', "&quot;"));
     }
   });

@@ -1,9 +1,9 @@
 import type { DeskItem, MailRule, StudioProposal } from "../api/types";
 
-export const OUTCOMES = ["let-go", "attach", "draft", "ask"] as const;
+export const OUTCOMES = ["archive", "attach", "draft", "ask"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
-// Decision #30 maps classifier fields to outcomes: let go for category fyi or bulk or suggestedAction
+// Decision #30 maps classifier fields to outcomes: archive for category fyi or bulk or suggestedAction
 // archive, attach for link-meeting or a thread match, draft for reply, ask otherwise. Cortex does not
 // put category or suggestedAction on the item; it turns them into these structured fields, which
 // Threva reads instead:
@@ -17,8 +17,30 @@ export function suggestedOutcome(item: DeskItem): Outcome | null {
   const has = (id: string, primary = false) => item.actions.some((a) => a.id === id && (!primary || a.role === "primary"));
   if (has("meeting.show")) return "attach";
   if (has("mail.draft", true)) return "draft";
-  if (item.attention === "update" || has("mail.archive", true)) return "let-go";
+  if (item.attention === "update" || has("mail.archive", true)) return "archive";
   return null;
+}
+
+export type MoveTarget = "archive" | "junk" | "trash";
+export type InviteReply = "accept" | "decline";
+
+// The actions Cortex lists on a mail that the card offers besides its four outcomes, each with what it does.
+// Spam and Delete are moves, so they land in the same undo flow as Archive.
+export const MAIL_ACTIONS = ["mail.spam", "mail.trash", "invite.accept", "invite.decline"] as const;
+export type MailAction = (typeof MAIL_ACTIONS)[number];
+export const MAIL_ACTION_DOES: Record<MailAction, { move: MoveTarget } | { invite: InviteReply }> = {
+  "mail.spam": { move: "junk" },
+  "mail.trash": { move: "trash" },
+  "invite.accept": { invite: "accept" },
+  "invite.decline": { invite: "decline" },
+};
+
+export const WAITING_ACTIONS = ["waiting.snooze", "waiting.done"] as const;
+export type WaitingAction = (typeof WAITING_ACTIONS)[number];
+
+// The actions of `ids` the item lists with wired true, in the order of `ids`. Unlisted or unwired actions are left out.
+export function wiredActions<T extends string>(item: DeskItem, ids: readonly T[]): T[] {
+  return ids.filter((id) => item.actions.some((a) => a.id === id && a.wired));
 }
 
 export const SNOOZE_TIMES = ["later", "tomorrow", "next-week"] as const;
@@ -32,7 +54,9 @@ export function proposedThread(proposal: StudioProposal): StudioProposal["thread
 
 // Request bodies for POST /api/desk/mail, /api/desk/my-day and /api/desk/mail/rules.
 export const requests = {
-  letGo: (key: string) => ({ action: "move", key, target: "archive" }),
+  move: (key: string, target: MoveTarget) => ({ action: "move", key, target }),
+  inviteReply: (key: string, reply: InviteReply, requestId: string) => ({ action: "invite.reply", key, reply, requestId, commitment: null, confirmed: true }),
+  waiting: (key: string, action: WaitingAction) => ({ action, key }),
   propose: (key: string) => ({ action: "studio.propose", key }),
   attach: (key: string, proposal: StudioProposal, requestId: string) => {
     const thread = proposedThread(proposal)?.slug ?? null;
