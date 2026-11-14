@@ -3,7 +3,7 @@
 // notes small on the right. Click one and it comes to the desk; drag it onto the draft and it lands on that line.
 // Three ways a card opens, one per variant: over the draft (G), outwards over its own edge (H), or as a floating
 // card you place anywhere and that stays there (I). Throwaway. The draft is not in the Cortex API today.
-import { useEffect, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
 import { keptQuote } from "../everything/assistant";
 import { NoteEditor, type PageController } from "../everything/editor";
 import { ago, firstSentence, waiting, type Note, type Topic } from "./data";
@@ -34,8 +34,7 @@ export const DESK_CSS = `
 .dk-slot.note{border-color:var(--accent)}
 .dk-slot.l.over{left:-28px}
 .dk-slot.r.over{right:-28px}
-.dk-slot.l.out{right:calc(100% + 12px)}
-.dk-slot.r.out{left:calc(100% + 12px)}
+.dk-slot.out{top:auto}
 .dk-slot.float{top:auto;padding-top:0}
 .dk-grip{cursor:move;margin:0 -18px;padding:9px 18px 7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;user-select:none;touch-action:none;position:sticky;top:0;background:var(--panel)}
 .dk-req{width:100%;max-width:240px;border:1px dashed var(--line);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:4px;align-items:flex-start;background:none;color:inherit;font-family:inherit;text-align:left}
@@ -162,6 +161,8 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
   const [requests, setRequests] = useState<Req[]>([{ id: "q0", what: "holes", passage: "The first three cards are chosen, not ranked.", state: "failed", reason: "The local model ran out of memory while reading the material." }]);
   const [sources, setSources] = useState<Source[]>([]);
   const [tops, setTops] = useState<{ [id: string]: number | null }>({});
+  // Outwards: where each open card's parked twin sits, so the card opens beside it at the same height.
+  const [anchors, setAnchors] = useState<{ [id: string]: Place & { w: number } }>({});
   const page = useRef<PageController | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
   const grab = useRef<{ id: string; dx: number; dy: number } | null>(null);
@@ -174,6 +175,28 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
   useEffect(() => {
     try { localStorage.setItem(PLACES, JSON.stringify(places)); } catch { /* the desk still works without it */ }
   }, [places]);
+  useLayoutEffect(() => {
+    if (mode !== "out") return;
+    const measure = () => {
+      const box = root.current?.getBoundingClientRect();
+      if (!box) return;
+      const next: { [id: string]: Place & { w: number } } = {};
+      for (const id of out) {
+        const twin = root.current?.querySelector(`[data-card="${id}"]`)?.getBoundingClientRect();
+        if (!twin) continue;
+        // As wide as the space outside the column allows, between 280 and 380.
+        const right = topic.notes.some((n) => n.id === id);
+        const room = right ? box.width + 20 - (twin.right - box.left + 12) : twin.left - box.left - 12 + 20;
+        const w = Math.max(280, Math.min(380, room));
+        // On a screen too narrow for that, the card stays on screen and overlaps its own column.
+        next[id] = { x: right ? Math.min(box.width + 20 - w, twin.right - box.left + 12) : Math.max(-20, twin.left - box.left - 12 - w), y: twin.top - box.top, w };
+      }
+      setAnchors((now) => (JSON.stringify(now) === JSON.stringify(next) ? now : next));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [mode, out, topic.notes, material, requests]);
   useEffect(() => {
     target?.classList.add("dk-target");
     return () => target?.classList.remove("dk-target");
@@ -286,7 +309,11 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
   };
 
   const frame = (id: string, cls: string, body: ReactNode) => {
-    if (mode !== "float") return <div key={id} className={`dk-slot ${side(id)} ${mode} ${cls}`} onMouseUp={picked(id)}>{body}</div>;
+    if (mode === "over") return <div key={id} className={`dk-slot ${side(id)} over ${cls}`} onMouseUp={picked(id)}>{body}</div>;
+    if (mode === "out") {
+      const beside = anchors[id];
+      return beside ? <div key={id} className={`dk-slot out ${cls}`} style={{ left: beside.x, top: beside.y, width: beside.w }} onMouseUp={picked(id)}>{body}</div> : null;
+    }
     const at = places[id] ?? { x: 200, y: 30 };
     return (
       <div key={id} className={`dk-slot float ${cls}`} style={{ left: at.x, top: at.y, zIndex: 5 + out.indexOf(id) }} onMouseUp={picked(id)}>
@@ -346,7 +373,7 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
     ...material.map((m) => ({ at: m.at, who: "mat" as const, label: m.title, id: m.id as string | null })),
   ].sort((a, b) => a.at - b.at);
   const mini = (id: string, cls: string, body: ReactNode) => (
-    <button key={id} type="button" draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setTarget(null)} className={`dk-mini${cls}${out.includes(id) ? " on" : ""}${used.includes(id) ? " used" : ""}`} onClick={() => bring(id)}>
+    <button key={id} type="button" data-card={id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => setTarget(null)} className={`dk-mini${cls}${out.includes(id) ? " on" : ""}${used.includes(id) ? " used" : ""}`} onClick={() => bring(id)}>
       {body}
     </button>
   );
@@ -360,7 +387,7 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
         </div>
 
         <div className="dk-mid">
-          {mode !== "float" && cards}
+          {mode === "over" && cards}
           <div className="dk-paper" onMouseUp={picked("draft")}>
             <h2>{topic.question}</h2>
             <p className="dk-lead">{topic.stand}</p>
@@ -400,7 +427,7 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
           {notes.map((n, i) => mini(n.id, waits.has(n.id) ? " waits" : i > 4 ? " far" : "", <><b>{n.asks ?? firstSentence(n.text)}</b>{ago(n.at, now)}</>))}
         </div>
 
-        {mode === "float" && cards}
+        {mode !== "over" && cards}
       </div>
 
       <div className="dk-time" aria-label="History of this topic">
