@@ -106,7 +106,6 @@ export const en = {
   "card.agent.action.ranger.rule": "Decide and tell the agent",
   "card.agent.action.ranger.retry": "Let it retry",
   "card.agent.action.ranger.approve": "Approve",
-  "card.agent.action.ranger.park": "Park it",
   "card.agent.action.open": "Open the source",
   "card.thread.eyebrow": "Studio",
   "card.thread.waits": "Your turn",

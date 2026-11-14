@@ -136,8 +136,8 @@ describe("the agent card", () => {
     expect(writes).toEqual([{ url: "/api/desk/action", body: { action: "ranger.retry", key: "ranger:the-metafactory/cortex#3500" } }]);
   });
 
-  test("a failed card without a wired retry offers no buttons", async () => {
-    await render(failed({ actions: [action("ranger.retry", "Let it retry", "primary", false), DETAIL] }));
+  test("a failed card without a wired retry offers no buttons, even if park were wired", async () => {
+    await render(failed({ actions: [action("ranger.retry", "Let it retry", "primary", false), DETAIL, action("ranger.park", "Park it", "secondary", true)] }));
     expect(buttons()).toEqual([]);
   });
 

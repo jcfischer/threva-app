@@ -108,7 +108,6 @@ export const de: Messages = {
   "card.agent.action.ranger.rule": "Entscheiden und dem Agenten sagen",
   "card.agent.action.ranger.retry": "Nochmals versuchen lassen",
   "card.agent.action.ranger.approve": "Freigeben",
-  "card.agent.action.ranger.park": "Zurückstellen",
   "card.agent.action.open": "Quelle öffnen",
   "card.thread.eyebrow": "Studio",
   "card.thread.waits": "Du bist dran",
