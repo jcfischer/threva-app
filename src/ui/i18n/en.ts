@@ -39,6 +39,13 @@ export const en = {
   "everything.importance": "Importance: {value}",
   "everything.share": "{actual}% of your time this week. The mark is the {target}% you want.",
   "everything.shareUnavailable": "This week’s share is unavailable.",
+  "everything.pageWords": { one: "page · {count} word", other: "page · {count} words" },
+
+  "note.label": "Page of {title}",
+  "note.placeholder": "Write on this page…",
+  "note.words": { one: "{count} word", other: "{count} words" },
+  "note.length": "{count} of {max} characters",
+  "note.saved": "saved",
 
   "app.title": "Threva",
   "app.tagline": "A place for the thread of your work.",

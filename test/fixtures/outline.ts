@@ -1,4 +1,6 @@
-import type { MyDayOutline, OutlineRow } from "../../src/ui/api/types";
+import { createClient } from "../../src/ui/api/client";
+import type { MyDayOutline, OutlineCommand, OutlineRow } from "../../src/ui/api/types";
+import { pathTo } from "../../src/ui/everything/moves";
 import recorded from "./my-day.json";
 
 export const DATE = "2026-11-14";
@@ -26,4 +28,20 @@ export function outlineFixture(): MyDayOutline {
       row("area:me", { title: "Me", weight: 55, children: [] }),
     ] },
   };
+}
+
+// A client over one mutable day: a save writes the note into the day and bumps its
+// revision, as the Desk does, and every command it received stays readable.
+export function outlineClient() {
+  const day = outlineFixture();
+  const commands: OutlineCommand[] = [];
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(day);
+    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
+    commands.push(body.command);
+    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
+    day.revision += 1;
+    return Response.json({ view: day });
+  });
+  return { day, commands, client };
 }
