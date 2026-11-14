@@ -23,7 +23,7 @@ export function useQueue(): QueueContextValue {
 export type ActError = { message: string | null } | null;
 
 // An item Cortex lets the person move into today's Inbox: it carries a fingerprint and is not read-only.
-export function canMakeTask(item: DeskItem): boolean {
+function canMakeTask(item: DeskItem): boolean {
   return !!item.todoFingerprint && !item.readOnly;
 }
 
@@ -65,5 +65,7 @@ export function useAct(enter?: EnterAct) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-  return { busy, error, run, perform, makeTask, canChangeMyDay: !!myDayDate };
+  // Whether this card shows "Make it a task" for the item: Cortex allows it and the Desk carried the My Day date.
+  const offersTask = (item: DeskItem) => canMakeTask(item) && !!myDayDate;
+  return { busy, error, run, perform, makeTask, offersTask };
 }

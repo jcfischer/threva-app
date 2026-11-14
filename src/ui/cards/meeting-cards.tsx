@@ -3,7 +3,7 @@ import { useState } from "react";
 import { captureText, NOT_A_CARD } from "../api/capture";
 import type { DeskEvent, DeskItem } from "../api/types";
 import { useI18n } from "../i18n";
-import { canMakeTask, useAct, useQueue } from "./act";
+import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton } from "./parts";
 
 function When({ event }: { event: DeskEvent }) {
@@ -15,7 +15,7 @@ function When({ event }: { event: DeskEvent }) {
 export function MeetingSoonCard({ item, event }: { item: DeskItem; event: DeskEvent | null }) {
   const { t } = useI18n();
   const card = useAct();
-  const plan = canMakeTask(item) && card.canChangeMyDay;
+  const plan = card.offersTask(item);
   const join = safeHref(item.actions.find((a) => a.id === "open" && a.url)?.url) ?? safeHref(event?.url);
   return (
     <Card eyebrow={t("meeting.soon.eyebrow")} pill={<span className="pill wait">{t("meeting.soon.pill")}</span>}>

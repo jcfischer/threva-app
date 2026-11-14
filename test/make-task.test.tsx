@@ -9,7 +9,7 @@ import { QueueContext } from "../src/ui/cards/act";
 import { MailCard } from "../src/ui/cards/mail-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { EntryCard } from "../src/ui/queue/queue-view";
-import { EMPTY_SESSION, pin } from "../src/ui/queue/order";
+import { EMPTY_SESSION } from "../src/ui/queue/order";
 import { DAY, item, NOW, view } from "./fixtures/desk";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
@@ -126,20 +126,29 @@ describe("Make it a task on other cards", () => {
 });
 
 describe("the queue after a card became a task", () => {
-  test("says where the task went, with no Undo, because Cortex returns no receipt for it", async () => {
-    const desk = view({ items: [mail()], myDay: { date: DAY, items: [] } });
-    await act(async () => {
+  const show = (items: DeskItem[]) =>
+    act(async () => {
       dom.root.render(
         <I18nProvider value={createI18n("en")}>
-          <DayView client={client()} state={{ view: desk, studio: null, error: null, refresh: () => {} }} session={pin(EMPTY_SESSION, "i:mail:1")} setSession={() => {}} now={NOW} />
+          <DayView client={client()} state={{ view: view({ items, myDay: { date: DAY, items: [] } }), studio: null, error: null, refresh: () => {} }} session={EMPTY_SESSION} setSession={() => {}} now={NOW} />
         </I18nProvider>,
       );
     });
+  const line = () => dom.container.querySelector('.toast[role="status"]');
+  const next = sensor({ key: "sensor:1" });
+  const later = sensor({ key: "sensor:2", title: "Backup failed" });
+
+  test("says where the task went, with no Undo, while the next card is in front", async () => {
+    await show([mail(), next, later]);
     await click("Make it a task");
     expect(writes).toEqual([todo("mail:1")]);
-    const line = dom.container.querySelector('.toast[role="status"]')!;
-    expect(line.textContent).toBe("Added “Workshop dates” to today's Inbox.");
-    expect(line.querySelector("button")).toBeNull();
+    expect(line()?.textContent).toBe("Added “Workshop dates” to today's Inbox.");
+    expect(line()?.querySelector("button")).toBeNull();
+
+    await show([next, later]);
+    expect(line()?.textContent).toBe("Added “Workshop dates” to today's Inbox.");
+    await show([later]);
+    expect(line()).toBeNull();
   });
 });
 

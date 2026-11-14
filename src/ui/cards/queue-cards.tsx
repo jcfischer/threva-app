@@ -4,7 +4,7 @@ import { newRequestId } from "../api/client";
 import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
-import { canMakeTask, useAct } from "./act";
+import { useAct } from "./act";
 import { Card, ErrorLine, MakeTaskButton, Mentioned } from "./parts";
 
 // The actions POST /api/desk/action takes, labelled by action id. Cortex lists ranger.park too but never wires it
@@ -19,7 +19,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
   const card = useAct();
   const { busy, error, run } = card;
-  const plan = canMakeTask(item) && card.canChangeMyDay;
+  const plan = card.offersTask(item);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
   const wired = item.actions.filter((a) => a.wired);
@@ -88,7 +88,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
 export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
   const { t } = useI18n();
   const card = useAct();
-  const plan = canMakeTask(item) && card.canChangeMyDay;
+  const plan = card.offersTask(item);
   const links = item.actions.flatMap((a) => { const url = safeHref(a.url); return url ? [{ ...a, url }] : []; });
   return (
     <Card eyebrow={item.source || t("card.item.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>

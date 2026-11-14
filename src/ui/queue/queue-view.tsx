@@ -97,11 +97,15 @@ export interface QueueBodyProps {
 export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: QueueBodyProps) {
   const { t, tn } = useI18n();
   const outer = useQueue();
-  // The title of the last item made a task. Its card leaves the queue, so the queue says where it went.
-  // Cortex returns no undo receipt for that move, so the line offers no Undo.
-  const [added, setAdded] = useState<string | null>(null);
+  // The last item made a task. Its card leaves the queue, so the queue says where it went. Cortex returns no undo
+  // receipt for that move, so the line offers no Undo. It stays on the card that came next and goes when that one does.
+  const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const first = queue[0];
+  const front = first?.k ?? "";
+  useEffect(() => {
+    setAdded((a) => (!a ? a : a.next === undefined ? { ...a, next: front } : a.next === front ? a : null));
+  }, [front]);
   const keys = keyMap(first);
   const escape = () => {
     if (!first || !keys) return;
@@ -123,7 +127,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   }
   const { why, then } = around(queue);
   return (
-    <QueueContext.Provider value={{ ...outer, myDayDate: state.view.myDay?.date, onTask: setAdded }}>
+    <QueueContext.Provider value={{ ...outer, myDayDate: state.view.myDay?.date, onTask: (title) => setAdded({ title }) }}>
       <section className="cards" aria-label={t("queue.label")}>
         {state.error && (
           <p className="faint" role="alert">
@@ -132,7 +136,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
         )}
         {added !== null && (
           <div className="toast row" role="status">
-            <span>{t("card.task.added", { title: added })}</span>
+            <span>{t("card.task.added", { title: added.title })}</span>
           </div>
         )}
         <UndoLine done={state.view.autonomy?.done ?? []} now={now} />
