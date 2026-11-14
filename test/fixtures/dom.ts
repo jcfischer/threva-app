@@ -34,3 +34,12 @@ export function mountDom(extraGlobals: readonly string[] = []): MountedDom {
   };
   return { root, container, cleanup };
 }
+
+// Types text into a field the way a browser does: the prototype's value setter bypasses React's
+// value tracker, then an input event lets React see the change.
+export async function inputText(field: HTMLInputElement | HTMLTextAreaElement, text: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), "value")!.set!.call(field, text);
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+}

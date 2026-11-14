@@ -8,7 +8,7 @@ import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
 import { row } from "./fixtures/outline";
-import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
+import { CODEMIRROR_GLOBALS, inputText, mountDom } from "./fixtures/dom";
 import { budgetThread, closedThread, studioList } from "./fixtures/studio";
 
 const mapping: StudioProject = { id: "thread", slug: budgetThread.slug, state: "active", openNotes: 3 };
@@ -89,10 +89,7 @@ async function click(container: Element, text: string) {
 }
 async function type(container: Element, text: string) {
   const field = container.querySelector("textarea")!;
-  await act(async () => {
-    field.value = text;
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, text);
   return field;
 }
 function studioClient() {
