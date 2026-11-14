@@ -1,4 +1,4 @@
-import type { DeskView, MailRules, StudioList } from "./types";
+import type { DeskView, MailRules, MyDayOutline, OutlineCommand, StudioList } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
 
@@ -36,6 +36,8 @@ export interface DeskClient {
   desk(): Promise<Result<DeskView>>;
   studio(): Promise<Result<StudioList>>;
   rules(): Promise<Result<MailRules>>;
+  myDay(): Promise<Result<MyDayOutline>>;
+  changeOutline(date: string, command: OutlineCommand): Promise<Result<{ view: MyDayOutline }>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
 }
 
@@ -44,6 +46,11 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     desk: () => call<DeskView>(fetchImpl, "/api/desk"),
     studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
     rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
+    myDay: () => call<MyDayOutline>(fetchImpl, "/api/desk/my-day"),
+    changeOutline: (date, command) => call<{ view: MyDayOutline }>(fetchImpl, "/api/desk/my-day", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ date, requestId: crypto.randomUUID(), command }),
+    }),
     post: <T,>(path: string, body: unknown) =>
       call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
   };

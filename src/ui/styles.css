@@ -171,6 +171,23 @@ button.chip{border:1px solid transparent;font-size:inherit}
 .seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px;flex-wrap:wrap}
 .seg button{background:none;border:0;border-radius:7px;padding:4px 11px;font-size:13.5px;font-weight:500;color:var(--dim)}
 .seg button[aria-selected="true"]{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--line)}
+.view-switch{align-self:flex-start}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--line)}
+.everything{min-width:0}
+.outline-row{grid-template-columns:24px minmax(0,1.2fr) minmax(0,1fr) auto}
+.outline-title{min-width:0;overflow-wrap:anywhere;text-align:left}
+.outline-grey{color:var(--faint)}
+.outline-grey .outline-title{color:var(--faint)}
+.outline-warning{color:var(--wait);font-size:13px;font-weight:600}
+.outline-menu{position:relative;align-self:start}
+.outline-menu>summary{list-style:none;font-size:18px}
+.outline-menu>summary::-webkit-details-marker{display:none}
+.outline-menu-body{position:absolute;z-index:2;left:0;top:100%;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:200px;max-width:min(340px,75vw);box-shadow:0 4px 18px #0002}
+.outline-menu select{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);padding:6px;max-width:100%}
+.outline-add{display:flex;align-items:end;gap:10px}
+.outline-add label{flex:1;min-width:0}
+.outline-done>summary{padding-block:8px}
+@media(max-width:640px){.outline-row{grid-template-columns:24px minmax(0,1fr) auto;gap:8px}.outline-row>.faint,.outline-row>.outline-margin{grid-column:2/-1;grid-row:2}.outline-row>button:last-child:not(.outline-title){grid-column:3;grid-row:1}.outline-add{flex-wrap:wrap}}
 ul.plain{margin:4px 0 0;padding-left:18px;color:var(--dim)}
 .sum{border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;background:var(--panel)}
 .sum ul{margin:4px 0 0;padding-left:18px;color:var(--dim);font-size:14px}

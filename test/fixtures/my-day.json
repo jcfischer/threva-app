@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-14",
+  "revision": 1,
+  "outline": {
+    "id": "desk:outline",
+    "title": "Outline",
+    "weight": 100,
+    "ordering": "parallel",
+    "children": [
+      {
+        "id": "area:work",
+        "title": "Work",
+        "weight": 50,
+        "ordering": "parallel",
+        "children": [
+          {
+            "id": "studio-thread:1a644e99-de95-4c19-9102-b7ec61c6ea71",
+            "title": "What is the March offsite for?",
+            "weight": 50,
+            "ordering": "parallel",
+            "children": [],
+            "done": true
+          },
+          {
+            "id": "studio-thread:e3a866fb-e471-4352-be47-29d37000ebfd",
+            "title": "What goes into next year's budget?",
+            "weight": 50,
+            "ordering": "parallel",
+            "children": [],
+            "done": true
+          }
+        ]
+      }
+    ]
+  }
+}
