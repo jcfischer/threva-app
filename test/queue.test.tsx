@@ -110,6 +110,7 @@ describe("queue rendering", () => {
             key: "a",
             kind: "decision",
             title: "Which database?",
+            actions: [{ id: "ranger.rule", label: "Give your ruling", role: "primary", wired: true }],
             explanation: { sentence: "The agent needs a database choice.", choices: [{ label: "SQLite", consequence: "Simple, local.", ruling: "Use SQLite." }] },
           }),
         ],

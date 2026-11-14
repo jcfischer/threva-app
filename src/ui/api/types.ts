@@ -19,6 +19,12 @@ export interface DeskLink {
   url: string;
 }
 
+// A substring of a card's text that Cortex links to a URL.
+export interface DeskMention {
+  text: string;
+  url: string;
+}
+
 export interface RulingChoice {
   label: string;
   consequence: string;
@@ -34,7 +40,10 @@ export interface DeskItem {
   score: number;
   urgency: "now" | "today" | "this-week" | "waiting";
   actions: DeskAction[];
-  detail: { summary: string; links: DeskLink[]; suspicion?: string[] };
+  // refs[0] is the item's own reference; the rest point at related work.
+  detail: { summary: string; links: DeskLink[]; refs?: string[]; history?: string[]; suspicion?: string[] };
+  // Cortex node 3646; stacks without it omit the field.
+  mentions?: DeskMention[];
   excerpt?: string;
   suggestion?: string;
   eventKey?: string;
