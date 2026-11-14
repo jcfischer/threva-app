@@ -8,7 +8,7 @@ import { NoteSaver, detailsOf, keepPlace, keptPlace, pageLine, wordCount, type N
 import { NotePage } from "../src/ui/everything/page";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { DATE, outlineClient, outlineFixture, row } from "./fixtures/outline";
-import { mountDom } from "./fixtures/dom";
+import { inputText, mountDom } from "./fixtures/dom";
 
 describe("what a page says about its text", () => {
   test("counts words, not Markdown marks, and is quiet about an empty page", () => {
@@ -242,10 +242,7 @@ test("text typed on a page is saved to the row it was typed in when another row 
   await click(container, "Exercise");
   const field = container.querySelector("textarea")!;
   expect(field).not.toBeNull();
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nA **bold** line");
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, "## Plan\n\nA **bold** line");
   expect(commands).toEqual([]);
   await click(container, "‹ Work");
   await act(async () => { await Promise.resolve(); });
@@ -264,10 +261,7 @@ test("a reloaded page from another source replaces a saved draft when the row is
   await click(container, "Work");
   await click(container, "Exercise");
   const field = container.querySelector("textarea")!;
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, "## Plan");
   await click(container, "‹ Work");
   await act(async () => { await drain(); });
   expect(commands).toHaveLength(1);
@@ -290,16 +284,10 @@ test("typing after a save clears the saved line", async () => surface(async (con
   await click(container, "Work");
   await click(container, "Exercise");
   const field = container.querySelector("textarea")!;
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, "## Plan");
   await act(async () => { field.focus(); field.blur(); await drain(); });
   expect(container.querySelector(".note-line")?.textContent).toContain("saved");
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nmore");
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, "## Plan\n\nmore");
   expect(container.querySelector(".note-line")?.textContent).not.toContain("saved");
 }));
 
@@ -309,10 +297,7 @@ test("a reload after a save shows the reloaded page while its row stays open", a
   await click(container, "Work");
   await click(container, "Exercise");
   const field = container.querySelector("textarea")!;
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, "## Plan");
   await act(async () => { field.focus(); field.blur(); await drain(); });
   expect(commands).toHaveLength(1);
   // Another source writes the same row's note while its page is still open here.

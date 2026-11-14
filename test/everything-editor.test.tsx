@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { EditorView } from "@codemirror/view";
 import { NoteEditor, type LineDecoration } from "../src/ui/everything/editor";
-import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
+import { CODEMIRROR_GLOBALS, inputText, mountDom } from "./fixtures/dom";
 
 // CodeMirror needs the DOM globals of a browser window, including the observers happy-dom provides.
 const RICH = CODEMIRROR_GLOBALS;
@@ -102,10 +102,7 @@ describe("the page's editor", () => {
     expect(field).not.toBeNull();
     expect(field.getAttribute("placeholder")).toBe("Write on this page…");
     expect(field.value).toBe("## Plan");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nmore");
-      field.dispatchEvent(new window.Event("input", { bubbles: true }));
-    });
+    await inputText(field, "## Plan\n\nmore");
     expect(page.changes.at(-1)).toBe("## Plan\n\nmore");
   });
 
@@ -121,10 +118,7 @@ describe("the page's editor", () => {
   test("a plain page with a draft in hand keeps what the user typed", async () => {
     const page = await surface(PLAIN, "## Plan", null);
     const field = page.container.querySelector("textarea")!;
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nmy draft");
-      field.dispatchEvent(new window.Event("input", { bubbles: true }));
-    });
+    await inputText(field, "## Plan\n\nmy draft");
     await page.render("## Plan from elsewhere", false);
     expect(field.value).toBe("## Plan\n\nmy draft");
   });

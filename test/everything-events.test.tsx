@@ -6,7 +6,7 @@ import { App } from "../src/ui/app";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
-import { mountDom } from "./fixtures/dom";
+import { inputText, mountDom } from "./fixtures/dom";
 import recorded from "./fixtures/my-day.json";
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
@@ -25,11 +25,7 @@ const click = async (container: Element, text: string) => {
 
 const input = async (container: Element, value: string) => {
   const field = container.querySelector("input")!;
-  await act(async () => {
-    // Bypass React's value tracker to exercise the input event path.
-    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(field, value);
-    field.dispatchEvent(new window.Event("input", { bubbles: true }));
-  });
+  await inputText(field, value);
 };
 
 function memoryClient(seed: MyDayOutline = outlineFixture()) {
