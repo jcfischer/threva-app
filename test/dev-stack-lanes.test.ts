@@ -94,3 +94,60 @@ describe("the wrapper", () => {
     expect(r.stdout.toString()).toBe("/tmp/operator home|unset");
   });
 });
+
+describe("the Studio filer", () => {
+  const FILER = `baseUrl: https://models.example.org/v1
+model: capture-model
+apiKeyFile: secrets/capture
+timeoutSeconds: 30
+local:
+  baseUrl: http://127.0.0.1:8080/v1
+  model: local-capture-model
+  caFile: /op/ca
+`;
+  const filerFiles: Record<string, string> = {
+    ...files,
+    "/op/filer.yaml": FILER,
+    "/op/local-only.yaml": "local: {baseUrl: http://127.0.0.1:8080/v1, model: m}\n",
+    "/op/no-model.yaml": "baseUrl: https://x/v1\n",
+  };
+  const readFiler = (path: string) => filerFiles[path] ?? null;
+
+  test("names the variable when the file is missing, not a mapping or lacks baseUrl and model", () => {
+    for (const file of ["/op/none.yaml", "/op/broken.yaml", "/op/list.yaml", "/op/no-model.yaml", "/op/lanes.yaml"]) {
+      expect(readOperatorFiles({ THREVA_DEV_STUDIO_FILER: file }, readFiler)).toEqual({ ok: false, error: expect.stringContaining("THREVA_DEV_STUDIO_FILER") });
+    }
+  });
+
+  test("accepts a filer with only a local endpoint", () => {
+    const r = readOperatorFiles({ THREVA_DEV_STUDIO_FILER: "/op/local-only.yaml" }, readFiler);
+    expect(r).toEqual({ ok: true, value: { studioFiler: { local: { baseUrl: "http://127.0.0.1:8080/v1", model: "m" } } } });
+  });
+
+  test("resolves a relative filer path, and relative files in it against the filer's directory", () => {
+    const seen: string[] = [];
+    const r = readOperatorFiles({ THREVA_DEV_STUDIO_FILER: "op/filer.yaml" }, (path) => {
+      seen.push(path);
+      return FILER;
+    });
+    expect(seen).toEqual([`${process.cwd()}/op/filer.yaml`]);
+    expect(r.ok && r.value.studioFiler?.apiKeyFile).toBe(`${process.cwd()}/op/secrets/capture`);
+  });
+
+  test("renders the block under mc.desk.studio.filer, beside the Studio directory", () => {
+    const r = readOperatorFiles({ THREVA_DEV_STUDIO_FILER: "/op/filer.yaml" }, readFiler);
+    if (!r.ok) throw new Error(r.error);
+    const yaml = renderConfig(paths, deskExtras(r.value, wrapperPaths("/s"), "/bin/bun", "/a"));
+    const studio = (Bun.YAML.parse(yaml) as { mc: { desk: { studio: Record<string, unknown> } } }).mc.desk.studio;
+    expect(studio).toEqual({
+      dir: "/s/studio",
+      filer: {
+        baseUrl: "https://models.example.org/v1",
+        model: "capture-model",
+        apiKeyFile: "/op/secrets/capture",
+        timeoutSeconds: 30,
+        local: { baseUrl: "http://127.0.0.1:8080/v1", model: "local-capture-model", caFile: "/op/ca" },
+      },
+    });
+  });
+});

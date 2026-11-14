@@ -46,6 +46,7 @@ Without more configuration, the dev stack has no model: the bar falls back to Co
 
 - `THREVA_DEV_LANES` names a YAML file with Cortex's `mc.desk.conversations` block. The stack copies it into its config and runs `pi` through a wrapper in `THREVA_DEV_DIR/bin`, so pi uses your own `HOME`, configuration and credentials.
 - `THREVA_DEV_PARSER_ROUTING` names a `desk-parse` routing file (see `docs/parser-routing.md` in cortex-desk-adapters). The stack runs `desk-parse --routing-config <file>` as the Desk's parser, with your own `HOME`, and permits the providers in the file that Cortex accepts as parsers (`codex` and `pi`). The parser asks the Ranger command and config that the file names which provider to use.
+- `THREVA_DEV_STUDIO_FILER` names a YAML file with Cortex's `mc.desk.studio.filer` block (see `docs/desk-studio.md` in Cortex): an OpenAI-compatible endpoint with `baseUrl` and `model`, optional `apiKeyEnv` or `apiKeyFile`, `caFile` and `timeoutSeconds`, and an optional `local` block with the same fields. Captures, outline questions and Studio sessions use it; without it Cortex answers them with 503. Name the key by `apiKeyEnv` or `apiKeyFile`, never by value. Relative `apiKeyFile` and `caFile` paths are read from the file's directory.
 
 ```yaml
 # lanes.yaml: replace the models with your own

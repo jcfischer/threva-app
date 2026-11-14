@@ -57,7 +57,7 @@ export function renderConfig(p: DevStackPaths, extras: DeskExtras = {}): string 
     "    sources:",
     `      - {id: calendar, command: [${q(p.bun)}, ${q(join(p.adaptersDir, "bin", "desk-ics.ts"))}, ${q(join(p.stateDir, "sample", "calendar.ics"))}]}`,
     `      - {id: sample-mail, command: [/bin/cat, ${q(join(p.stateDir, "sample", "mail.json"))}]}`,
-    `    studio: {dir: ${q(join(p.stateDir, "studio"))}}`,
+    `    studio: {dir: ${q(join(p.stateDir, "studio"))}${extras.studioFiler ? `, filer: ${JSON.stringify(extras.studioFiler)}` : ""}}`,
     "    interruptions: {transport: none}",
     ...renderDeskExtras(extras),
     "",

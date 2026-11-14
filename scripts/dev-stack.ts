@@ -24,7 +24,7 @@ function readable(path: string): string | null {
 }
 
 function operatorExtras(files: OperatorFiles): DeskExtras {
-  if (!files.conversations && !files.routing) return {};
+  if (!files.conversations && !files.routing) return files.studioFiler ? { studioFiler: files.studioFiler } : {};
   const operator = operatorHome(process.env);
   if (!operator) {
     console.error("Set HOME, so pi and the parser can find the operator's own configuration.");
@@ -86,7 +86,7 @@ async function start(): Promise<void> {
   }
   const extras = operatorExtras(files.value);
   writeStack(paths, extras);
-  if ((extras.conversations || extras.ask) && cortex(["config", "validate"]).exitCode !== 0) {
+  if ((extras.conversations || extras.ask || extras.studioFiler) && cortex(["config", "validate"]).exitCode !== 0) {
     console.error("Cortex refused the generated config; the stack was not started.");
     process.exit(1);
   }
