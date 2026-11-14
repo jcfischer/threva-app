@@ -12,6 +12,7 @@ export interface SweepLink {
   k: string;
   label: string;
   count: number;
+  archive: boolean;
 }
 
 export interface ThenLine {
@@ -68,7 +69,7 @@ export function around(queue: readonly Entry[]): Around {
   if (!first) return { why: null, then: null };
   if (rest.length === 0) return { why: whyNow(first), then: null };
   const cards = rest.filter((e) => e.type !== "sweep");
-  const sweeps = rest.flatMap((e): SweepLink[] => (e.type === "sweep" ? [{ k: e.k, label: e.sweep.label || e.sweep.title, count: e.sweep.mails.length }] : []));
+  const sweeps = rest.flatMap((e): SweepLink[] => (e.type === "sweep" ? [{ k: e.k, label: e.sweep.label || e.sweep.title, count: e.sweep.mails.length, archive: e.sweep.target === "archive" }] : []));
   return {
     why: whyNow(first),
     then: { titles: cards.slice(0, THEN_TITLES).map((e) => ({ k: e.k, title: entryTitle(e) })), more: Math.max(0, cards.length - THEN_TITLES), sweeps },

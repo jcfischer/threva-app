@@ -67,9 +67,14 @@ describe("mail in the queue", () => {
     expect(html).toContain("Looks suspicious");
   });
 
-  test("a sweep card asks to let the group go, in German too", () => {
-    expect(wrap(<SweepCard sweep={sweep} />)).toContain("Let all 2 go?");
-    expect(wrap(<SweepCard sweep={sweep} />, "de")).toContain("Alle 2 weglegen?");
+  test("a sweep card that archives asks to archive the group, in German too", () => {
+    expect(wrap(<SweepCard sweep={sweep} />)).toContain("Archive all 2?");
+    expect(wrap(<SweepCard sweep={sweep} />, "de")).toContain("Alle 2 archivieren?");
+  });
+
+  test("a sweep card to Trash asks to let the group go", () => {
+    expect(wrap(<SweepCard sweep={{ ...sweep, target: "trash" }} />)).toContain("Let all 2 go?");
+    expect(wrap(<SweepCard sweep={{ ...sweep, target: "trash" }} />, "de")).toContain("Alle 2 weglegen?");
   });
 });
 
