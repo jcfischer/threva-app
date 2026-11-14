@@ -4,8 +4,8 @@ import recorded from "./my-day.json";
 export const DATE = "2026-11-14";
 export const row = (id: string, extra: Partial<OutlineRow> = {}): OutlineRow => ({ id, title: id, weight: 50, ordering: "parallel", children: [], ...extra });
 
-// Recorded from GET /api/desk/my-day on the isolated dev stack, with additional
-// time cases kept at fixed dates.
+// Synthetic time scenarios use the root metadata of the recorded my-day.json.
+// Tests also render that unmodified dev-stack response separately.
 // The richer cases supply recurrence projections as data; Threva computes no rules.
 export function outlineFixture(): MyDayOutline {
   return {

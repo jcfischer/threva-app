@@ -28,7 +28,9 @@ describe("outline time margins", () => {
     expect(rowTime(find("weekly"), DATE)).toMatchObject({ state: "later", margin: "done last Thu · back Wed · every week", back: "2026-11-18" });
     expect(rowTime(find("monthly"), DATE)).toMatchObject({ state: "later", margin: "done Oct 31 · back Jan 17, 2027 · every 3 months", back: "2027-01-17" });
     const exhausted = { ...find("weekly"), recurrence: { returnsOn: null, reappearsOn: null, finished: true } };
-    expect(rowTime(exhausted, DATE)).toMatchObject({ state: "later", margin: "done last Thu · every week" });
+    expect(rowTime(exhausted, DATE)).toEqual({ state: "done", margin: "done last Thu · every week", warning: false });
+    expect(rowCounts(exhausted, DATE)).toEqual({ open: 0, later: 0, back: undefined });
+    expect(rowCounts(row("area", { children: [exhausted, find("weekly"), find("plain")] }), DATE)).toEqual({ open: 1, later: 1, back: "2026-11-18" });
     expect(rowTime({ ...find("weekly"), recurrence: undefined }, DATE).back).toBeUndefined();
   });
 

@@ -32,6 +32,10 @@ export function newRequestId(): string {
   return crypto.randomUUID().replaceAll("-", "");
 }
 
+function jsonPost<T>(fetchImpl: Fetch, path: string, body: unknown): Promise<Result<T>> {
+  return call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+}
+
 export interface DeskClient {
   desk(): Promise<Result<DeskView>>;
   studio(): Promise<Result<StudioList>>;
@@ -47,11 +51,8 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
     rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
     myDay: () => call<MyDayOutline>(fetchImpl, "/api/desk/my-day"),
-    changeOutline: (date, command) => call<{ view: MyDayOutline }>(fetchImpl, "/api/desk/my-day", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ date, requestId: crypto.randomUUID(), command }),
-    }),
+    changeOutline: (date, command) => jsonPost<{ view: MyDayOutline }>(fetchImpl, "/api/desk/my-day", { date, requestId: crypto.randomUUID(), command }),
     post: <T,>(path: string, body: unknown) =>
-      call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+      jsonPost<T>(fetchImpl, path, body),
   };
 }

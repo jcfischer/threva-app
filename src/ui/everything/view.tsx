@@ -3,7 +3,7 @@ import type { DeskClient } from "../api/client";
 import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
-import { relativeDay, rowCounts, rowTime } from "./time";
+import { relativeDay, rowCounts, rowState, rowTime } from "./time";
 
 export function EverythingView({ client, active = true, initialDay = null, shares = [], onChange = () => {} }: {
   client: DeskClient;
@@ -74,7 +74,6 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const current = path.at(-1)!;
   const parents = path.slice(0, -1);
   const isArea = (id: string) => root.children.some(row => row.id === id);
-  const label = (row: OutlineRow) => row.title;
   const draft = drafts[current.id] ?? "";
   const share = shares.find(area => area.areaId === current.id);
   const move = (id: string, target: Move | null, snapshot = day) => {
@@ -94,7 +93,10 @@ export function EverythingView({ client, active = true, initialDay = null, share
       move(source.id, target, source.day);
       dragging.current = null;
       setDrop(null);
-    } else { event.dataTransfer.dropEffect = "move"; setDrop({ id: row.id, zone }); }
+    } else {
+      event.dataTransfer.dropEffect = "move";
+      setDrop(previous => previous?.id === row.id && previous.zone === zone ? previous : { id: row.id, zone });
+    }
   };
   const summary = (row: OutlineRow) => {
     const counts = row.children.length ? rowCounts(row, day.date) : { open: 0, later: 0, back: undefined };
@@ -124,10 +126,10 @@ export function EverythingView({ client, active = true, initialDay = null, share
       {!area && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: row.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: row.id, confirm: true }); }}>{t(row.done ? "everything.reopen" : "everything.done")}</button>}
     </div>;
   };
-  const done = current.children.filter(row => !isArea(row.id) && row.done && !row.repeat);
+  const done = current.children.filter(row => !isArea(row.id) && rowState(row, day.date).state === "done");
   const open = current.children.filter(row => !done.includes(row));
   const body = <div className="cur">
-    <h2>{label(current)}</h2>
+    <h2>{current.title}</h2>
     {isArea(current.id) && <div className="stack">
       <span className="faint">{t("everything.importance", { value: current.weight })}</span>
       {share ? <><div className="balbar" aria-hidden="true"><i style={{ width: `${Math.round(share.actualShare * 100)}%` }} /><b style={{ left: `${Math.round(share.targetShare * 100)}%` }} /></div><span className="faint">{t("everything.share", { actual: Math.round(share.actualShare * 100), target: Math.round(share.targetShare * 100) })}</span></> : <span className="faint">{t("everything.shareUnavailable")}</span>}
@@ -150,7 +152,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   return <section className="everything" aria-label={t("everything.label")} aria-busy={busy}>
     {error && <div role="alert"><p>{error}</p><button type="button" className="btn" disabled={busy} onClick={() => { void retry(); }}>{t("everything.reload")}</button></div>}
     {parents.reduceRight<ReactNode>((inner, parent) => <div className="anc" key={parent.id}>
-      <button type="button" className="anch" data-zone={drop?.id === parent.id ? drop.zone : undefined} onClick={() => setAt(parent.id)} onDragOver={event => dropOn(event, parent, true)} onDrop={event => dropOn(event, parent, true, true)}>‹ {label(parent)}</button>
+      <button type="button" className="anch" data-zone={drop?.id === parent.id ? drop.zone : undefined} onClick={() => setAt(parent.id)} onDragOver={event => dropOn(event, parent, true)} onDrop={event => dropOn(event, parent, true, true)}>‹ {parent.title}</button>
       {inner}
     </div>, body)}
   </section>;

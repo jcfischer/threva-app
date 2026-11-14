@@ -8,6 +8,7 @@ import { App } from "../src/ui/app";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
+import recorded from "./fixtures/my-day.json";
 
 async function surface(run: (container: HTMLDivElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
   const dom = new Window();
@@ -91,6 +92,40 @@ test("drill-in frames, grey rows in order, folded Done, importance and weekly sh
   expect(container.querySelector("h2")?.textContent).toBe("Work");
   await click(container, "‹ Outline");
   expect(container.querySelector("h2")?.textContent).toBe("Outline");
+}));
+
+test("exhausted repeats fold under Done and can reopen; active repeats stay in place", async () => surface(async (container, render) => {
+  const fixture = outlineFixture();
+  const project = pathTo(fixture.outline, "project")!.at(-1)!;
+  project.children.push(row("exhausted", {
+    title: "Finished weekly report", done: true, completedAt: "2026-11-12",
+    repeat: { unit: "week", interval: 1 },
+    recurrence: { returnsOn: null, reappearsOn: null, finished: true },
+  }));
+  const { client, commands } = memoryClient(fixture);
+  await render(<EverythingView client={client} initialDay={fixture} />);
+  expect(container.querySelector('[data-row="area:work"]')?.textContent).toContain("4 later, next back Mon");
+  await click(container, "Work");
+  await click(container, "Exercise");
+  const done = container.querySelector(".outline-done")!;
+  expect(done.querySelector("summary")?.textContent).toBe("Done · 2");
+  expect(done.hasAttribute("open")).toBe(false);
+  expect(done.querySelector('[data-row="exhausted"] .outline-margin')?.textContent).toBe("done last Thu · every week");
+  expect(done.querySelector('[data-row="weekly"]')).toBeNull();
+  expect(container.querySelector('[data-row="weekly"]')?.classList.contains("outline-grey")).toBe(true);
+  await click(done.querySelector('[data-row="exhausted"]')!, "Reopen");
+  expect(commands).toEqual([{ op: "outline-reopen", id: "exhausted", revision: 12, confirm: true }]);
+  expect(container.querySelector('.outline-done [data-row="exhausted"]')).toBeNull();
+  expect(container.querySelector('[data-row="exhausted"]')?.classList.contains("outline-grey")).toBe(false);
+}));
+
+test("the unmodified recorded my-day response renders its area and task rows", async () => surface(async (container, render) => {
+  await render(<EverythingView client={createClient()} initialDay={recorded as MyDayOutline} />);
+  await click(container, "Work");
+  expect(container.querySelector(".outline-done summary")?.textContent).toBe("Done · 2");
+  for (const task of recorded.outline.children[0]!.children) {
+    expect(container.querySelector(`[data-row="${task.id}"] .outline-title`)?.textContent).toBe(task.title);
+  }
 }));
 
 test("add, menu moves, finish and reopen use each returned revision; drafts stay with their parent", async () => surface(async (container, render) => {
