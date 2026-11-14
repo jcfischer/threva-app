@@ -107,7 +107,45 @@ export interface DeskView {
   autonomy?: { done: DoneEntry[] };
   routines?: RoutineView | null;
   agents?: DeskAgents;
+  mirror?: { balance: { areas: AreaShare[] } | null };
 }
+
+export interface AreaShare {
+  areaId: string;
+  targetShare: number;
+  actualShare: number;
+}
+
+export interface OutlineRow {
+  id: string;
+  title: string;
+  weight: number;
+  ordering: "parallel" | "sequential";
+  children: OutlineRow[];
+  done?: boolean;
+  completedAt?: string;
+  deferredUntil?: string;
+  startDate?: string;
+  dueDate?: string;
+  repeat?: {
+    unit: "day" | "week" | "month";
+    interval: number;
+    weekdays?: number[];
+  };
+  // Projected by Cortex; recurrence rules belong to the engine.
+  recurrence?: { returnsOn: string | null; reappearsOn: string | null; finished: boolean };
+}
+
+export interface MyDayOutline {
+  date: string;
+  revision: number;
+  outline: OutlineRow;
+}
+
+export type OutlineCommand =
+  | { op: "outline-add"; revision: number; parent: string; title: string }
+  | { op: "outline-move"; revision: number; id: string; parent: string; index: number }
+  | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };
 
 export interface RoutineView {
   installed: { title: string }[];

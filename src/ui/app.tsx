@@ -9,6 +9,14 @@ import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
+import { EverythingView } from "./everything/view";
+
+export function ViewSwitch({ view, onChange }: { view: "day" | "everything"; onChange: (view: "day" | "everything") => void }) {
+  const { t } = useI18n();
+  return <div className="seg view-switch" role="group" aria-label={t("view.label")}>
+    {(["day", "everything"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => onChange(key)}>{t(`view.${key}`)}</button>)}
+  </div>;
+}
 
 export function Header() {
   const { t } = useI18n();
@@ -25,11 +33,15 @@ export function App({ client }: { client?: DeskClient }) {
   const state = useDesk(desk);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
+  const [view, setView] = useState<"day" | "everything">("day");
+  const [openedEverything, setOpenedEverything] = useState(false);
   return (
     <main className="wrap">
       <Header />
       <Bar client={desk} onChange={state.refresh} />
-      <DayView client={desk} state={state} session={session} setSession={setSession} now={Date.now()} dismissed={dismissed} onDismissMeeting={dismiss} />
+      <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
+      {view === "day" && <DayView client={desk} state={state} session={session} setSession={setSession} now={Date.now()} dismissed={dismissed} onDismissMeeting={dismiss} />}
+      {openedEverything && <div hidden={view !== "everything"}><EverythingView client={desk} active={view === "everything"} shares={state.view?.mirror?.balance?.areas} onChange={state.refresh} /></div>}
     </main>
   );
 }
