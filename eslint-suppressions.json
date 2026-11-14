@@ -49,9 +49,6 @@
     },
     "@typescript-eslint/no-empty-function": {
       "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 3
     }
   },
   "src/ui/arrivals/outcomes.ts": {
@@ -68,9 +65,6 @@
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 4
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 1
     },
     "threva/no-comments": {
       "count": 3
@@ -89,11 +83,6 @@
       "count": 4
     }
   },
-  "src/ui/cards/interruption.tsx": {
-    "@typescript-eslint/unbound-method": {
-      "count": 1
-    }
-  },
   "src/ui/cards/mail-cards.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 7
@@ -106,9 +95,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 3
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 7
     },
     "threva/no-comments": {
       "count": 5
@@ -123,15 +109,9 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 5
     }
   },
   "src/ui/cards/parts.tsx": {
-    "@typescript-eslint/unbound-method": {
-      "count": 2
-    },
     "threva/no-comments": {
       "count": 5
     }
@@ -141,9 +121,6 @@
       "count": 2
     },
     "@typescript-eslint/no-misused-promises": {
-      "count": 3
-    },
-    "@typescript-eslint/unbound-method": {
       "count": 3
     },
     "threva/no-comments": {
@@ -161,30 +138,16 @@
   "src/ui/day/footer.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 2
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 5
     }
   },
   "src/ui/day/notify-control.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
-      "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
       "count": 1
     }
   },
   "src/ui/day/timeline-view.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 2
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 7
-    }
-  },
-  "src/ui/desk/desk.tsx": {
-    "@typescript-eslint/unbound-method": {
-      "count": 1
     }
   },
   "src/ui/everything/addressed.ts": {
@@ -216,9 +179,6 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/unbound-method": {
-      "count": 7
-    },
     "threva/no-comments": {
       "count": 12
     }
@@ -245,9 +205,6 @@
   "src/ui/everything/margin.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 3
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 9
     }
   },
   "src/ui/everything/moves.ts": {
@@ -276,9 +233,6 @@
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
     },
-    "@typescript-eslint/unbound-method": {
-      "count": 5
-    },
     "no-empty": {
       "count": 1
     },
@@ -295,9 +249,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 2
     },
     "threva/no-comments": {
       "count": 2
@@ -321,9 +272,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 3
     },
     "threva/no-comments": {
       "count": 3
@@ -392,9 +340,6 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 5
     },
-    "@typescript-eslint/unbound-method": {
-      "count": 5
-    },
     "threva/no-comments": {
       "count": 3
     }
@@ -416,9 +361,6 @@
     "@typescript-eslint/no-misused-promises": {
       "count": 6
     },
-    "@typescript-eslint/unbound-method": {
-      "count": 9
-    },
     "threva/no-comments": {
       "count": 1
     }
@@ -435,16 +377,10 @@
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
-      "count": 4
     }
   },
   "src/ui/studio/sparring.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "@typescript-eslint/unbound-method": {
       "count": 1
     },
     "threva/no-comments": {
