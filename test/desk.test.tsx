@@ -10,10 +10,11 @@ import type { StudioNote, StudioThread } from "../src/ui/api/types";
 import { budgetThread, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
+const client = createClient(async () => new Response("{}"));
 const render = (studio = studioList([budgetThread]), slug = budgetThread.slug, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
-      <Desk studio={studio} slug={slug} backLabel="Back" onBack={() => {}} now={NOW} />
+      <Desk client={client} studio={studio} slug={slug} backLabel="Back" onBack={() => {}} now={NOW} />
     </I18nProvider>,
   );
 
@@ -55,7 +56,7 @@ describe("the desk", () => {
     expect(html).toContain("1 d ago");
     expect(html).toContain("desk-card desk-open");
     expect(html).toContain("Ada Lovelace");
-    expect(html).toContain('href="https://example.org/brief"');
+    expect(html).toContain('data-desk-card="m1"');
     expect(html).not.toContain("March offsite");
   });
 

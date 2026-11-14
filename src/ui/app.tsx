@@ -63,14 +63,14 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
         {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} onOpenDesk={slug => setDesk({ slug, from: "day" })} />}
         {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => setDesk({ slug, from: "everything" })} /></div>}
       </div>
-      {desk && <DeskScreen slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => setDesk(null)} />}
+      {desk && <DeskScreen client={api} slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => setDesk(null)} />}
     </main>
   );
 }
 
-function DeskScreen({ slug, from, state, now, onBack }: { slug: string; from: Place; state: DeskState; now: number; onBack: () => void }) {
+function DeskScreen({ client, slug, from, state, now, onBack }: { client: DeskClient; slug: string; from: Place; state: DeskState & { refresh: () => void }; now: number; onBack: () => void }) {
   const { t } = useI18n();
-  return <Desk studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} />;
+  return <Desk client={client} refresh={state.refresh} studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} />;
 }
 
 export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, queue: given, onOpenDesk }: {

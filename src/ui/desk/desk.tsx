@@ -1,28 +1,46 @@
+import { Fragment, useEffect, useRef, useState } from "react";
+import type { DeskClient } from "../api/client";
 import type { StudioList, StudioThread } from "../api/types";
-import { safeHref } from "../api/safe-link";
-import { useI18n, type I18n } from "../i18n";
+import { QueueContext } from "../cards/act";
+import { useI18n } from "../i18n";
 import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
-import { materialCards, noteCards } from "./cards";
+import { useStudioAct } from "../studio/act";
+import { ago, materialCards, noteCards, openThing, type DeskSide } from "./cards";
+import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
 
-const MINUTE = 60_000;
+type Open = { left: string | null; right: string | null };
 
-export function ago(i18n: Pick<I18n, "t">, at: string, now: number): string {
-  const ms = now - Date.parse(at);
-  if (Number.isNaN(ms)) return at;
-  const minutes = Math.max(0, Math.floor(ms / MINUTE));
-  if (minutes < 1) return i18n.t("desk.ago.now");
-  if (minutes < 60) return i18n.t("desk.ago.m", { n: minutes });
-  if (minutes < 60 * 24) return i18n.t("desk.ago.h", { n: Math.floor(minutes / 60) });
-  return i18n.t("desk.ago.d", { n: Math.floor(minutes / 60 / 24) });
-}
+const CLOSED: Open = { left: null, right: null };
 
 export function findThread(studio: StudioList | null, slug: string): StudioThread | undefined {
   const data = studio?.studio;
   return data ? [...data.active, ...(data.parked ?? []), ...(data.closed ?? [])].find((thread) => thread.slug === slug) : undefined;
 }
 
-export function Desk({ studio, slug, loading = false, backLabel, onBack, now }: {
+/**
+ * The Studio desk: material parked on the left, the topic in the middle, the assistant's notes on the right.
+ * A parked card opens outwards, at full size and level with itself, and one card is open per side. The desk
+ * reads its acts through the queue's client, so a test can inject its own fetch.
+ */
+export function Desk({ client, refresh = () => {}, ...rest }: {
+  studio: StudioList | null;
+  slug: string;
+  loading?: boolean;
+  backLabel: string;
+  onBack: () => void;
+  now: number;
+  client: DeskClient;
+  refresh?: () => void;
+}) {
+  return (
+    <QueueContext.Provider value={{ client, refresh }}>
+      <DeskBody {...rest} />
+    </QueueContext.Provider>
+  );
+}
+
+function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
   studio: StudioList | null;
   slug: string;
   loading?: boolean;
@@ -32,7 +50,51 @@ export function Desk({ studio, slug, loading = false, backLabel, onBack, now }: 
 }) {
   const i18n = useI18n();
   const { t } = i18n;
+  const { busy, run } = useStudioAct();
   const thread = findThread(studio, slug);
+  const [open, setOpen] = useState<Open>(CLOSED);
+  const [placement, setPlacement] = useState<Record<string, OpenPlacement>>({});
+  const grid = useRef<HTMLDivElement | null>(null);
+
+  const anyOpen = open.left !== null || open.right !== null;
+
+  useEffect(() => {
+    if (!anyOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(CLOSED);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [anyOpen]);
+
+  // A parked card keeps its place, and its opened card stays level with it: measure again after every change
+  // of what is parked and whenever the window is resized.
+  useEffect(() => {
+    const root = grid.current;
+    if (!root || !anyOpen) return;
+    const measure = () => {
+      const desk = root.getBoundingClientRect();
+      const middle = root.querySelector('[data-desk="middle"]')?.getBoundingClientRect();
+      if (!middle) return;
+      const parked = [...root.querySelectorAll<HTMLElement>("[data-desk-card]")];
+      const next: Record<string, OpenPlacement> = {};
+      for (const [side, id] of [["left", open.left], ["right", open.right]] as [DeskSide, string | null][]) {
+        if (id === null) continue;
+        const twin = parked.find((card) => card.getAttribute("data-desk-card") === id);
+        if (!twin) continue;
+        next[id] = openPlacement({ desk, card: twin.getBoundingClientRect(), middle, side });
+      }
+      setPlacement((previous) => {
+        const ids = Object.keys(next);
+        const same = ids.length === Object.keys(previous).length && ids.every((id) => samePlacement(previous[id], next[id]));
+        return same ? previous : next;
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [anyOpen, open.left, open.right, thread]);
+
   const back = <button type="button" className="btn quiet" onClick={onBack}>{backLabel}</button>;
   if (!thread) {
     return <section className="desk" aria-label={t("desk.label")}>
@@ -43,21 +105,49 @@ export function Desk({ studio, slug, loading = false, backLabel, onBack, now }: 
   const name = t("studio.assistant");
   const material = materialCards(thread.material ?? []);
   const notes = noteCards(thread.notes);
+  const left = openThing(thread, open.left);
+  const right = openThing(thread, open.right);
+
+  // Opening a second card on a side puts the first back, and a second click on the open card puts it back.
+  const toggle = (side: DeskSide, id: string) => {
+    setPlacement((previous) => {
+      if (!(id in previous)) return previous;
+      const next = { ...previous };
+      delete next[id];
+      return next;
+    });
+    setOpen((current) => ({ ...current, [side]: current[side] === id ? null : id }));
+  };
+  const close = (side: DeskSide) => setOpen((current) => ({ ...current, [side]: null }));
+  const frame = (id: string) => {
+    const placed = placement[id];
+    return placed?.mode === "out" ? { left: placed.left, top: placed.top, width: placed.width } : undefined;
+  };
+  const placed = (id: string) => (placement[id] ? "true" : "false");
+
   return <section className="desk" aria-label={t("desk.label")}>
     <div className="desk-bar">{back}</div>
-    <div className="desk-grid">
+    <div className="desk-grid" ref={grid}>
       <aside className="desk-side desk-material" aria-label={t("studio.material")}>
         <span className="eyebrow">{t("studio.material")}</span>
         {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
-        {material.map((card, index) => {
-          const href = safeHref(card.href);
-          return <div key={index} className="desk-card">
-            {href ? <a className="lk" href={href} target="_blank" rel="noreferrer">{card.label}</a> : <span>{card.label}</span>}
+        {material.map((card) => <Fragment key={card.id}>
+          <button
+            type="button"
+            className={`desk-card${open.left === card.id ? " desk-held" : ""}`}
+            data-desk-card={card.id}
+            aria-expanded={open.left === card.id}
+            onClick={() => toggle("left", card.id)}
+          >
+            <span>{card.label}</span>
             <span className="faint">{card.kind}</span>
-          </div>;
-        })}
+          </button>
+          {left?.id === card.id && <div className="desk-opened desk-opened-left" data-desk-opened="left" data-placed={placed(card.id)} style={frame(card.id)}>
+            <OpenCard thing={left} slug={slug} now={now} onClose={() => close("left")} run={run} busy={busy} />
+          </div>}
+        </Fragment>)}
       </aside>
-      <div className="desk-topic stack">
+      <div className="desk-topic stack" data-desk="middle">
         <h2 className="stq">{thread.question}</h2>
         <p className="desk-lead">{thread.stand || t("studio.stand.none")}</p>
         {orderedThreadEntries(thread).map((entry, index) => <div key={`${entry.author}-${entry.at}-${index}`} className={`thread-entry${entry.author === "assistant" ? " thread-kept" : ""}`}>
@@ -67,10 +157,21 @@ export function Desk({ studio, slug, loading = false, backLabel, onBack, now }: 
       <aside className="desk-side desk-notes" aria-label={t("desk.notes")}>
         <span className="eyebrow">{t("desk.notes")}</span>
         {notes.length === 0 && <span className="faint">{t("desk.notes.none")}</span>}
-        {notes.map((card) => <div key={card.at} className={`desk-card desk-${card.strength}`}>
-          <span>{card.sentence}</span>
-          <span className="faint">{ago(i18n, card.at, now)}</span>
-        </div>)}
+        {notes.map((card) => <Fragment key={card.id}>
+          <button
+            type="button"
+            className={`desk-card desk-${card.strength}${open.right === card.id ? " desk-held" : ""}`}
+            data-desk-card={card.id}
+            aria-expanded={open.right === card.id}
+            onClick={() => toggle("right", card.id)}
+          >
+            <span>{card.sentence}</span>
+            <span className="faint">{ago(i18n, card.at, now)}</span>
+          </button>
+          {right?.id === card.id && <div className="desk-opened desk-opened-right" data-desk-opened="right" data-placed={placed(card.id)} style={frame(card.id)}>
+            <OpenCard thing={right} slug={slug} now={now} onClose={() => close("right")} run={run} busy={busy} />
+          </div>}
+        </Fragment>)}
       </aside>
     </div>
   </section>;
