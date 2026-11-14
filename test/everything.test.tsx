@@ -96,7 +96,7 @@ test("write client sends UUID, date, revision and the command over HTTP, and pre
     { op: "outline-complete", revision: 12, id: "due", confirm: true } as const,
     { op: "outline-reopen", revision: 12, id: "done", confirm: true } as const,
   ]) {
-    expect(await client.changeOutline(DATE, command)).toEqual({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
+    expect(await client.changeMyDay(DATE, command)).toEqual({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
     const call = calls.at(-1)!;
     expect(call.url).toBe("/api/desk/my-day");
     expect(call.init?.method).toBe("POST");

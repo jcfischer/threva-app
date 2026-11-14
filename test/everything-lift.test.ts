@@ -43,7 +43,7 @@ function client(results: ({ ok: true } | { ok: false; message: string | null })[
   const commands: OutlineCommand[] = [];
   return {
     commands,
-    changeOutline: async (_date: string, command: OutlineCommand) => {
+    changeMyDay: async (_date: string, command: OutlineCommand) => {
       commands.push(command);
       const next = results.shift()!;
       return next.ok ? { ok: true as const, data: { view: view(10 + commands.length) } } : { ok: false as const, message: next.message, status: 400 };

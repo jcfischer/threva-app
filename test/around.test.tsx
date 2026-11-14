@@ -7,7 +7,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { around } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
 import { QueueBody } from "../src/ui/queue/queue-view";
-import { item, NOW, studio, thread, view } from "./fixtures/desk";
+import { DAY, item, NOW, studio, thread, view } from "./fixtures/desk";
 
 const MIN = 60 * 1000;
 
@@ -54,7 +54,7 @@ describe("around", () => {
     const ended = view({ today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
     expect(around(buildQueue(ended, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "after", title: "Board call" });
     expect(around(buildQueue(view(), studio(thread("s1", "open", false)), EMPTY_SESSION, NOW)).why).toEqual({ kind: "thread" });
-    const task = view({ myDay: { items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] } });
+    const task = view({ myDay: { date: DAY, items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] } });
     expect(around(buildQueue(task, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "task" });
   });
 

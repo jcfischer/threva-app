@@ -61,9 +61,9 @@ describe("mail in the queue", () => {
     }
   });
 
-  test("keep as a task is offered only with a fingerprint, and a suspicious mail is marked", () => {
+  test("a mail without a fingerprint offers no task, and a suspicious mail is marked", () => {
     const html = wrap(<MailCard item={item({ key: "m", kind: "mail", suspicious: true })} initialPanel="ask" />);
-    expect(html).not.toContain("Keep as a task");
+    expect(html).not.toContain("Make it a task");
     expect(html).toContain("Looks suspicious");
   });
 

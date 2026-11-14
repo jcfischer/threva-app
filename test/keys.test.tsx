@@ -6,14 +6,14 @@ import type { DeskView } from "../src/ui/api/types";
 import { I18nProvider, createI18n } from "../src/ui/i18n";
 import { keyMap } from "../src/ui/queue/keys";
 import { buildQueue, EMPTY_SESSION, pin } from "../src/ui/queue/order";
-import { NOW, item, studio, sweep, thread, view } from "./fixtures/desk";
+import { DAY, NOW, item, studio, sweep, thread, view } from "./fixtures/desk";
 
 const group = sweep({ mails: [{ key: "m1", from: "News", subject: "Issue" }] });
 const task = { task: { id: "todo", title: "Write the report" }, areaTitle: "Work" };
 const ended = { key: "ended", kind: "meeting" as const, title: "Board call", at: NOW - 60 * 60_000, end: NOW - 5 * 60_000 };
 const desk = view({
   items: [item({ key: "soon", kind: "meeting" }), item({ key: "agent", kind: "decision" }), item({ key: "mail", kind: "mail" }), item({ key: "item", kind: "sensor" })],
-  today: [ended], mailSweeps: [group], myDay: { items: [task] },
+  today: [ended], mailSweeps: [group], myDay: { date: DAY, items: [task] },
 });
 
 const render = (data: DeskView, key?: string, locale: "en" | "de" = "en") => renderToStaticMarkup(
@@ -26,7 +26,7 @@ describe("front card key map", () => {
   const queue = buildQueue(desk, studio(thread("waiting", "open", false)), EMPTY_SESSION, NOW);
 
   test("Enter completes a task and lets a sweep go with the same Desk requests as their buttons", () => {
-    expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", path: "/api/desk/my-day", body: { op: "done", id: "todo" } });
+    expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", myDay: { op: "done", id: "todo" } });
     expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", path: "/api/desk/mail", body: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
   });
 

@@ -6,7 +6,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION, openStudio, pin, skip } from "../src/ui/queue/order";
 import { QueueBody } from "../src/ui/queue/queue-view";
 import { loadDesk } from "../src/ui/queue/use-desk";
-import { item, NOW, studio, thread, view } from "./fixtures/desk";
+import { DAY, item, NOW, studio, thread, view } from "./fixtures/desk";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -17,7 +17,7 @@ describe("buildQueue", () => {
       item({ key: "fresh", kind: "sensor", score: 2, since: NOW - HOUR }),
       item({ key: "agent", kind: "agent-blocked", score: 1 }),
     ],
-    myDay: { items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] },
+    myDay: { date: DAY, items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] },
   });
 
   test("orders waiting agents, waiting threads, fresh items, other items, then today's list", () => {

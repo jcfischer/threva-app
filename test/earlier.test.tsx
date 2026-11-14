@@ -5,7 +5,7 @@ import { buildEarlier, closedToday, doneToday, winsToday, type EarlierLine } fro
 import { TimelineView } from "../src/ui/day/timeline-view";
 import type { Clock } from "../src/ui/day/timeline";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";
-import { view } from "./fixtures/desk";
+import { DAY, view } from "./fixtures/desk";
 import { closedThread } from "./fixtures/studio";
 
 process.env.TZ = "Europe/Zurich";
@@ -102,12 +102,12 @@ describe("what already happened today", () => {
   });
 
   test("the block lists each win by title, with no time", () => {
-    const wins = winsToday(view({ myDay: { items: [], wins: [{ taskId: "t1", title: "Write the report" }, { taskId: "t2", title: "Send the invoice" }] } }));
+    const wins = winsToday(view({ myDay: { date: DAY, items: [], wins: [{ taskId: "t1", title: "Write the report" }, { taskId: "t2", title: "Send the invoice" }] } }));
     expect(wins).toEqual([
       { key: "win:t1", kind: "win", text: "Write the report", ok: true },
       { key: "win:t2", kind: "win", text: "Send the invoice", ok: true },
     ]);
-    const placed = buildEarlier(view({ myDay: { items: [task("t")], wins: [{ taskId: "t1", title: "Write the report" }] } }), null, CLOCK);
+    const placed = buildEarlier(view({ myDay: { date: DAY, items: [task("t")], wins: [{ taskId: "t1", title: "Write the report" }] } }), null, CLOCK);
     expect(placed.block.map((l) => [l.kind, l.at])).toEqual([["win", undefined]]);
   });
 
@@ -121,14 +121,14 @@ describe("what already happened today", () => {
   });
 
   test("nothing that happened today leaves the block empty", () => {
-    expect(buildEarlier(view({ today: day, myDay: { items: [task("t")] } }), studioOf([closed("older", "2026-11-12")]), CLOCK).block).toEqual([]);
+    expect(buildEarlier(view({ today: day, myDay: { date: DAY, items: [task("t")] } }), studioOf([closed("older", "2026-11-12")]), CLOCK).block).toEqual([]);
   });
 });
 
 describe("the timeline with earlier today", () => {
   const happened = view({
     today: day,
-    myDay: { items: [], wins: [{ taskId: "w", title: "Write the report" }] },
+    myDay: { date: DAY, items: [], wins: [{ taskId: "w", title: "Write the report" }] },
     autonomy: { done: [done("before", "07:00"), done("early", "08:30")] },
   });
   const studio = studioOf([closed("budget", "2026-11-13", { question: "What goes into next year's budget?" })]);
@@ -178,7 +178,7 @@ describe("the timeline with earlier today", () => {
   });
 
   test("nothing that happened today leaves the timeline as it was", () => {
-    const html = render(view({ today: day, myDay: { items: [] } }), null);
+    const html = render(view({ today: day, myDay: { date: DAY, items: [] } }), null);
     expect(html).not.toContain("Earlier today");
     expect(html).not.toContain('class="happened"');
     expect(html).toContain("Meeting a");
@@ -204,7 +204,7 @@ describe("the timeline with earlier today", () => {
 test("the recorded thread closed today renders with its question", () => {
   const clock: Clock = { now: Date.parse("2026-11-14T10:00:00+01:00"), evening: Date.parse("2026-11-14T18:00:00+01:00") };
   const html = render(
-    view({ myDay: { items: [], wins: [{ taskId: "t1", title: "Write the report" }] } }),
+    view({ myDay: { date: DAY, items: [], wins: [{ taskId: "t1", title: "Write the report" }] } }),
     studioOf([closedThread]),
     clock,
   );

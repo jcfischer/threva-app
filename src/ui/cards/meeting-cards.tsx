@@ -3,8 +3,8 @@ import { useState } from "react";
 import { captureText, NOT_A_CARD } from "../api/capture";
 import type { DeskEvent, DeskItem } from "../api/types";
 import { useI18n } from "../i18n";
-import { useQueue } from "./act";
-import { Card } from "./parts";
+import { canMakeTask, useAct, useQueue } from "./act";
+import { Card, ErrorLine, MakeTaskButton } from "./parts";
 
 function When({ event }: { event: DeskEvent }) {
   const { t, time } = useI18n();
@@ -14,6 +14,8 @@ function When({ event }: { event: DeskEvent }) {
 
 export function MeetingSoonCard({ item, event }: { item: DeskItem; event: DeskEvent | null }) {
   const { t } = useI18n();
+  const card = useAct();
+  const plan = canMakeTask(item) && card.canChangeMyDay;
   const join = safeHref(item.actions.find((a) => a.id === "open" && a.url)?.url) ?? safeHref(event?.url);
   return (
     <Card eyebrow={t("meeting.soon.eyebrow")} pill={<span className="pill wait">{t("meeting.soon.pill")}</span>}>
@@ -21,13 +23,17 @@ export function MeetingSoonCard({ item, event }: { item: DeskItem; event: DeskEv
       {event && <When event={event} />}
       {event?.note && !event.online && <span className="faint">{event.note}</span>}
       <span className="faint">{item.why}</span>
-      {join && (
+      {(join || plan) && (
         <div className="row">
-          <a className="btn pri" href={join} target="_blank" rel="noreferrer">
-            {t("meeting.soon.join")}
-          </a>
+          {join && (
+            <a className="btn pri" href={join} target="_blank" rel="noreferrer">
+              {t("meeting.soon.join")}
+            </a>
+          )}
+          <MakeTaskButton item={item} act={card} />
         </div>
       )}
+      <ErrorLine error={card.error} />
     </Card>
   );
 }

@@ -49,7 +49,9 @@ export interface DeskItem {
   suggestion?: string;
   eventKey?: string;
   since?: number;
+  // Cortex sets todoFingerprint on every item it can move to My Day's Inbox, and readOnly on items that take no action.
   todoFingerprint?: string;
+  readOnly?: boolean;
   question?: { condition: string | null; reason: string };
   explanation?: { sentence: string; choices: RulingChoice[] };
   reply?: { to: string; subject: string };
@@ -112,7 +114,7 @@ export interface DeskView {
   assistantName?: string;
   items: DeskItem[];
   today: DeskEvent[];
-  myDay?: { items: TodayTask[]; wins?: TodayWin[] };
+  myDay?: { date: string; items: TodayTask[]; wins?: TodayWin[] };
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
   autonomy?: { done: DoneEntry[] };
@@ -187,6 +189,19 @@ export type OutlineCommand =
   | { op: "outline-move"; revision: number; id: string; parent: string; index: number }
   | { op: "outline-edit"; revision: number; id: string; details: OutlineDetails; yes: boolean }
   | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };
+
+// Every change Threva makes to My Day. `todo` moves a Desk item into today's Inbox.
+export type MyDayCommand =
+  | OutlineCommand
+  | { op: "todo"; key: string; fingerprint: string }
+  | { op: "done"; id: string };
+
+// What Cortex answers to a My Day change. `undo` is a receipt for `op: "undo"`; Cortex returns none for `todo`.
+export interface MyDayChange {
+  view: MyDayOutline;
+  undo?: string;
+  notice?: string;
+}
 
 export interface RoutineView {
   installed: { title: string }[];

@@ -5,7 +5,7 @@ import { createClient } from "../src/ui/api/client";
 import type { DeskView } from "../src/ui/api/types";
 import { inboxCard, meetingCard } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
-import { NOW, item, sweep, view } from "./fixtures/desk";
+import { DAY, NOW, item, sweep, view } from "./fixtures/desk";
 
 const MIN = 60_000;
 const group = sweep();
@@ -17,7 +17,7 @@ const desk = view({
     { key: "later", kind: "meeting", title: "Later meeting", at: NOW + 120 * MIN, end: NOW + 150 * MIN },
   ],
   mailSweeps: [group],
-  myDay: { items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
+  myDay: { date: DAY, items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
 });
 
 const render = (data: DeskView = desk, session: Session = EMPTY_SESSION, now = NOW, dismissed: string[] = []) => renderToStaticMarkup(

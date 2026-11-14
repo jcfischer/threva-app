@@ -33,7 +33,7 @@ export function withoutSelection(page: string, from: number, to: number): string
 }
 
 export interface LiftRequest {
-  client: Pick<DeskClient, "changeOutline">;
+  client: Pick<DeskClient, "changeMyDay">;
   date: string;
   revision: number;
   parent: OutlineRow;
@@ -53,10 +53,10 @@ export type LiftOutcome =
 export async function liftSelection({ client, date, revision, parent, page, from, to, fallback }: LiftRequest): Promise<LiftOutcome> {
   const title = liftTitle(page.slice(from, to));
   if (!title) return { state: "empty" };
-  const added = await client.changeOutline(date, { op: "outline-add", revision, parent: parent.id, title, kind: "task" });
+  const added = await client.changeMyDay(date, { op: "outline-add", revision, parent: parent.id, title, kind: "task" });
   if (!added.ok) return { state: "refused", message: added.message ?? fallback };
   const next = withoutSelection(page, from, to);
-  const saved = await client.changeOutline(date, { op: "outline-edit", revision: added.data.view.revision, id: parent.id, details: detailsOf(parent, date, next), yes: false });
+  const saved = await client.changeMyDay(date, { op: "outline-edit", revision: added.data.view.revision, id: parent.id, details: detailsOf(parent, date, next), yes: false });
   if (saved.ok) return { state: "lifted", title, page: next, view: saved.data.view };
   return { state: "kept", title, page: next, message: saved.message ?? fallback, view: added.data.view };
 }

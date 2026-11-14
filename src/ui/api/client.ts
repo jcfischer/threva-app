@@ -1,4 +1,4 @@
-import type { DeskView, MailRules, MyDayOutline, OutlineCommand, StudioList } from "./types";
+import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioList } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
 
@@ -36,12 +36,15 @@ function jsonPost<T>(fetchImpl: Fetch, path: string, body: unknown): Promise<Res
   return call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 }
 
+const MY_DAY = "/api/desk/my-day";
+
 export interface DeskClient {
   desk(): Promise<Result<DeskView>>;
   studio(): Promise<Result<StudioList>>;
   rules(): Promise<Result<MailRules>>;
   myDay(): Promise<Result<MyDayOutline>>;
-  changeOutline(date: string, command: OutlineCommand): Promise<Result<{ view: MyDayOutline }>>;
+  // The one way to change My Day: Cortex takes the day's date, a fresh request id and the command.
+  changeMyDay(date: string, command: MyDayCommand): Promise<Result<MyDayChange>>;
   get<T = Record<string, unknown>>(path: string): Promise<Result<T>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
 }
@@ -51,8 +54,8 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     desk: () => call<DeskView>(fetchImpl, "/api/desk"),
     studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
     rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
-    myDay: () => call<MyDayOutline>(fetchImpl, "/api/desk/my-day"),
-    changeOutline: (date, command) => jsonPost<{ view: MyDayOutline }>(fetchImpl, "/api/desk/my-day", { date, requestId: crypto.randomUUID(), command }),
+    myDay: () => call<MyDayOutline>(fetchImpl, MY_DAY),
+    changeMyDay: (date, command) => jsonPost<MyDayChange>(fetchImpl, MY_DAY, { date, requestId: crypto.randomUUID(), command }),
     get: <T,>(path: string) => call<T>(fetchImpl, path),
     post: <T,>(path: string, body: unknown) =>
       jsonPost<T>(fetchImpl, path, body),

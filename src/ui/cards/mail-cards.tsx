@@ -9,7 +9,7 @@ import {
 import { useI18n, type TextKey } from "../i18n";
 import { sweepEnter } from "../queue/keys";
 import { useAct } from "./act";
-import { Card, ErrorLine } from "./parts";
+import { Card, ErrorLine, MakeTaskButton } from "./parts";
 
 function mailLink(item: DeskItem): string | undefined {
   return item.detail.links.map((l) => safeHref(l.url)).find(Boolean) ?? item.actions.map((a) => safeHref(a.url)).find(Boolean);
@@ -66,7 +66,8 @@ export interface MailCardProps {
 
 export function MailCard({ item, learning = false, initialPanel = null, initialProposal = null }: MailCardProps) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const card = useAct();
+  const { busy, error, run } = card;
   const [panel, setPanel] = useState<Panel>(initialPanel);
   const [proposal, setProposal] = useState<StudioProposal | null>(initialProposal);
   const [snoozing, setSnoozing] = useState(false);
@@ -104,10 +105,6 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
   const saveDraft = async () => {
     const result = await run("/api/desk/mail", requests.draft(item.key, body));
     if (result.ok) finish(undefined, t("card.mail.drafted"));
-  };
-  const keep = async (fingerprint: string) => {
-    const result = await run<{ message?: string }>("/api/desk/my-day", requests.keep(item.key, fingerprint));
-    if (result.ok) finish(result.data.message, t("card.mail.kept"));
   };
   const snooze = async (kind: SnoozeTime) => {
     const result = await run<{ message?: string }>("/api/desk/mail", requests.snooze(item.key, kind));
@@ -156,6 +153,7 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
             {t(OUTCOME_LABEL[outcome])}
           </button>
         ))}
+        <MakeTaskButton item={item} act={card} />
         <OpenInMail item={item} />
         {more.map((action) => (
           <button key={action} type="button" className="btn quiet" disabled={busy} onClick={() => void act(action)}>
@@ -215,11 +213,6 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
       )}
       {panel === "ask" && (
         <div className="row">
-          {item.todoFingerprint && (
-            <button type="button" className="btn" disabled={busy} onClick={() => void keep(item.todoFingerprint ?? "")}>
-              {t("card.mail.keep")}
-            </button>
-          )}
           {snoozing ? (
             SNOOZE_TIMES.map((kind) => (
               <button key={kind} type="button" className="btn" disabled={busy} onClick={() => void snooze(kind)}>
@@ -244,7 +237,8 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
 
 export function RuleOfferCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const card = useAct();
+  const { busy, error, run } = card;
   const answer = (op: "approve" | "later" | "never") => run("/api/desk/mail/rules", requests.rule(item.key, op));
   return (
     <Card eyebrow={t("card.rule.eyebrow")}>
@@ -255,6 +249,7 @@ export function RuleOfferCard({ item }: { item: DeskItem }) {
         <button type="button" className="btn pri" disabled={busy} onClick={() => void answer("approve")}>
           {t("card.rule.yes")}
         </button>
+        <MakeTaskButton item={item} act={card} />
         <button type="button" className="btn" disabled={busy} onClick={() => void answer("later")}>
           {t("card.rule.later")}
         </button>
@@ -299,7 +294,8 @@ const WAITING_LABEL: Record<WaitingAction, TextKey> = { "waiting.snooze": "card.
 // A sent mail that still waits for an answer. It offers the waiting actions Cortex lists and shows Cortex's answer.
 export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: boolean }) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const card = useAct();
+  const { busy, error, run } = card;
   const [done, setDone] = useState<string | null>(null);
   const answer = async (action: WaitingAction) => {
     setDone(null);
@@ -315,6 +311,7 @@ export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: b
             {t(WAITING_LABEL[action])}
           </button>
         ))}
+        <MakeTaskButton item={item} act={card} />
         <OpenInMail item={item} />
       </div>
       {done && <span className="faint">{done}</span>}

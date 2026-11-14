@@ -4,7 +4,7 @@ import { type Root } from "react-dom/client";
 import { DayView } from "../src/ui/app";
 import { createClient } from "../src/ui/api/client";
 import { EMPTY_SESSION, pin } from "../src/ui/queue/order";
-import { NOW, item, sweep, view } from "./fixtures/desk";
+import { DAY, NOW, item, sweep, view } from "./fixtures/desk";
 import { mountDom } from "./fixtures/dom";
 
 describe("front-card keyboard events", () => {
@@ -24,7 +24,7 @@ describe("front-card keyboard events", () => {
   async function render(front: "task" | "sweep") {
     const desk = view({
       items: [item({ key: "mail", kind: "mail", title: "Workshop dates" })],
-      myDay: { items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
+      myDay: { date: DAY, items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
       mailSweeps: [sweep()],
     });
     const client = createClient(async (_url, init) => {
@@ -63,7 +63,7 @@ describe("front-card keyboard events", () => {
     test(`${front}: Enter on the page runs the front act once`, async () => {
       await render(front);
       expect((await press(document.body)).defaultPrevented).toBe(true);
-      expect(writes).toEqual([front === "task" ? { op: "done", id: "task" } : { action: "sweep", sweep: "news", keys: [], target: "archive" }]);
+      expect(writes).toEqual([front === "task" ? { date: DAY, requestId: expect.stringMatching(/^[0-9a-f-]{36}$/), command: { op: "done", id: "task" } } : { action: "sweep", sweep: "news", keys: [], target: "archive" }]);
     });
   }
 

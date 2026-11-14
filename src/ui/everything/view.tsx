@@ -78,7 +78,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const latest = useRef({ client, onChange, t });
   const [saver] = useState(() => new NoteSaver({
     save: async (row, note, revision, date) => {
-      const result = await latest.current.client.changeOutline(date, { op: "outline-edit", revision, id: row.id, details: detailsOf(row, date, note), yes: false });
+      const result = await latest.current.client.changeMyDay(date, { op: "outline-edit", revision, id: row.id, details: detailsOf(row, date, note), yes: false });
       if (!result.ok) return { ok: false, message: result.message ?? latest.current.t("error.network") };
       setDay(result.data.view);
       latest.current.onChange();
@@ -143,7 +143,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
     setBusy(true);
     setError(null);
     try {
-      const result = await client.changeOutline(snapshot.date, command);
+      const result = await client.changeMyDay(snapshot.date, command);
       if (result.ok) {
         setDay(result.data.view);
         onChange();

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { safeHref } from "../api/safe-link";
-import type { DeskMention } from "../api/types";
+import type { DeskItem, DeskMention } from "../api/types";
 import { useI18n } from "../i18n";
-import type { ActError } from "./act";
+import { canMakeTask, type ActError, type useAct } from "./act";
 
 export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: ReactNode; children: ReactNode }) {
   return (
@@ -47,5 +47,17 @@ export function ErrorLine({ error }: { error: ActError }) {
     <span className="faint" role="alert">
       {error.message ?? t("error.network")}
     </span>
+  );
+}
+
+// "Make it a task": one click moves the item into today's Inbox in My Day. It shows only on items Cortex lets the
+// person move, and only when the Desk carried the My Day date the change needs.
+export function MakeTaskButton({ item, act }: { item: DeskItem; act: Pick<ReturnType<typeof useAct>, "busy" | "makeTask" | "canChangeMyDay"> }) {
+  const { t } = useI18n();
+  if (!canMakeTask(item) || !act.canChangeMyDay) return null;
+  return (
+    <button type="button" className="btn" disabled={act.busy} onClick={() => void act.makeTask(item)}>
+      {t("card.task.make")}
+    </button>
   );
 }
