@@ -19,7 +19,7 @@ export function useStudioAct() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ActError>(null);
   const last = useRef<{ key: string; id: string } | null>(null);
-  async function run(act: StudioAct): Promise<boolean> {
+  async function run(act: StudioAct): Promise<Result<{ message?: string }>> {
     const key = JSON.stringify(act);
     const id = last.current?.key === key ? last.current.id : newRequestId();
     setBusy(true);
@@ -29,7 +29,7 @@ export function useStudioAct() {
     last.current = unsure(result) ? { key, id } : null;
     if (result.ok) refresh();
     else setError({ message: result.message });
-    return result.ok;
+    return result;
   }
   return { busy, error, run };
 }

@@ -4,7 +4,7 @@ import type { DeskEvent, TodayTask } from "../src/ui/api/types";
 import { buildTimeline, type Clock } from "../src/ui/day/timeline";
 import { TimelineView } from "../src/ui/day/timeline-view";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";
-import { NOW } from "./fixtures/desk";
+import { NOW, view } from "./fixtures/desk";
 
 process.env.TZ = "Europe/Zurich";
 const at = (hhmm: string) => Date.parse(`2026-11-13T${hhmm}:00+01:00`);
@@ -16,7 +16,7 @@ const task = (id: string): TodayTask => ({ task: { id, title: `Task ${id}` }, ar
 const render = (today: DeskEvent[], tasks: TodayTask[], clock: Clock = CLOCK, locale: Locale = "en") =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
-      <TimelineView today={today} tasks={tasks} clock={clock} />
+      <TimelineView view={view({ today, myDay: { items: tasks } })} clock={clock} />
     </I18nProvider>,
   );
 

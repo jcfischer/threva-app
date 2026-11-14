@@ -61,7 +61,7 @@ export function DayView({ client, state, session, setSession, now, dismissed = [
     <div className="daygrid one">
       <QueueView client={client} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={onDismissMeeting} />
       {state.view && <aside className="rail">
-        <TimelineView today={state.view.today} tasks={state.view.myDay?.items ?? []} clock={clockAt(now)} queue={queue} onPull={onPull} />
+        <TimelineView view={state.view} studio={state.studio} clock={clockAt(now)} queue={queue} onPull={onPull} />
         <Footer view={state.view} now={now} queue={queue} onPull={onPull} />
       </aside>}
     </div>

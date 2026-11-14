@@ -42,6 +42,7 @@ export interface DeskClient {
   rules(): Promise<Result<MailRules>>;
   myDay(): Promise<Result<MyDayOutline>>;
   changeOutline(date: string, command: OutlineCommand): Promise<Result<{ view: MyDayOutline }>>;
+  get<T = Record<string, unknown>>(path: string): Promise<Result<T>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
 }
 
@@ -52,6 +53,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
     myDay: () => call<MyDayOutline>(fetchImpl, "/api/desk/my-day"),
     changeOutline: (date, command) => jsonPost<{ view: MyDayOutline }>(fetchImpl, "/api/desk/my-day", { date, requestId: crypto.randomUUID(), command }),
+    get: <T,>(path: string) => call<T>(fetchImpl, path),
     post: <T,>(path: string, body: unknown) =>
       jsonPost<T>(fetchImpl, path, body),
   };

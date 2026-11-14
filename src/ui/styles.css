@@ -266,3 +266,8 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .proto-ctl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
 .timeline .slot{grid-template-columns:64px minmax(0,1fr)}
 .timeline .tm{white-space:nowrap}
+.earlier{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13.5px;min-width:0}
+.happened{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:13px}
+.earlier .line,.happened .line{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;min-width:0}
+.earlier .line.failed,.happened .line.failed{color:var(--wait)}
+.happened details summary{font-size:12.5px}

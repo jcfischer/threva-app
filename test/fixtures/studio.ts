@@ -1,8 +1,12 @@
-import type { StudioList, StudioThread } from "../../src/ui/api/types";
+import type { StudioList, StudioThread, StudioThinking } from "../../src/ui/api/types";
 
 // Recorded from the dev stack's `GET /api/desk/studio` (thread budget-next-year), with a stand proposal, a kept idea
-// and a relation note added in the shape of Cortex's docs/desk-studio.md sample.
+// and a relation note added in the shape of Cortex's docs/desk-studio.md sample, and the per-thread `thinking`
+// Cortex adds to every thread (cortex#3613) in its open state.
+export const openThinking: Extract<StudioThinking, { kind: "ready" }> = { kind: "ready", budget: "open", reason: null, runs: [] };
+
 export const budgetThread: StudioThread = {
+  thinking: openThinking,
   slug: "budget-next-year",
   state: "active",
   thinkTonight: false,
@@ -46,4 +50,31 @@ export const budgetThread: StudioThread = {
   ],
 };
 
-export const studioList = (active: StudioThread[], parked: StudioThread[] = []): StudioList => ({ studio: { active, parked } });
+// Recorded from the dev stack's `GET /api/desk/studio` after a close act closed the budget thread as dropped, with the
+// fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp.
+export const closedThread: StudioThread = {
+  slug: "budget-next-year",
+  state: "closed",
+  closed: "2026-11-14",
+  outcome: "dropped",
+  question: "What goes into next year's budget?",
+  stand: "Keep the team as it is and cut travel.",
+  notes: [
+    {
+      at: "2026-11-13T20:49:01Z",
+      trigger: "Sample thread",
+      kind: "note",
+      status: "open",
+      text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
+    },
+  ],
+  responses: [],
+  material: [
+    { kind: "person", label: "Ada Lovelace" },
+    { kind: "mail", label: "Budget for next year" },
+  ],
+};
+
+export const studioList = (active: StudioThread[], parked: StudioThread[] = [], closed: StudioThread[] = [], personas: string[] = []): StudioList => ({
+  studio: { personas, active, parked, closed },
+});

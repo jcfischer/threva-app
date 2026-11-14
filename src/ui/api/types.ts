@@ -63,6 +63,12 @@ export interface TodayTask {
   areaTitle: string;
 }
 
+// A task the day is done with. Cortex keeps no time for it.
+export interface TodayWin {
+  taskId: string;
+  title: string;
+}
+
 export interface MailSweepMail {
   key: string;
   from: string;
@@ -95,7 +101,7 @@ export interface DeskView {
   displayName: string | null;
   items: DeskItem[];
   today: DeskEvent[];
-  myDay?: { items: TodayTask[] };
+  myDay?: { items: TodayTask[]; wins?: TodayWin[] };
   mailSweeps?: MailSweep[];
   mailDigests?: MailSweep[];
   autonomy?: { done: DoneEntry[] };
@@ -178,20 +184,40 @@ export interface StudioMaterial {
 
 export type StudioOutcome = "decided" | "shipped" | "dropped";
 
+// A Studio thread's thinking availability, as Cortex reports it per thread. The reason is Cortex's own wording.
+export type ThinkingBudget = "open" | "spent" | "off";
+
+export interface StudioThinkingRun {
+  id: string;
+  mode: string;
+  status: "pending" | "failed";
+  reason: string;
+}
+
+export type StudioThinking =
+  | { kind: "unavailable"; reason: string }
+  | { kind: "ready"; budget: ThinkingBudget; reason: string | null; runs: StudioThinkingRun[] };
+
 export interface StudioThread {
   slug: string;
   state?: "active" | "parked" | "closed";
+  closed?: string;
+  outcome?: StudioOutcome;
   thinkTonight?: boolean;
   question: string;
   stand: string;
   notes: StudioNote[];
   responses: StudioResponse[];
   material?: StudioMaterial[];
+  thinking?: StudioThinking;
 }
 
 export interface StudioList {
-  studio: { active: StudioThread[]; parked?: StudioThread[] } | null;
+  studio: { personas?: string[]; active: StudioThread[]; parked?: StudioThread[]; closed?: StudioThread[] } | null;
 }
+
+// The sparring modes Cortex accepts: five fixed ones and one per configured persona.
+export type SparMode = "think" | "grill" | "other-side" | "red-team" | "first-principles" | `persona:${string}`;
 
 // The `POST /api/desk/studio/act` bodies Threva sends, without the request id.
 export type StudioAct =
@@ -200,6 +226,7 @@ export type StudioAct =
   | { act: "park"; thread: string }
   | { act: "unpark"; thread: string }
   | { act: "think"; thread: string; on: boolean }
+  | { act: "spar"; thread: string; mode: SparMode }
   | { act: "close"; thread: string; outcome: StudioOutcome; text: string; expect?: string; reviewOn?: string };
 
 export interface MailRule {

@@ -18,7 +18,12 @@ export interface StudioOpenState {
 
 const NO_STUDIO: StudioOpenState = { open: null, setOpen: () => {} };
 
-export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO }: { entry: Entry; onDismissMeeting: (key: string) => void; studio?: StudioOpenState }) {
+export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, personas = [] }: {
+  entry: Entry;
+  onDismissMeeting: (key: string) => void;
+  studio?: StudioOpenState;
+  personas?: readonly string[];
+}) {
   switch (entry.type) {
     case "soon":
       return <MeetingSoonCard item={entry.item} event={entry.event} />;
@@ -34,6 +39,7 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO }: { ent
           open={studio.open === entry.thread.slug}
           onOpen={() => studio.setOpen(entry.thread.slug)}
           onHide={() => studio.setOpen(null)}
+          personas={personas}
         />
       );
     case "item":
@@ -126,7 +132,13 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
       </div>
       {first ? (
         <>
-          <EntryCard key={first.k} entry={first} onDismissMeeting={onDismissMeeting} studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }} />
+          <EntryCard
+            key={first.k}
+            entry={first}
+            onDismissMeeting={onDismissMeeting}
+            studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }}
+            personas={state.studio?.studio?.personas ?? []}
+          />
           {keys && <div className="keyhint">
             {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
             <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
