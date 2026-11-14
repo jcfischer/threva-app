@@ -45,8 +45,8 @@ const held = item({ key: "mailrule:held:r1", kind: "mail-rule", actions: [act("m
 
 describe("outcome mapping", () => {
   test("maps what Cortex sends to one of the four outcomes", () => {
-    expect(suggestedOutcome(fixtures.fyi)).toBe("let-go");
-    expect(suggestedOutcome(fixtures.archive)).toBe("let-go");
+    expect(suggestedOutcome(fixtures.fyi)).toBe("archive");
+    expect(suggestedOutcome(fixtures.archive)).toBe("archive");
     expect(suggestedOutcome(fixtures.meeting)).toBe("attach");
     expect(suggestedOutcome(fixtures.reply)).toBe("draft");
   });
@@ -94,10 +94,10 @@ describe("mail card", () => {
 
   test("shows the four outcomes with the suggested one marked", () => {
     const html = render({ item: fixtures.reply });
-    for (const label of ["Let go", "Attach", "Draft a reply", "Ask me"]) expect(html).toContain(`>${label}</button>`);
+    for (const label of ["Archive", "Attach", "Draft a reply", "Ask me"]) expect(html).toContain(`>${label}</button>`);
     expect(html).toContain("Suggested: Draft a reply");
     expect(html).toContain('class="btn pri" aria-pressed="false">Draft a reply</button>');
-    expect(render({ item: fixtures.fyi }, "de")).toContain("Vorschlag: Weglegen");
+    expect(render({ item: fixtures.fyi }, "de")).toContain("Vorschlag: Archivieren");
   });
 
   test("an unclassified mail has no suggested outcome", () => {
@@ -142,7 +142,7 @@ describe("mail card", () => {
 
 describe("write requests", () => {
   test("build the bodies this slice sends, as hand-copied from desk-mail.ts and desk-mail-rules.ts (not checked against Cortex)", () => {
-    expect(requests.letGo("mail:1")).toEqual({ action: "move", key: "mail:1", target: "archive" });
+    expect(requests.move("mail:1", "archive")).toEqual({ action: "move", key: "mail:1", target: "archive" });
     expect(requests.propose("mail:1")).toEqual({ action: "studio.propose", key: "mail:1" });
     expect(requests.attach("mail:1", { thread: "t", reason: " fits ", threads: [{ slug: "t", question: "T?" }] }, "abcdefgh12")).toEqual({
       action: "studio.add",

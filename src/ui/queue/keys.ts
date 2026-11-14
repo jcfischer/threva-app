@@ -17,14 +17,15 @@ export function taskDone(task: TodayTask): EnterAct {
   return { label: "card.task.done", path: "/api/desk/my-day", body: { op: "done", id: task.task.id } };
 }
 
-export function sweepLetGo(sweep: MailSweep): EnterAct {
-  return { label: "card.sweep.letGo", path: "/api/desk/mail", body: { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target } };
+// A sweep that archives says so; a sweep to Junk or Trash keeps its own wording.
+export function sweepEnter(sweep: MailSweep): EnterAct {
+  return { label: sweep.target === "archive" ? "card.sweep.archive" : "card.sweep.letGo", path: "/api/desk/mail", body: { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target } };
 }
 
 export function keyMap(front: Entry | undefined): KeyMap | null {
   if (!front) return null;
   return {
-    enter: front.type === "task" ? taskDone(front.task) : front.type === "sweep" ? sweepLetGo(front.sweep) : null,
+    enter: front.type === "task" ? taskDone(front.task) : front.type === "sweep" ? sweepEnter(front.sweep) : null,
     esc: front.type === "after" ? { kind: "dismiss", label: "meeting.after.nothing" } : { kind: "skip", label: "queue.skip" },
   };
 }

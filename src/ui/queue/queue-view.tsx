@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import { QueueContext } from "../cards/act";
-import { MailCard, RuleOfferCard, SweepCard, UndoLine } from "../cards/mail-cards";
+import { MailCard, RuleOfferCard, SweepCard, UndoLine, WaitingCard } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
 import { StudioCard } from "../studio/card";
@@ -43,7 +43,7 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, persona
         />
       );
     case "item":
-      return <ItemCard item={entry.item} fresh={entry.fresh} />;
+      return entry.item.kind === "mail-waiting" ? <WaitingCard item={entry.item} fresh={entry.fresh} /> : <ItemCard item={entry.item} fresh={entry.fresh} />;
     case "mail":
       return <MailCard item={entry.item} learning={entry.learning} />;
     case "rule":

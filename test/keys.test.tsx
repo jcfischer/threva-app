@@ -27,7 +27,7 @@ describe("front card key map", () => {
 
   test("Enter completes a task and lets a sweep go with the same Desk requests as their buttons", () => {
     expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", path: "/api/desk/my-day", body: { op: "done", id: "todo" } });
-    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.letGo", path: "/api/desk/mail", body: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
+    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", path: "/api/desk/mail", body: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
   });
 
   test("all other cards have no Enter act; Esc skips except for after-meeting dismissal", () => {
@@ -46,7 +46,7 @@ describe("key hints under the front card", () => {
     const taskHtml = render(desk, "d:todo");
     expect(taskHtml).toContain('<div class="keyhint"><span><kbd>Enter</kbd> Done</span><span><kbd>Esc</kbd> Not now</span></div>');
     expect(taskHtml.indexOf('class="keyhint"')).toBeGreaterThan(taskHtml.indexOf("Write the report"));
-    expect(render(desk, "s:news")).toContain("<kbd>Enter</kbd> Let all go");
+    expect(render(desk, "s:news")).toContain("<kbd>Enter</kbd> Archive all");
     expect(render(desk, "a:ended")).toContain('<div class="keyhint"><span><kbd>Esc</kbd> Nothing to note</span></div>');
     expect(render(desk, "d:todo", "de")).toContain("<kbd>Enter</kbd> Erledigt");
   });
