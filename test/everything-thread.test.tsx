@@ -52,17 +52,17 @@ test("the recorded Studio fixture reads as one authored page and an open-note ma
   expect(margin).toContain("Relation");
   expect(margin.match(/>Keep</g)).toHaveLength(3);
   expect(margin.match(/>Dismiss</g)).toHaveLength(3);
-  expect(html).toContain("Add to the thread");
+  expect(html).toContain("Add to the topic");
   expect(html).not.toContain("Close with an outcome");
 });
 
 test("closed, absent and unreadable Studio data have no editor; neutral assistant wording is catalog-backed", () => {
   const render = (project: StudioProject, initialStudio = studioList([], [], [closedThread])) => renderToStaticMarkup(<ThreadPage client={createClient()} project={project} initialStudio={initialStudio} onChange={noop} />);
-  expect(render({ ...mapping, state: "closed" })).toContain("This thread is closed.");
-  expect(render({ ...mapping, state: "closed" })).not.toContain("Add to the thread");
+  expect(render({ ...mapping, state: "closed" })).toContain("This topic is closed.");
+  expect(render({ ...mapping, state: "closed" })).not.toContain("Add to the topic");
   expect(render({ ...mapping, state: null })).toContain("Studio cannot be read.");
   expect(render(mapping, { studio: null })).toContain("Studio cannot be read.");
-  expect(render(mapping, studioList([]))).not.toContain("Add to the thread");
+  expect(render(mapping, studioList([]))).not.toContain("Add to the topic");
   expect(render(mapping, studioList([budgetThread]))).toContain("the assistant,");
 });
 
@@ -131,13 +131,13 @@ test("mapped state overrides done and dates, counts include threads, and thread 
   await click(container, "Work");
   expect(container.querySelector('.outline-done [data-row="thread"]')).toBeNull();
   expect(container.querySelector('[data-row="thread"]')!.classList.contains("outline-grey")).toBe(false);
-  expect(container.querySelector('[data-row="thread"]')!.textContent).toContain("thread with Mira · 3 notes open");
+  expect(container.querySelector('[data-row="thread"]')!.textContent).toContain("topic with Mira · 3 notes open");
   expect(container.querySelector('[data-row="thread"]')!.textContent).not.toContain("Done");
   expect(container.querySelector('[data-row="parked"]')!.classList.contains("outline-grey")).toBe(true);
   expect(container.querySelector('[data-row="parked"]')!.textContent).toContain("put away");
   expect(container.querySelector('[data-row="parked"]')!.textContent).not.toContain("2028");
   expect(container.querySelector('.outline-done [data-row="closed"]')).not.toBeNull();
-  expect(container.querySelector('[data-row="off"]')!.textContent).toContain("thread with Mira");
+  expect(container.querySelector('[data-row="off"]')!.textContent).toContain("topic with Mira");
   expect(container.querySelector('[data-row="off"]')!.textContent).not.toContain("notes open");
   await click(container, budgetThread.question);
   expect(container.querySelector(".thread-page")).not.toBeNull();
@@ -153,7 +153,7 @@ test("a missing mapping state stops rendering instead of guessing from done", ()
   const fixture = day();
   Reflect.deleteProperty(fixture.studioProjects![0]!, "state");
   const html = renderToStaticMarkup(<EverythingView client={createClient()} initialDay={fixture} />);
-  expect(html).toContain("The thread mapping is missing its state.");
+  expect(html).toContain("The topic mapping is missing its state.");
   expect(html).not.toContain(budgetThread.question);
 });
 
@@ -183,11 +183,11 @@ test("the response editor retains refusals, clears on success, and sends only ad
   await render(<ThreadPage client={memory.client} project={mapping} assistantName="Mira" onChange={noop} />);
   await type(container, "My response");
   memory.refuse("This thread changed. Try again.");
-  await click(container, "Add to the thread");
+  await click(container, "Add to the topic");
   expect(container.querySelector("textarea")!.value).toBe("My response");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("This thread changed. Try again.");
   memory.refuse(null);
-  await click(container, "Add to the thread");
+  await click(container, "Add to the topic");
   expect(container.querySelector("textarea")!.value).toBe("");
   expect(container.querySelector(".thread-main")?.textContent).toContain("My response");
   for (const mark of ["/", "Mira,"]) {
@@ -297,7 +297,7 @@ test("a successful response cannot erase text typed while Cortex writes", async 
   const { client, finish } = pendingClient();
   await render(<ThreadPage client={client} project={mapping} assistantName="Mira" onChange={noop} />);
   await type(container, "Sent draft");
-  await click(container, "Add to the thread");
+  await click(container, "Add to the topic");
   expect(container.querySelector<HTMLButtonElement>(".thread-main button")!.disabled).toBe(true);
   await type(container, "Sent draft\nMore while waiting");
   await act(async () => { finish(Response.json({ ok: true })); });
@@ -343,7 +343,7 @@ test("a failed refresh after responding hides the editor and preserves newer tex
   const page = (active = true) => <ThreadPage client={client} project={mapping} active={active} assistantName="Mira" onChange={noop} />;
   await render(page());
   await type(container, "Sent draft");
-  await click(container, "Add to the thread");
+  await click(container, "Add to the topic");
   await type(container, "Sent draft\nMore while waiting");
   setReadable(false);
   await act(async () => { finish(Response.json({ ok: true })); });
@@ -360,7 +360,7 @@ test("an old successful response cannot clear a draft written after Studio recov
   const page = (active = true) => <ThreadPage client={client} project={mapping} active={active} assistantName="Mira" onChange={noop} />;
   await render(page());
   await type(container, "Sent draft");
-  await click(container, "Add to the thread");
+  await click(container, "Add to the topic");
   setReadable(false);
   await render(page(false)); await render(page());
   expect(container.textContent).toContain("Studio cannot be read.");
