@@ -2,12 +2,14 @@
 // the topic page, switchable via ?prototype=studio&variant=A|B|C&screen=day|page. Throwaway. Writes are stubs in memory.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Header } from "../app";
-import { Desk, DESK_CSS } from "./desk";
+import { Desk, DESK_CSS, type DeskMode } from "./desk";
 import { One, Sentence, SIMPLE_CSS, Talk } from "./simple";
 import { ago, dayOf, firstLine, firstSentence, fixture, MODES, modeLabel, record, waiting, type Mode, type Note, type Topic } from "./data";
 
 const VARIANTS = [
-  ["G", "Work desk"],
+  ["G", "Desk, cards open over the draft"],
+  ["H", "Desk, cards open outwards"],
+  ["I", "Desk, cards float and stay"],
   ["D", "One question"],
   ["E", "Just talk"],
   ["F", "The sentence"],
@@ -670,9 +672,13 @@ function DayDone({ goPage }: { goPage: () => void }) {
   );
 }
 
-const DAY = { A: DayA, B: DayB, C: DayC, D: One, E: Talk, F: Sentence, G: Desk };
-const PAGE = { A: PageA, B: PageB, C: PageC, D: One, E: Talk, F: Sentence, G: Desk };
-const SIMPLE = ["D", "E", "F", "G"];
+const desk = (mode: DeskMode) => (p: P) => <Desk {...p} mode={mode} />;
+const DeskOut = desk("out");
+const DeskFloat = desk("float");
+const DAY = { A: DayA, B: DayB, C: DayC, D: One, E: Talk, F: Sentence, G: Desk, H: DeskOut, I: DeskFloat };
+const PAGE = { A: PageA, B: PageB, C: PageC, D: One, E: Talk, F: Sentence, G: Desk, H: DeskOut, I: DeskFloat };
+const SIMPLE = ["D", "E", "F", "G", "H", "I"];
+const WIDE = ["G", "H", "I"];
 
 export function StudioPrototype() {
   const now = useMemo(() => Date.now(), []);
@@ -707,7 +713,7 @@ export function StudioPrototype() {
   const Page = PAGE[variant];
   const props: P = { topic, act, now, goPage: () => go(variant, "page") };
   return (
-    <main className="wrap px" style={variant === "G" ? { maxWidth: "none", paddingInline: 28 } : undefined}>
+    <main className="wrap px" style={WIDE.includes(variant) ? { maxWidth: "none", paddingInline: 28 } : undefined}>
       <style>{CSS + SIMPLE_CSS + DESK_CSS}</style>
       <Header />
       <div className="px-state">
