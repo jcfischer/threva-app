@@ -77,6 +77,7 @@ export interface NoteEditorProps {
   label: string;
   hint: string;
   place: number | null;
+  clean?: boolean;
   onChange(text: string): void;
   onLeave(text: string, at: number): void;
 }
@@ -85,31 +86,45 @@ export interface NoteEditorProps {
  * The page's editor: Markdown shown formatted, with the marks of the line the cursor is in.
  * If the rich editor cannot start, the page still takes plain Markdown in a text field.
  */
-export function NoteEditor({ value, label, hint, place, onChange, onLeave }: NoteEditorProps) {
+export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
+  const view = useRef<EditorView | null>(null);
+  const syncing = useRef(false);
   const [plain, setPlain] = useState(false);
-  // One editor per page: the text of later outline reloads must not replace what the user is typing.
+  // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
-    let view: EditorView;
+    let editor: EditorView;
     try {
-      view = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange, onLeave }) }) });
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave }) }) });
     } catch {
       // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
       setPlain(true);
       return;
     }
+    view.current = editor;
     if (place !== null) {
-      const at = Math.min(place, view.state.doc.length);
-      view.dispatch({ selection: { anchor: at }, scrollIntoView: true });
-      view.focus();
+      const at = Math.min(place, editor.state.doc.length);
+      editor.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+      editor.focus();
     }
     return () => {
-      onLeave(view.state.doc.toString(), view.state.selection.main.head);
-      view.destroy();
+      view.current = null;
+      onLeave(editor.state.doc.toString(), editor.state.selection.main.head);
+      editor.destroy();
     };
   }, []);
+  useEffect(() => {
+    const editor = view.current;
+    if (!editor || !clean || editor.state.doc.toString() === value) return;
+    syncing.current = true;
+    try {
+      editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: value } });
+    } finally {
+      syncing.current = false;
+    }
+  }, [value, clean]);
   if (plain) return <div className="note-editor note-plain">
     <textarea aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)} />
   </div>;

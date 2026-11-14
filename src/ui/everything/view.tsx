@@ -20,6 +20,8 @@ const placeStore = (): PlaceStore => {
   }
 };
 
+const everyRow = (row: OutlineRow): OutlineRow[] => [row, ...row.children.flatMap(everyRow)];
+
 export function EverythingView({ client, active = true, initialDay = null, shares = [], onChange = () => {} }: {
   client: DeskClient;
   active?: boolean;
@@ -73,6 +75,22 @@ export function EverythingView({ client, active = true, initialDay = null, share
   useEffect(() => {
     outline.current = day;
     if (day) saver.setRevision(day.revision);
+  }, [day, saver]);
+
+  // A reloaded outline is the new truth for every row the user is not editing; a row with a draft in hand keeps it.
+  useEffect(() => {
+    if (!day) return;
+    for (const row of everyRow(day.outline)) saver.adopt(row.id, row.note ?? "");
+    setTexts(previous => {
+      const next = { ...previous };
+      let changed = false;
+      for (const id of Object.keys(next)) {
+        if (saver.holding(id)) continue;
+        delete next[id];
+        changed = true;
+      }
+      return changed ? next : previous;
+    });
   }, [day, saver]);
 
   useEffect(() => {
@@ -188,6 +206,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const done = current.children.filter(row => !isArea(row.id) && rowState(row, day.date).state === "done");
   const open = current.children.filter(row => !done.includes(row));
   const pageText = texts[current.id] ?? current.note ?? "";
+  const clean = !saver.holding(current.id);
   const hasPage = current.id !== root.id && !studioOwned(current.id);
   const body = <div className="cur">
     <h2>{current.title}</h2>
@@ -198,7 +217,12 @@ export function EverythingView({ client, active = true, initialDay = null, share
     {hasPage && <NotePage key={current.id} row={current} text={pageText}
       place={keptPlace(store, current.id, pageText.length)}
       notice={notice?.row === current.id ? notice : null}
-      onType={text => { setTexts(previous => ({ ...previous, [current.id]: text })); saver.type(current.id, text); }}
+      clean={clean}
+      onType={text => {
+        setTexts(previous => ({ ...previous, [current.id]: text }));
+        setNotice(previous => previous?.row === current.id && previous.state === "saved" ? null : previous);
+        saver.type(current.id, text);
+      }}
       onLeave={(text, at) => { keepPlace(store, current.id, at); setTexts(previous => ({ ...previous, [current.id]: text })); saver.leave(current.id, text); }} />}
     <div>{open.map(line)}{!open.length && <p className="muted">{t("everything.empty")}</p>}</div>
     {done.length > 0 && <details className="outline-done"><summary>{tn("everything.doneCount", done.length)}</summary>{done.map(line)}</details>}

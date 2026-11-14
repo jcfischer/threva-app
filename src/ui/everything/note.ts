@@ -97,6 +97,8 @@ export class NoteSaver {
   readonly #timer: SaveTimer;
   readonly #pause: number;
   #pending = new Map<string, string>();
+  #saving = new Map<string, string>();
+  #saved = new Map<string, string>();
   #handle: unknown = null;
   #running = false;
   #again = false;
@@ -117,15 +119,39 @@ export class NoteSaver {
     return [...this.#pending].map(([row, text]) => ({ row, text }));
   }
 
+  /** True when this text still needs saving: it is neither saved nor already in flight. */
+  needsSave(row: string, text: string): boolean {
+    if (this.#saving.get(row) === text) return false;
+    if (this.#saving.has(row)) return true;
+    return this.#saved.get(row) !== text;
+  }
+
+  /** True while this row has text waiting for the timer or for a save in flight. */
+  holding(row: string): boolean {
+    return this.#pending.has(row) || this.#saving.has(row);
+  }
+
+  /** A reloaded outline is the new truth for a row the user is not editing. */
+  adopt(row: string, text: string): void {
+    if (this.#pending.has(row) || this.#saving.has(row)) return;
+    this.#saved.set(row, text);
+  }
+
   /** The text changed: save it once typing pauses and no sooner. */
   type(row: string, text: string): void {
+    if (!this.needsSave(row, text)) {
+      this.#pending.delete(row);
+      if (this.#pending.size === 0) this.#cancel();
+      return;
+    }
     this.#pending.set(row, text);
     this.#restart();
   }
 
   /** The editor lost focus or its row closed: save everything typed so far. */
   leave(row: string, text: string): void {
-    this.#pending.set(row, text);
+    if (this.needsSave(row, text)) this.#pending.set(row, text);
+    else this.#pending.delete(row);
     void this.flush();
   }
 
@@ -143,10 +169,17 @@ export class NoteSaver {
           this.#pending.delete(row);
           const detail = this.#options.row(row);
           if (!detail) continue;
-          const result = await this.#options.save(detail, text, this.#revision ?? this.#options.revision(), this.#options.date());
+          this.#saving.set(row, text);
+          let result: SaveResult;
+          try {
+            result = await this.#options.save(detail, text, this.#revision ?? this.#options.revision(), this.#options.date());
+          } finally {
+            this.#saving.delete(row);
+          }
           if (result.ok) {
             this.#revision = result.revision;
-            this.#options.notice({ row, state: "saved", message: null });
+            this.#saved.set(row, text);
+            if (!this.#pending.has(row)) this.#options.notice({ row, state: "saved", message: null });
             continue;
           }
           if (!this.#pending.has(row)) this.#pending.set(row, text);

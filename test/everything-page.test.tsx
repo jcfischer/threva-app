@@ -166,6 +166,30 @@ describe("saving a page", () => {
     expect(sent).toEqual([{ row: "due", note: "on the due row", revision: 12 }, { row: "plain", note: "on the plain row", revision: 13 }]);
     expect(saver.waiting).toEqual([]);
   });
+
+  test("does not save text that is already saved, even when the editor leaves again", async () => {
+    const { saver, sent, notices } = saverFor();
+    saver.type("due", "same page");
+    await saver.flush();
+    expect(sent).toEqual([{ row: "due", note: "same page", revision: 12 }]);
+    saver.leave("due", "same page");
+    await drain();
+    expect(sent).toHaveLength(1);
+    expect(notices).toEqual([{ row: "due", state: "saved", message: null }]);
+  });
+
+  test("takes a reloaded note as saved unless a draft is in hand", async () => {
+    const { saver, sent } = saverFor();
+    saver.adopt("due", "from elsewhere");
+    saver.leave("due", "from elsewhere");
+    await drain();
+    expect(sent).toEqual([]);
+    saver.type("due", "my draft");
+    saver.adopt("due", "from elsewhere");
+    saver.leave("due", "my draft");
+    await drain();
+    expect(sent).toEqual([{ row: "due", note: "my draft", revision: 12 }]);
+  });
 });
 
 describe("the page surface", () => {
@@ -252,4 +276,67 @@ test("text typed on a page is saved to the row it was typed in when another row 
     details: { title: "Exercise", weight: 50, note: "## Plan\n\nA **bold** line", ordering: "parallel", focus: false, dueDate: "", context: "", effort: 1, estimateMinutes: null },
   }]);
   expect(container.querySelector('[data-row="project"] .outline-page')?.textContent).toBe("page · 4 words");
+}));
+
+test("a reloaded page from another source replaces a saved draft when the row is reopened", async () => surface(async (container, render) => {
+  const day = outlineFixture();
+  const commands: OutlineCommand[] = [];
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(day);
+    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
+    commands.push(body.command);
+    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
+    day.revision += 1;
+    return Response.json({ view: day });
+  });
+  await render(<EverythingView client={client} active={false} />);
+  await render(<EverythingView client={client} active={true} />);
+  await act(async () => { await drain(); });
+  await click(container, "Work");
+  await click(container, "Exercise");
+  const field = container.querySelector("textarea")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  await click(container, "‹ Work");
+  await act(async () => { await drain(); });
+  expect(commands).toHaveLength(1);
+  pathTo(day.outline, "project")!.at(-1)!.note = "## Plan from elsewhere";
+  day.revision += 1;
+  await render(<EverythingView client={client} active={false} />);
+  await render(<EverythingView client={client} active={true} />);
+  await act(async () => { await drain(); });
+  await click(container, "Exercise");
+  const reopened = container.querySelector("textarea")!;
+  expect(reopened.value).toBe("## Plan from elsewhere");
+  await click(container, "‹ Work");
+  await act(async () => { await drain(); });
+  expect(commands).toHaveLength(1);
+}));
+
+test("typing after a save clears the saved line", async () => surface(async (container, render) => {
+  const day = outlineFixture();
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(day);
+    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
+    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
+    day.revision += 1;
+    return Response.json({ view: day });
+  });
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work");
+  await click(container, "Exercise");
+  const field = container.querySelector("textarea")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  await act(async () => { field.focus(); field.blur(); await drain(); });
+  expect(container.querySelector(".note-line")?.textContent).toContain("saved");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nmore");
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  expect(container.querySelector(".note-line")?.textContent).not.toContain("saved");
 }));
