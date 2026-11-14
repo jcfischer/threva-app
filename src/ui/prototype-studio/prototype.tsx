@@ -2,10 +2,12 @@
 // the topic page, switchable via ?prototype=studio&variant=A|B|C&screen=day|page. Throwaway. Writes are stubs in memory.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Header } from "../app";
+import { Desk, DESK_CSS } from "./desk";
 import { One, Sentence, SIMPLE_CSS, Talk } from "./simple";
 import { ago, dayOf, firstLine, firstSentence, fixture, MODES, modeLabel, record, waiting, type Mode, type Note, type Topic } from "./data";
 
 const VARIANTS = [
+  ["G", "Work desk"],
   ["D", "One question"],
   ["E", "Just talk"],
   ["F", "The sentence"],
@@ -668,16 +670,16 @@ function DayDone({ goPage }: { goPage: () => void }) {
   );
 }
 
-const DAY = { A: DayA, B: DayB, C: DayC, D: One, E: Talk, F: Sentence };
-const PAGE = { A: PageA, B: PageB, C: PageC, D: One, E: Talk, F: Sentence };
-const SIMPLE = ["D", "E", "F"];
+const DAY = { A: DayA, B: DayB, C: DayC, D: One, E: Talk, F: Sentence, G: Desk };
+const PAGE = { A: PageA, B: PageB, C: PageC, D: One, E: Talk, F: Sentence, G: Desk };
+const SIMPLE = ["D", "E", "F", "G"];
 
 export function StudioPrototype() {
   const now = useMemo(() => Date.now(), []);
   const [topic, setTopic] = useState(() => fixture(now));
   const act = useMemo(() => acts(setTopic), []);
   const params = new URLSearchParams(location.search);
-  const [variant, setVariantState] = useState<Key>(VARIANTS.some(([k]) => k === params.get("variant")) ? (params.get("variant") as Key) : "D");
+  const [variant, setVariantState] = useState<Key>(VARIANTS.some(([k]) => k === params.get("variant")) ? (params.get("variant") as Key) : "G");
   const [screen, setScreenState] = useState<Screen>(params.get("screen") === "page" ? "page" : "day");
   const go = (v: Key, s: Screen) => {
     setVariantState(v);
@@ -705,8 +707,8 @@ export function StudioPrototype() {
   const Page = PAGE[variant];
   const props: P = { topic, act, now, goPage: () => go(variant, "page") };
   return (
-    <main className="wrap px">
-      <style>{CSS + SIMPLE_CSS}</style>
+    <main className="wrap px" style={variant === "G" ? { maxWidth: "none", paddingInline: 28 } : undefined}>
+      <style>{CSS + SIMPLE_CSS + DESK_CSS}</style>
       <Header />
       <div className="px-state">
         prototype · waiting {waiting(topic).length} · notes {topic.notes.length} · answers {topic.responses.length} · runs {topic.runs.map((r) => `${r.mode}:${r.status}`).join(", ") || "none"} · topic {topic.state} · last: {topic.last}{" "}
