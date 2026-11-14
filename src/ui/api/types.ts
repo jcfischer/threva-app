@@ -31,6 +31,22 @@ export interface RulingChoice {
   ruling: string;
 }
 
+export interface InterruptReason {
+  // Keep unknown codes so a newer Cortex can fall back to its own why text.
+  code: string;
+  target?: string;
+  eventKey?: string;
+  dueAt?: string;
+}
+
+export interface DeskInterrupt {
+  delivery: "off" | "held" | "pending" | "sending" | "sent" | "buffered" | "failed";
+  reason?: InterruptReason;
+  feedback?: "yes" | "no";
+  held?: { eventKey: string; title: string; until: number };
+  error?: string;
+}
+
 export interface DeskItem {
   key: string;
   kind: DeskItemKind;
@@ -49,6 +65,7 @@ export interface DeskItem {
   suggestion?: string;
   eventKey?: string;
   since?: number;
+  interrupt?: DeskInterrupt;
   // Cortex sets todoFingerprint on every item it can move to My Day's Inbox, and readOnly on items that take no action.
   todoFingerprint?: string;
   readOnly?: boolean;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient, type DeskClient } from "./api/client";
 import { Bar } from "./bar/bar";
 import { Footer } from "./day/footer";
@@ -11,6 +11,8 @@ import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queu
 import { useDesk, type DeskState } from "./queue/use-desk";
 import { EverythingView } from "./everything/view";
 import { Desk } from "./desk/desk";
+import { browserNotifier, interruptionWatcher, type Notifier } from "./queue/notifier";
+import { NotifyControl } from "./day/notify-control";
 
 type Place = "day" | "everything";
 
@@ -31,14 +33,23 @@ export function Header() {
   );
 }
 
-export function App({ client }: { client?: DeskClient }) {
+export function App({ client, notifier: givenNotifier }: { client?: DeskClient; notifier?: Notifier }) {
   const api = useMemo(() => client ?? createClient(), [client]);
+  const notifier = useMemo(() => givenNotifier ?? browserNotifier(), [givenNotifier]);
   const state = useDesk(api);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
   const [view, setView] = useState<"day" | "everything">("day");
   const [openedEverything, setOpenedEverything] = useState(false);
   const [desk, setDesk] = useState<{ slug: string; from: Place } | null>(null);
+  const watchInterruptions = useMemo(() => interruptionWatcher(notifier, key => {
+    setView("day");
+    setDesk(null);
+    setSession(current => ({ ...current, pin: `i:${key}`, open: null, skip: current.skip.filter(k => k !== `i:${key}`) }));
+  }), [notifier]);
+  useEffect(() => {
+    if (state.view) watchInterruptions(state.view.items);
+  }, [state.view, watchInterruptions]);
   const now = Date.now();
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const pull = (k: string) => setSession((current) => (current.pin === k ? current : pin(current, k)));
@@ -48,6 +59,7 @@ export function App({ client }: { client?: DeskClient }) {
         <Header />
         <Bar client={api} entries={queue} onPull={pull} onChange={state.refresh} />
         <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
+        {view === "day" && <NotifyControl notifier={notifier} />}
         {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} onOpenDesk={slug => setDesk({ slug, from: "day" })} />}
         {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => setDesk({ slug, from: "everything" })} /></div>}
       </div>

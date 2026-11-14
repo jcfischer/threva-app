@@ -1,10 +1,14 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { safeHref } from "../api/safe-link";
 import type { DeskItem, DeskMention } from "../api/types";
 import { useI18n } from "../i18n";
 import type { ActError, useAct } from "./act";
 
+// Queue-wide feedback belongs inside the current card, whatever kind of item it renders.
+export const CardFooterContext = createContext<ReactNode>(null);
+
 export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: ReactNode; children: ReactNode }) {
+  const footer = useContext(CardFooterContext);
   return (
     <div className="card">
       <span className="row" style={{ justifyContent: "space-between" }}>
@@ -12,6 +16,7 @@ export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: Reac
         {pill}
       </span>
       {children}
+      {footer}
     </div>
   );
 }

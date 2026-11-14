@@ -1,9 +1,11 @@
+import type { InterruptReason } from "../api/types";
 import type { Entry } from "./order";
 
 export const THEN_TITLES = 3;
 
 export type WhyNow =
   | { kind: "cortex"; text: string }
+  | { kind: "interrupt"; reason: InterruptReason; text: string }
   | { kind: "after"; title: string }
   | { kind: "thread" }
   | { kind: "task" };
@@ -33,6 +35,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "mail":
     case "rule":
     case "soon":
+      if (entry.item.interrupt?.reason) return { kind: "interrupt", reason: entry.item.interrupt.reason, text: entry.item.why };
       return entry.item.why ? { kind: "cortex", text: entry.item.why } : null;
     case "sweep":
       return entry.sweep.why ? { kind: "cortex", text: entry.sweep.why } : null;
