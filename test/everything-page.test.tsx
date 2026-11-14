@@ -340,3 +340,38 @@ test("typing after a save clears the saved line", async () => surface(async (con
   });
   expect(container.querySelector(".note-line")?.textContent).not.toContain("saved");
 }));
+
+test("a reload after a save shows the reloaded page while its row stays open", async () => surface(async (container, render) => {
+  const day = outlineFixture();
+  const commands: OutlineCommand[] = [];
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(day);
+    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
+    commands.push(body.command);
+    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
+    day.revision += 1;
+    return Response.json({ view: day });
+  });
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work");
+  await click(container, "Exercise");
+  const field = container.querySelector("textarea")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan");
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+  });
+  await act(async () => { field.focus(); field.blur(); await drain(); });
+  expect(commands).toHaveLength(1);
+  // Another source writes the same row's note while its page is still open here.
+  pathTo(day.outline, "project")!.at(-1)!.note = "## Plan from elsewhere";
+  day.revision += 1;
+  await render(<EverythingView client={client} active={false} />);
+  await render(<EverythingView client={client} active={true} />);
+  await act(async () => { await drain(); });
+  expect(container.querySelector(".cur h2")?.textContent).toBe("Exercise");
+  const shown = container.querySelector("textarea")!;
+  expect(shown.value).toBe("## Plan from elsewhere");
+  // Leaving the reloaded page sends the reloaded text, not the one that was saved before it.
+  await act(async () => { shown.focus(); shown.blur(); await drain(); });
+  expect(commands).toHaveLength(1);
+}));

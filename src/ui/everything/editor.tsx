@@ -89,6 +89,7 @@ export interface NoteEditorProps {
 export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
+  const field = useRef<HTMLTextAreaElement | null>(null);
   const syncing = useRef(false);
   const [plain, setPlain] = useState(false);
   // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
@@ -115,18 +116,26 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
       editor.destroy();
     };
   }, []);
+  // A clean page follows a later outline reload, in the rich editor and in the plain field alike, so
+  // leaving after a reload sends the reloaded text rather than what was there before it.
   useEffect(() => {
     const editor = view.current;
-    if (!editor || !clean || editor.state.doc.toString() === value) return;
-    syncing.current = true;
-    try {
-      editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: value } });
-    } finally {
-      syncing.current = false;
+    if (editor) {
+      if (!clean || editor.state.doc.toString() === value) return;
+      syncing.current = true;
+      try {
+        editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: value } });
+      } finally {
+        syncing.current = false;
+      }
+      return;
     }
+    const area = field.current;
+    if (!area || !clean || area.value === value) return;
+    area.value = value;
   }, [value, clean]);
   if (plain) return <div className="note-editor note-plain">
-    <textarea aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)} />
+    <textarea ref={field} aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)} />
   </div>;
   return <div className="note-editor" ref={host} />;
 }

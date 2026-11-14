@@ -13,6 +13,7 @@ interface Surface {
   container: HTMLElement;
   changes: string[];
   leaves: { text: string; at: number }[];
+  render: (value: string, clean?: boolean) => Promise<void>;
   close: () => Promise<void>;
 }
 
@@ -38,10 +39,13 @@ async function surface(globals: readonly string[], value: string, place: number 
   const root = createRoot(container);
   const changes: string[] = [];
   const leaves: { text: string; at: number }[] = [];
-  await act(async () => {
-    root.render(<NoteEditor value={value} label="Page of Write the script" hint="Write on this page…" place={place}
-      onChange={text => changes.push(text)} onLeave={(text, at) => leaves.push({ text, at })} />);
-  });
+  const render = async (text: string, clean = true) => {
+    await act(async () => {
+      root.render(<NoteEditor value={text} label="Page of Write the script" hint="Write on this page…" place={place} clean={clean}
+        onChange={next => changes.push(next)} onLeave={(next, at) => leaves.push({ text: next, at })} />);
+    });
+  };
+  await render(value);
   const close = async () => {
     await act(async () => root.unmount());
     await dom.happyDOM.close();
@@ -53,7 +57,7 @@ async function surface(globals: readonly string[], value: string, place: number 
     else Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
   };
   open = close;
-  return { container, changes, leaves, close };
+  return { container, changes, leaves, render, close };
 }
 
 async function rich(value: string, place: number | null = null) {
@@ -124,6 +128,26 @@ describe("the page's editor", () => {
       field.dispatchEvent(new window.Event("input", { bubbles: true }));
     });
     expect(page.changes.at(-1)).toBe("## Plan\n\nmore");
+  });
+
+  test("a clean plain page takes a reloaded note, and leaving sends the reloaded text", async () => {
+    const page = await surface(PLAIN, "## Plan", null);
+    const field = page.container.querySelector("textarea")!;
+    await page.render("## Plan from elsewhere");
+    expect(field.value).toBe("## Plan from elsewhere");
+    await act(async () => { field.focus(); field.blur(); });
+    expect(page.leaves.at(-1)?.text).toBe("## Plan from elsewhere");
+  });
+
+  test("a plain page with a draft in hand keeps what the user typed", async () => {
+    const page = await surface(PLAIN, "## Plan", null);
+    const field = page.container.querySelector("textarea")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(field, "## Plan\n\nmy draft");
+      field.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+    await page.render("## Plan from elsewhere", false);
+    expect(field.value).toBe("## Plan\n\nmy draft");
   });
 });
 
