@@ -1,6 +1,6 @@
 # Studio redesign: brief for a UI/UX session
 
-Status: open. Owner: Jens-Christian. Written 2026-11-14 from the live stack, for a working session with a design agent.
+Status: direction decided (variant H, the work desk); build nodes and Cortex gaps proposed, not filed. Owner: Jens-Christian. Written 2026-11-14 from the live stack, for a working session with a design agent.
 
 This document is the starting point, not the answer. Work through the questions in "Decisions to make" together, record each answer here, and end with a plan of build nodes on the Threva map (`Refs #1`).
 
@@ -81,6 +81,9 @@ From the principal's screenshot of the live stack (topic "Make the Desk understa
 - **F11, Studio-wide items missing:** the inbox (captures waiting to be filed) and proposals (new topics the assistant suggests) are in the API but appear nowhere in Threva.
 - **F12, closing is a form at the bottom:** closing, parking and "think it over tonight" sit at the bottom of the left column, and closing asks for an outcome (decided, shipped, dropped) in a form there.
 - **F13, the model as a file path:** a conversation shows the model as a full file path, for example "mlx-local//Users/…/qwen3.8-27b-4bit". Cortex sends only the raw model id. A display name is a Cortex gap.
+- **F14, "Your turn" fires on notes you cannot act on:** a topic waits when its latest note is open and no response is newer (`src/ui/queue/order.ts`, `threadWaits`). Plain notes get no keep or dismiss buttons, so the only way to clear the pill is to write a response, and nothing says so. This is the cause of F1.
+- **F15, two topic screens already disagree:** the Everything page shows kept notes and responses on the page and open notes in the margin (`src/ui/everything/thread-page.tsx`). The Studio card shows everything in one list.
+- **F16, retry exists but is hidden:** a failed run leaves its mode button enabled, and clicking it again is the retry (`src/ui/studio/sparring.tsx`). The reason shown is already Cortex's text, so the F8 gap is only the wording Cortex sends.
 
 ## Decisions to make
 
@@ -153,8 +156,127 @@ These are not filed yet. File each one once the matching decision is made.
 
 ## Outcome
 
-Fill in as decisions are made.
+Decided 2026-11-14, after three prototype rounds on the branch `prototype/studio-redesign` (variants A to I, started with `bun run proto:studio`). The principal rejected the first two rounds: A to C rearranged the old screen, and D to F reduced the Studio to answering questions. The Studio is a place to make things, so the direction is a work desk. Variant H is the chosen design.
 
-| Code | Decision | Date |
-|---|---|---|
-| | | |
+### The design: a work desk on a wide screen
+
+After Scott Jenson's Akademy 2026 talk (from 32:34): the work sits full size in the middle, and everything else is parked small at the edges.
+
+| Code | Decision |
+|---|---|
+| D1 | **The draft is the centre.** The topic's question, the stand as its lead, then the thing being made, in the Markdown editor of the Everything view (`NoteEditor`). |
+| D2 | **Material is parked on the left, the assistant's notes on the right**, as small dimmed cards in fixed places. Notes that wait are lit. Older notes shrink and fade. |
+| D3 | **A card opens outwards** (variant H): outside its own column, level with the parked card. The draft never moves and is never covered. On a narrower window the card shrinks, then overlaps its own column. |
+| D4 | **A card is used by working it in.** A button on the card, or a drop on a line of the draft, adds it after that paragraph. |
+| D5 | **The assistant never writes as the principal.** What is worked in arrives as a marked quote with its source. A mark in the margin reopens the source card. |
+| D6 | **Asking about a passage returns questions, never a rewrite.** Two acts on a selection: "Find holes in this" and "Ask me about this". There is no "Shorten" on the desk. |
+| D7 | **Every request shows its state:** asked, promised, delivered, then accepted or declined by the principal, or "could not" with a readable reason and "Try again". |
+| D8 | **No chat pane.** Every request is tied to a passage or a card, and its answer stays as a card. |
+| D9 | **The history is a strip at the bottom:** one block per event. A click brings that card back. |
+
+### What happened to the first-round answers
+
+| Code | Status |
+|---|---|
+| Q1 | Replaced by D1 to D3. The topic lives on the desk, not on a row page. |
+| Q2 | Replaced by D4, D6 and D8. Answering a waiting note stays, on its card. |
+| Q3 | Stands: Cortex sends which note asks something, and the question. |
+| Q4 | Replaced by D2 and D9. |
+| Q5 | Partly open: the stand is the draft's lead. Its history has no place on the desk yet. |
+| Q6 | Replaced by D6. Personas and the other sparring modes have no place on the desk yet. |
+| Q7 | Stands in spirit: a card shows only how long ago. |
+| Q8 | Replaced by D7. |
+| Q9 | Stands: inbox captures and topic proposals as Day cards. Not prototyped. |
+| Q10 | Open: parking and finishing a topic have no place on the desk yet. |
+
+### Still open
+
+- One draft per topic, or several pieces to switch between.
+- What the Day card shows. Proposed: the one waiting question, answerable in place, and "Open the desk" (close to variant D).
+- Screens under about 1100 pixels, where the three zones stack.
+- Thinking overnight: where it is switched on, and how many notes a night may bring.
+- Q5, Q6 and Q10 above.
+
+### Research behind D5 to D8
+
+A research pass on augmented work (Engelbart, Licklider, Kay, Flores, Raskin and current studies) is the source of D5 to D8. Its strongest findings: writers who get suggestions react to them before finishing their own thinking and still feel in control (Bhat et al., CHI 2026, arxiv.org/abs/2603.10374); feedback framed as questions improves judgment (Danry et al.); a request is a commitment that someone has to close (Winograd and Flores). The citations were collected by an agent and not re-checked.
+
+### Proposed build nodes
+
+Not filed. One vertical slice each, in this order.
+
+1. **The desk opens, read-only:** from a Studio Day card and from the topic's row. Question, stand, notes on the right with waiting ones lit, material on the left, on today's API.
+2. **Cards open outwards (D3)** with answer, keep and dismiss on a note card.
+3. **The Day card is answerable in place** and links to the desk.
+4. **The draft (D1):** blocked on the Cortex gap "a draft per topic".
+5. **Working in (D4, D5):** button and drop on a line, quote with source, margin marks.
+6. **Asking about a passage (D6, D7):** blocked on the Cortex gaps for passage requests and request states.
+7. **The history strip (D9)** from the topic's `log`.
+8. **The narrow screen.**
+
+### Cortex gaps this design needs
+
+Not filed. They replace the list under "Known Cortex gaps" where they overlap.
+
+- **A draft per topic:** a Markdown work document Cortex stores with the topic. The largest gap; nodes 4 to 6 wait on it.
+- **The question a note asks,** and a one-line gist of each note (Q3, D2).
+- **A request tied to a passage** that returns questions, not a rewrite (D6).
+- **Request states:** asked, promised with a due time, delivered, and a readable reason when it fails (D7). Replaces "Thinking failed · exit -1".
+- **Why a material item is linked,** and a way to add material from the desk (F9).
+- **A display name for the model** (F13). Lower priority: the desk does not show the model on a card.
+
+### Filed on 2026-11-14
+
+- Decision: jcfischer/threva-app#89, closed with variant H.
+- Build nodes 1, 2 and 7 above: jcfischer/threva-app#90, #91 (after #90) and #92 (after #91).
+- Cortex gaps: the-metafactory/cortex#3652 (the question a note asks, and its gist) and #3653 (request states and a readable failure).
+- Not filed: the draft and what waits on it (nodes 4 to 6, and the gaps for a draft and for passage requests), the Day card (node 3) and the narrow screen (node 8), until their open questions are answered. The material gap is not filed because it is unverified whether a capture to a topic already covers adding material.
+
+### Open questions, answered 2026-11-14
+
+| Code | Answer |
+|---|---|
+| Q11 | One draft per topic. |
+| Q13 | Narrow screens: the zones stack and cards open in place. The desk is a wide-screen tool. |
+| Q14 | Overnight thinking is a switch on the desk, shown as a standing promise, with at most three notes a night. It may also draw on other open topics (the-metafactory/cortex#3495, #3421); such a note names the topic it comes from. |
+| Q16 | Personas and the other sparring modes are dropped from the desk. |
+| Q12, Q15, Q17 | Open. They turn on one question: is a topic a question, a deliverable or both. Cortex already stores `type: question | topic | making` per thread; Threva ignores it today. |
+
+### Question or task, decided 2026-11-14
+
+| Code | Decision |
+|---|---|
+| D10 | **A topic has one of Cortex's three types, and the desk reads it.** `question`: the middle holds the answer being formed; it ends as decided, with what is expected and a review date. `making`: the middle holds the deliverable; it ends as shipped; it is also a task with a due date. `topic`: a collection of notes and material with no required draft; it does not end, but can be parked or dropped. |
+| D11 | **The stand is demoted** (answers Q15, drops Q5). It is an optional one-line answer so far, only on `question` topics: on the Day card and in lists, and as one quiet line on the desk. It is not the draft's lead. |
+| D12 | **A Day card for a topic says why it is there** (answers Q12): the assistant delivered something asked for (answerable in place), a `making` topic is due or planned today, or a decided question has reached its review date. |
+| D13 | **Finishing follows the type** (answers Q17): a question asks for the decision, a making topic for "shipped"; both can be dropped. |
+| D14 | **A request on the desk can start real work** (2026-11-14), such as a research pass or a build, not only thinking. The work runs in Cortex and its agents; Threva asks and shows. What kinds of work, how outside effects are approved and what unit is handed to a builder are open (Q18 to Q21). |
+
+Destination the principal named: design work like this redesign session (a brief, prototypes, a research pass, decisions, filed nodes) should be doable in Threva as a `making` topic. Not specified yet.
+
+Filed after these answers: the-metafactory/cortex#3655 (one draft per thread), and a ruling on jcfischer/threva-app#90 that applies D11. Ranger took #90 the same evening (pull request #93).
+
+### Work requests, answered 2026-11-14
+
+| Code | Answer |
+|---|---|
+| Q18 | The first kinds of work are research and prototype. A build that lands code follows. |
+| Q19 | Not per-act approval. Agentic work produces many issues and pull requests, and reviewing each is not a good use of the principal's time. Threva supports autonomous work as ranger does it: the principal sees results and exceptions, not every step. Decided shape: a grant set once per topic says what the work may do without the principal, with a budget in time or tokens. The desk lights only exceptions: a fork the agent cannot decide, work that is stuck or out of budget, an act outside the grant. Everything else collapses into a count. The deliverable still arrives as a card, and accepting or declining it is the one required act. |
+| Q20 | Cortex owns a generic job with an executor behind it; ranger on the work graph is the first executor. The desk never learns about nodes. Related wish, outside this redesign: ranger's state should not live in GitHub, because large maps and API quotas have caused failures. |
+| Q21 | Decisions live in the draft, as a section the desk marks, and show as events in the history strip. No new kind of entry. |
+
+What exists for Q20, from a read of Cortex, Soma and ranger on 2026-11-14 (by an agent; the handoff endpoint was re-checked, the rest was not):
+
+- Ranger already runs jobs with states (queued, running, succeeded, failed) in its own sqlite store, not in GitHub. Studio thinking is such a job: Cortex enqueues `ivy-think` through the ranger CLI.
+- Cortex has a second start-and-track path, `POST /api/desk/task-handoff` (preview, hand, retry, discard, accept), which sends a task to an agent over the bus and brings the result back as a Desk card. It covers Balance tasks only.
+- Exceptions already reach the Desk: ranger's "needs you" entries become the agent cards Threva shows.
+- Grants exist in two places: a Cortex table of promotable actions, and a map's auto-merge setting.
+- The work graph sits behind a forge port with GitHub and GitLab implemented. Moving ranger's state off GitHub means a third, local implementation of that port.
+
+### Filed after the open questions, 2026-11-14
+
+- Threva build nodes under jcfischer/threva-app#89: #96 (think tonight, park and finish from the desk, by type; after #91), #97 (the Day card shows the waiting note and takes the answer in place; after #90), #98 (retire the Studio card's open view; after #96 and #97).
+- Rulings: on #90 the stand is one quiet line on `question` topics (D11); on #91 a card opens in place when the zones stack (Q13).
+- Cortex nodes under the-metafactory/cortex#3555: #3655 (one draft per thread), #3656 (a thread starts a research or prototype job under a grant and receives its artifact; after #3653), #3657 (what a thread's type means: due dates, review dates and outcomes), #3658 (ask about a passage and get questions; after #3655).
+- Not filed, because they cannot be specified before their Cortex node is settled: the draft in the middle and working in (wait on #3655), passage requests on the desk (wait on #3658), work requests, grants and exceptions on the desk (wait on #3656), the due and review reasons for a Day card (wait on #3657).
+- Node #90 merged (pull request #93) before its stand ruling was applied, so the desk on main still shows the stand as a lead on every topic. A ruling on #96 carries the fix.
