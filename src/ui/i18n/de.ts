@@ -41,6 +41,13 @@ export const de: Messages = {
   "everything.importance": "Wichtigkeit: {value}",
   "everything.share": "{actual}% deiner Zeit diese Woche. Die Markierung zeigt die gewünschten {target}%.",
   "everything.shareUnavailable": "Der Anteil dieser Woche ist nicht verfügbar.",
+  "everything.pageWords": { one: "Seite · {count} Wort", other: "Seite · {count} Wörter" },
+
+  "note.label": "Seite von {title}",
+  "note.placeholder": "Schreib auf diese Seite…",
+  "note.words": { one: "{count} Wort", other: "{count} Wörter" },
+  "note.length": "{count} von {max} Zeichen",
+  "note.saved": "gespeichert",
 
   "app.title": "Threva",
   "app.tagline": "Ein Ort für den Faden deiner Arbeit.",

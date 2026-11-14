@@ -134,17 +134,40 @@ export interface OutlineRow {
   };
   // Projected by Cortex; recurrence rules belong to the engine.
   recurrence?: { returnsOn: string | null; reappearsOn: string | null; finished: boolean };
+  // The row's page as Markdown, and the details `outline-edit` sends back unchanged.
+  note?: string;
+  focusMonth?: string;
+  context?: string;
+  effort?: 1 | 2 | 4;
+  estimateMinutes?: number | null;
 }
 
 export interface MyDayOutline {
   date: string;
   revision: number;
   outline: OutlineRow;
+  // Rows Cortex owns for a Studio thread, which Threva shows without a page.
+  studioTasks?: { id: string; slug: string }[];
+  studioProjects?: { id: string; slug: string }[];
+}
+
+// Every detail of a row as `outline-edit` takes it. Threva sends the row's own values back unchanged.
+export interface OutlineDetails {
+  title: string;
+  weight: number;
+  note: string;
+  ordering: "parallel" | "sequential";
+  focus: boolean;
+  dueDate: string;
+  context: string;
+  effort: 1 | 2 | 4;
+  estimateMinutes: number | null;
 }
 
 export type OutlineCommand =
   | { op: "outline-add"; revision: number; parent: string; title: string }
   | { op: "outline-move"; revision: number; id: string; parent: string; index: number }
+  | { op: "outline-edit"; revision: number; id: string; details: OutlineDetails; yes: boolean }
   | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };
 
 export interface RoutineView {

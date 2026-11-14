@@ -3,7 +3,22 @@ import type { DeskClient } from "../api/client";
 import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
+import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";
+import { NotePage } from "./page";
 import { relativeDay, rowCounts, rowState, rowTime } from "./time";
+
+const inMemory = (): PlaceStore => {
+  const kept = new Map<string, string>();
+  return { getItem: key => kept.get(key) ?? null, setItem: (key, value) => { kept.set(key, value); }, removeItem: key => { kept.delete(key); } };
+};
+
+const placeStore = (): PlaceStore => {
+  try {
+    return typeof localStorage === "undefined" ? inMemory() : localStorage;
+  } catch {
+    return inMemory();
+  }
+};
 
 export function EverythingView({ client, active = true, initialDay = null, shares = [], onChange = () => {} }: {
   client: DeskClient;
@@ -23,6 +38,42 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const readVersion = useRef(0);
   const dragging = useRef<{ id: string; day: MyDayOutline } | null>(null);
   const [drop, setDrop] = useState<{ id: string; zone: "before" | "after" | "into" } | null>(null);
+  const [texts, setTexts] = useState<Record<string, string>>({});
+  const [notice, setNotice] = useState<NoteNotice | null>(null);
+  const [store] = useState(placeStore);
+  const outline = useRef<MyDayOutline | null>(initialDay);
+  const latest = useRef({ client, onChange, t });
+  const [saver] = useState(() => new NoteSaver({
+    save: async (row, note, revision, date) => {
+      const result = await latest.current.client.changeOutline(date, { op: "outline-edit", revision, id: row.id, details: detailsOf(row, date, note), yes: false });
+      if (!result.ok) return { ok: false, message: result.message ?? latest.current.t("error.network") };
+      setDay(result.data.view);
+      latest.current.onChange();
+      return { ok: true, revision: result.data.view.revision };
+    },
+    reload: async () => {
+      const newest = await latest.current.client.myDay();
+      if (!newest.ok) return null;
+      setDay(newest.data);
+      return newest.data.revision;
+    },
+    row: id => {
+      const root = outline.current?.outline;
+      return root ? pathTo(root, id)?.at(-1) ?? null : null;
+    },
+    date: () => outline.current?.date ?? "",
+    revision: () => outline.current?.revision ?? 0,
+    notice: setNotice,
+  }));
+
+  useEffect(() => {
+    latest.current = { client, onChange, t };
+  }, [client, onChange, t]);
+
+  useEffect(() => {
+    outline.current = day;
+    if (day) saver.setRevision(day.revision);
+  }, [day, saver]);
 
   useEffect(() => {
     if (!active || initialDay || writing.current) return;
@@ -59,6 +110,11 @@ export function EverythingView({ client, active = true, initialDay = null, share
     }
   };
 
+  const openRow = (id: string) => {
+    void saver.flush();
+    setAt(id);
+  };
+
   const retry = async () => {
     if (writing.current) return;
     const version = ++readVersion.current;
@@ -74,6 +130,8 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const current = path.at(-1)!;
   const parents = path.slice(0, -1);
   const isArea = (id: string) => root.children.some(row => row.id === id);
+  const studioIds = new Set([...(day.studioProjects ?? []).map(project => project.id), ...(day.studioTasks ?? []).map(task => task.id)]);
+  const studioOwned = (id: string) => studioIds.has(id);
   const draft = drafts[current.id] ?? "";
   const share = shares.find(area => area.areaId === current.id);
   const move = (id: string, target: Move | null, snapshot = day) => {
@@ -121,19 +179,27 @@ export function EverythingView({ client, active = true, initialDay = null, share
           }}><option value="">{t("everything.chooseParent")}</option>{options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
         </div>
       </details>}
-      <button type="button" className="linkq outline-title" onClick={() => setAt(row.id)}>{row.title}</button>
+      <button type="button" className="linkq outline-title" onClick={() => openRow(row.id)}>{row.title}</button>
       {area || row.children.length ? summary(row) : <span className={`outline-margin ${time.warning ? "outline-warning" : "faint"}`}>{time.margin}</span>}
+      <span className="outline-page">{pageLine(row.note, i18n)}</span>
       {!area && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: row.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: row.id, confirm: true }); }}>{t(row.done ? "everything.reopen" : "everything.done")}</button>}
     </div>;
   };
   const done = current.children.filter(row => !isArea(row.id) && rowState(row, day.date).state === "done");
   const open = current.children.filter(row => !done.includes(row));
+  const pageText = texts[current.id] ?? current.note ?? "";
+  const hasPage = current.id !== root.id && !studioOwned(current.id);
   const body = <div className="cur">
     <h2>{current.title}</h2>
     {isArea(current.id) && <div className="stack">
       <span className="faint">{t("everything.importance", { value: current.weight })}</span>
       {share ? <><div className="balbar" aria-hidden="true"><i style={{ width: `${Math.round(share.actualShare * 100)}%` }} /><b style={{ left: `${Math.round(share.targetShare * 100)}%` }} /></div><span className="faint">{t("everything.share", { actual: Math.round(share.actualShare * 100), target: Math.round(share.targetShare * 100) })}</span></> : <span className="faint">{t("everything.shareUnavailable")}</span>}
     </div>}
+    {hasPage && <NotePage key={current.id} row={current} text={pageText}
+      place={keptPlace(store, current.id, pageText.length)}
+      notice={notice?.row === current.id ? notice : null}
+      onType={text => { setTexts(previous => ({ ...previous, [current.id]: text })); saver.type(current.id, text); }}
+      onLeave={(text, at) => { keepPlace(store, current.id, at); setTexts(previous => ({ ...previous, [current.id]: text })); saver.leave(current.id, text); }} />}
     <div>{open.map(line)}{!open.length && <p className="muted">{t("everything.empty")}</p>}</div>
     {done.length > 0 && <details className="outline-done"><summary>{tn("everything.doneCount", done.length)}</summary>{done.map(line)}</details>}
     {current.id !== root.id && <form className="outline-add" onSubmit={event => {
@@ -152,7 +218,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   return <section className="everything" aria-label={t("everything.label")} aria-busy={busy}>
     {error && <div role="alert"><p>{error}</p><button type="button" className="btn" disabled={busy} onClick={() => { void retry(); }}>{t("everything.reload")}</button></div>}
     {parents.reduceRight<ReactNode>((inner, parent) => <div className="anc" key={parent.id}>
-      <button type="button" className="anch" data-zone={drop?.id === parent.id ? drop.zone : undefined} onClick={() => setAt(parent.id)} onDragOver={event => dropOn(event, parent, true)} onDrop={event => dropOn(event, parent, true, true)}>‹ {parent.title}</button>
+      <button type="button" className="anch" data-zone={drop?.id === parent.id ? drop.zone : undefined} onClick={() => openRow(parent.id)} onDragOver={event => dropOn(event, parent, true)} onDrop={event => dropOn(event, parent, true, true)}>‹ {parent.title}</button>
       {inner}
     </div>, body)}
   </section>;
