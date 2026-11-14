@@ -4,13 +4,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "../src/ui/api/client";
-import type { OutlineCommand, OutlineRow } from "../src/ui/api/types";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { NoteSaver, detailsOf, keepPlace, keptPlace, pageLine, wordCount, type NoteNotice, type SaveTimer } from "../src/ui/everything/note";
 import { NotePage } from "../src/ui/everything/page";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { DATE, outlineFixture, row } from "./fixtures/outline";
+import { DATE, outlineClient, outlineFixture, row } from "./fixtures/outline";
 
 describe("what a page says about its text", () => {
   test("counts words, not Markdown marks, and is quiet about an empty page", () => {
@@ -249,16 +248,7 @@ const click = async (container: HTMLElement, text: string) => {
 };
 
 test("text typed on a page is saved to the row it was typed in when another row opens", async () => surface(async (container, render) => {
-  const day = outlineFixture();
-  const commands: OutlineCommand[] = [];
-  const client = createClient(async (_url, init) => {
-    if (!init) return Response.json(day);
-    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
-    commands.push(body.command);
-    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
-    day.revision += 1;
-    return Response.json({ view: day });
-  });
+  const { client, commands } = outlineClient();
   await render(<EverythingView client={client} initialDay={outlineFixture()} />);
   await click(container, "Work");
   await click(container, "Exercise");
@@ -279,16 +269,7 @@ test("text typed on a page is saved to the row it was typed in when another row 
 }));
 
 test("a reloaded page from another source replaces a saved draft when the row is reopened", async () => surface(async (container, render) => {
-  const day = outlineFixture();
-  const commands: OutlineCommand[] = [];
-  const client = createClient(async (_url, init) => {
-    if (!init) return Response.json(day);
-    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
-    commands.push(body.command);
-    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
-    day.revision += 1;
-    return Response.json({ view: day });
-  });
+  const { day, client, commands } = outlineClient();
   await render(<EverythingView client={client} active={false} />);
   await render(<EverythingView client={client} active={true} />);
   await act(async () => { await drain(); });
@@ -316,14 +297,7 @@ test("a reloaded page from another source replaces a saved draft when the row is
 }));
 
 test("typing after a save clears the saved line", async () => surface(async (container, render) => {
-  const day = outlineFixture();
-  const client = createClient(async (_url, init) => {
-    if (!init) return Response.json(day);
-    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
-    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
-    day.revision += 1;
-    return Response.json({ view: day });
-  });
+  const { client } = outlineClient();
   await render(<EverythingView client={client} initialDay={outlineFixture()} />);
   await click(container, "Work");
   await click(container, "Exercise");
@@ -342,16 +316,7 @@ test("typing after a save clears the saved line", async () => surface(async (con
 }));
 
 test("a reload after a save shows the reloaded page while its row stays open", async () => surface(async (container, render) => {
-  const day = outlineFixture();
-  const commands: OutlineCommand[] = [];
-  const client = createClient(async (_url, init) => {
-    if (!init) return Response.json(day);
-    const body = JSON.parse(init.body as string) as { command: OutlineCommand };
-    commands.push(body.command);
-    if (body.command.op === "outline-edit") pathTo(day.outline, body.command.id)!.at(-1)!.note = body.command.details.note;
-    day.revision += 1;
-    return Response.json({ view: day });
-  });
+  const { day, client, commands } = outlineClient();
   await render(<EverythingView client={client} initialDay={outlineFixture()} />);
   await click(container, "Work");
   await click(container, "Exercise");
