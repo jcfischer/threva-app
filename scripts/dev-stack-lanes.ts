@@ -72,8 +72,13 @@ function readRouting(file: string, read: Read): Checked<ParserRouting> {
   return { ok: true, value: { file, permitted, timeoutSeconds } };
 }
 
-const FILER_FIELDS: readonly string[] = ["baseUrl", "model", "apiKeyEnv", "apiKeyFile", "caFile", "timeoutSeconds", "local"];
-const isEndpoint =(v: Record<string, unknown>): boolean => typeof v.baseUrl === "string" && typeof v.model === "string";
+const ENDPOINT_FIELDS: readonly string[] = ["baseUrl", "model", "apiKeyEnv", "apiKeyFile", "caFile", "timeoutSeconds"];
+const FILER_FIELDS: readonly string[] = [...ENDPOINT_FIELDS, "local"];
+const unknownKeys = (v: Record<string, unknown>, allowed: readonly string[], prefix: string): string[] =>
+  Object.keys(v)
+    .filter((k) => !allowed.includes(k))
+    .map((k) => `${prefix}${k}`);
+const isEndpoint = (v: Record<string, unknown>): boolean => typeof v.baseUrl === "string" && typeof v.model === "string";
 
 function withAbsoluteFiles(endpoint: Record<string, unknown>, base: string): Record<string, unknown> {
   const out = { ...endpoint };
@@ -100,9 +105,7 @@ function readFiler(file: string, read: Read): Checked<StudioFiler> {
   if (!localOk || !hasEndpoint) {
     return { ok: false, error: `THREVA_DEV_STUDIO_FILER must hold Cortex's mc.desk.studio.filer block, with baseUrl and model or a local endpoint: ${file}` };
   }
-  const unknown = [...Object.keys(parsed), ...(isRecord(local) ? Object.keys(local).map((k) => `local.${k}`) : [])].filter(
-    (k) => !FILER_FIELDS.includes(k.replace(/^local\./, "")) || k === "local.local",
-  );
+  const unknown = [...unknownKeys(parsed, FILER_FIELDS, ""), ...(isRecord(local) ? unknownKeys(local, ENDPOINT_FIELDS, "local.") : [])];
   if (unknown.length > 0) {
     return { ok: false, error: `THREVA_DEV_STUDIO_FILER has fields Cortex's filer does not take (${unknown.join(", ")}); name a key only by apiKeyEnv or apiKeyFile: ${file}` };
   }
