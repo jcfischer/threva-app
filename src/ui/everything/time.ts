@@ -8,6 +8,11 @@ export interface RowTime {
   back?: string;
 }
 
+type RowState =
+  | { kind: "done"; state: "done" | "later"; back?: string }
+  | { kind: "away" | "starts"; state: "later"; back: string }
+  | { kind: "open"; state: "open"; back?: never };
+
 const dayDate = (date: string) => new Date(`${date}T12:00:00Z`);
 
 export function relativeDay(date: string, today: string, i18n: I18n): string {
@@ -30,31 +35,38 @@ function rhythm(repeat: NonNullable<OutlineRow["repeat"]>, i18n: I18n): string {
 }
 
 /** Classify without formatting; return dates are supplied by Cortex. */
-export function rowState(row: OutlineRow, today: string): Pick<RowTime, "state" | "back"> {
+export function rowState(row: OutlineRow, today: string): RowState {
   if (row.done) {
-    if (!row.repeat || row.recurrence?.finished) return { state: "done" };
-    return { state: "later", back: row.recurrence?.reappearsOn ?? undefined };
+    if (!row.repeat || row.recurrence?.finished) return { kind: "done", state: "done" };
+    return { kind: "done", state: "later", back: row.recurrence?.reappearsOn ?? undefined };
   }
-  if (row.deferredUntil && row.deferredUntil > today) return { state: "later", back: row.deferredUntil };
-  if (row.startDate && row.startDate > today) return { state: "later", back: row.startDate };
-  return { state: "open" };
+  if (row.deferredUntil && row.deferredUntil > today) return { kind: "away", state: "later", back: row.deferredUntil };
+  if (row.startDate && row.startDate > today) return { kind: "starts", state: "later", back: row.startDate };
+  return { kind: "open", state: "open" };
 }
 
 /** Display only: return dates are supplied by Cortex, never calculated here. */
 export function rowTime(row: OutlineRow, today: string, i18n: I18n = createI18n("en")): RowTime {
-  const { state, back } = rowState(row, today);
+  const classification = rowState(row, today);
+  const { state, back } = classification;
   const beat = row.repeat ? rhythm(row.repeat, i18n) : "";
   const withBeat = (text: string) => [text, beat].filter(Boolean).join(" · ");
   const result = (margin: string, warning = false): RowTime => ({ state, margin: withBeat(margin), warning, ...(back ? { back } : {}) });
   const date = (iso: string) => relativeDay(iso, today, i18n);
-  if (row.done) {
-    const done = row.completedAt ? i18n.t("everything.doneOn", { date: date(row.completedAt) }) : i18n.t("everything.done");
-    return result(back ? `${done} · ${i18n.t("everything.back", { date: date(back) })}` : done);
+  switch (classification.kind) {
+    case "done": {
+      const done = row.completedAt ? i18n.t("everything.doneOn", { date: date(row.completedAt) }) : i18n.t("everything.done");
+      return result(back ? `${done} · ${i18n.t("everything.back", { date: date(back) })}` : done);
+    }
+    case "away":
+      return result(i18n.t("everything.putAway", { date: date(classification.back) }));
+    case "starts":
+      return result(i18n.t("everything.starts", { date: date(classification.back) }));
+    case "open": {
+      const late = row.dueDate !== undefined && row.dueDate < today;
+      return result(row.dueDate ? i18n.t(late ? "everything.wasDue" : "everything.due", { date: date(row.dueDate) }) : "", late);
+    }
   }
-  if (row.deferredUntil && row.deferredUntil > today) return result(i18n.t("everything.putAway", { date: date(row.deferredUntil) }));
-  if (row.startDate && row.startDate > today) return result(i18n.t("everything.starts", { date: date(row.startDate) }));
-  const late = row.dueDate !== undefined && row.dueDate < today;
-  return result(row.dueDate ? i18n.t(late ? "everything.wasDue" : "everything.due", { date: date(row.dueDate) }) : "", late);
 }
 
 export function rowCounts(row: OutlineRow, today: string): { open: number; later: number; back?: string } {
