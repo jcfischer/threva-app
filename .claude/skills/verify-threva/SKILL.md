@@ -54,6 +54,10 @@ Exit 2 means a property was violated, and the output names it. Replay a run with
 
 The feature map in `features/` says what to drive for each part of the UI.
 
+## One command
+
+`bun run probe:ui` does Launch, Drive and Cleanup in one go: it starts a stack in a fresh temporary `THREVA_DEV_DIR` on a free port, runs every journey and a Bombadil run (`THREVA_PROBE_EXPLORE`, default `2m`), stops the stack, and prints `FAILED: verify:ui · explore:ui` for what failed. It needs `CORTEX_DIR` and `CORTEX_ADAPTERS_DIR`. Evidence goes to `THREVA_PROBE_OUT`, or to `evidence/` in the temporary directory. Ranger runs it as the repository's `probe` command before a pull request is marked ready.
+
 ## Evidence
 
 Attach to the pull request what the journey proved: the screenshots of the changed feature, the PASS lines, and any console error or HTTP failure it listed with a reason. For an exploration, the property list and the exit code. Keep evidence outside the repository (`$SCRATCH/...`) or in `.verify/`, which git ignores.
