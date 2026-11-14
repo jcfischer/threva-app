@@ -5,7 +5,7 @@ import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
 import { useAct } from "./act";
-import { Card, ErrorLine, Mentioned } from "./parts";
+import { Card, ErrorLine, MakeTaskButton, Mentioned } from "./parts";
 
 // The actions POST /api/desk/action takes, labelled by action id. Cortex lists ranger.park too but never wires it
 // and the endpoint refuses it, so it gets no button until both change.
@@ -17,7 +17,9 @@ const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
 // The card always shows the detail, and the queue's own "Not now" skips it, so "detail" and "snooze" need no button here.
 export function AgentCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const card = useAct();
+  const { busy, error, run } = card;
+  const plan = card.offersTask(item);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
   const wired = item.actions.filter((a) => a.wired);
@@ -52,7 +54,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
       ) : (
         <textarea aria-label={t("card.agent.ruling")} placeholder={t("card.agent.ruling")} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
       ))}
-      {(rules && !sent) || sends.length > 0 || opens.length > 0 || links.length > 0 ? (
+      {(rules && !sent) || plan || sends.length > 0 || opens.length > 0 || links.length > 0 ? (
         <div className="row">
           {rules && !sent && (
             <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={send}>
@@ -64,6 +66,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
               {t(a.label)}
             </button>
           ))}
+          <MakeTaskButton item={item} act={card} />
           {opens.map((a) => (
             <a key={a.url} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
               {t("card.agent.action.open")}
@@ -84,13 +87,16 @@ export function AgentCard({ item }: { item: DeskItem }) {
 
 export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
   const { t } = useI18n();
+  const card = useAct();
+  const plan = card.offersTask(item);
   const links = item.actions.flatMap((a) => { const url = safeHref(a.url); return url ? [{ ...a, url }] : []; });
   return (
     <Card eyebrow={item.source || t("card.item.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>
       <span className="q">{item.title}</span>
       <span className="sub">{item.why}</span>
-      {links.length > 0 && (
+      {(plan || links.length > 0) && (
         <div className="row">
+          <MakeTaskButton item={item} act={card} />
           {links.map((a) => (
             <a key={a.id} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
               {a.label}
@@ -98,6 +104,7 @@ export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
           ))}
         </div>
       )}
+      <ErrorLine error={card.error} />
     </Card>
   );
 }

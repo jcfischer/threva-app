@@ -54,7 +54,7 @@ export function proposedThread(proposal: StudioProposal): StudioProposal["thread
   return proposal.thread ? (proposal.threads.find((th) => th.slug === proposal.thread) ?? null) : null;
 }
 
-// Request bodies for POST /api/desk/mail, /api/desk/my-day and /api/desk/mail/rules.
+// Request bodies for POST /api/desk/mail and /api/desk/mail/rules. My Day changes go through client.changeMyDay.
 export const requests = {
   move: (key: string, target: MoveTarget) => ({ action: "move", key, target }),
   inviteReply: (key: string, reply: InviteReply, requestId: string) => ({ action: "invite.reply", key, reply, requestId, commitment: null, confirmed: true }),
@@ -66,7 +66,6 @@ export const requests = {
     return { action: "studio.add", key, requestId, thread, includeText: false, ...(reason ? { reason } : {}) };
   },
   draft: (key: string, body: string) => ({ action: "draft", key, body }),
-  keep: (key: string, fingerprint: string) => ({ op: "todo", key, fingerprint }),
   snooze: (key: string, kind: SnoozeTime) => ({ action: "snooze", key, until: { kind } }),
   rule: (proposal: string, op: "approve" | "later" | "never") => ({ op, proposal }),
 };

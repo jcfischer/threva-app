@@ -1,6 +1,6 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
-import { QueueContext } from "../cards/act";
+import { QueueContext, useQueue } from "../cards/act";
 import { MailCard, RuleOfferCard, SweepCard, UndoLine, WaitingCard } from "../cards/mail-cards";
 import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
@@ -96,8 +96,16 @@ export interface QueueBodyProps {
 
 export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: QueueBodyProps) {
   const { t, tn } = useI18n();
+  const outer = useQueue();
+  // The last item made a task. Its card leaves the queue, so the queue says where it went. Cortex returns no undo
+  // receipt for that move, so the line offers no Undo. It stays on the card that came next and goes when that one does.
+  const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const first = queue[0];
+  const front = first?.k ?? "";
+  useEffect(() => {
+    setAdded((a) => (!a ? a : a.next === undefined ? { ...a, next: front } : a.next === front ? a : null));
+  }, [front]);
   const keys = keyMap(first);
   const escape = () => {
     if (!first || !keys) return;
@@ -119,44 +127,51 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   }
   const { why, then } = around(queue);
   return (
-    <section className="cards" aria-label={t("queue.label")}>
-      {state.error && (
-        <p className="faint" role="alert">
-          {state.error.message ?? t("error.network")}
-        </p>
-      )}
-      <UndoLine done={state.view.autonomy?.done ?? []} now={now} />
-      <div className="whyline">
-        {why && <WhyNowText why={why} />}
-        <span>{tn("queue.count", queue.length)}</span>
-      </div>
-      {first ? (
-        <>
-          <EntryCard
-            key={first.k}
-            entry={first}
-            onDismissMeeting={onDismissMeeting}
-            studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }}
-            personas={state.studio?.studio?.personas ?? []}
-          />
-          {keys && <div className="keyhint">
-            {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
-            <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
-          </div>}
-          <div className="row">
-            <button type="button" className="btn quiet" disabled={queue.length < 2} onClick={() => setSession(skip(session, first.k))}>
-              {t("queue.skip")}
-            </button>
-            <button type="button" className="btn quiet" onClick={() => setSession(pin(session, first.k))}>
-              {session.pin === first.k ? t("queue.unpin") : t("queue.pin")}
-            </button>
+    <QueueContext.Provider value={{ ...outer, myDayDate: state.view.myDay?.date, onTask: (title) => setAdded({ title }) }}>
+      <section className="cards" aria-label={t("queue.label")}>
+        {state.error && (
+          <p className="faint" role="alert">
+            {state.error.message ?? t("error.network")}
+          </p>
+        )}
+        {added !== null && (
+          <div className="toast row" role="status">
+            <span>{t("card.task.added", { title: added.title })}</span>
           </div>
-          {then && <ThenLineView then={then} onPull={(k) => setSession(pin(session, k))} />}
-        </>
-      ) : (
-        <p className="sub">{t("queue.empty")}</p>
-      )}
-    </section>
+        )}
+        <UndoLine done={state.view.autonomy?.done ?? []} now={now} />
+        <div className="whyline">
+          {why && <WhyNowText why={why} />}
+          <span>{tn("queue.count", queue.length)}</span>
+        </div>
+        {first ? (
+          <>
+            <EntryCard
+              key={first.k}
+              entry={first}
+              onDismissMeeting={onDismissMeeting}
+              studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)) }}
+              personas={state.studio?.studio?.personas ?? []}
+            />
+            {keys && <div className="keyhint">
+              {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
+              <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
+            </div>}
+            <div className="row">
+              <button type="button" className="btn quiet" disabled={queue.length < 2} onClick={() => setSession(skip(session, first.k))}>
+                {t("queue.skip")}
+              </button>
+              <button type="button" className="btn quiet" onClick={() => setSession(pin(session, first.k))}>
+                {session.pin === first.k ? t("queue.unpin") : t("queue.pin")}
+              </button>
+            </div>
+            {then && <ThenLineView then={then} onPull={(k) => setSession(pin(session, k))} />}
+          </>
+        ) : (
+          <p className="sub">{t("queue.empty")}</p>
+        )}
+      </section>
+    </QueueContext.Provider>
   );
 }
 

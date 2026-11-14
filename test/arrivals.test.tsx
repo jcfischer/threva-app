@@ -133,9 +133,9 @@ describe("mail card", () => {
     expect(html).toContain("Nothing is sent.");
   });
 
-  test("ask offers keep as a task and snooze", () => {
+  test("ask offers snooze, and no longer a task, which sits with the outcomes", () => {
     const html = render({ item: { ...fixtures.unclassified, todoFingerprint: "a".repeat(64) }, initialPanel: "ask" });
-    expect(html).toContain("Keep as a task");
+    expect(html).not.toContain("Keep as a task");
     expect(html).toContain("Snooze");
   });
 });
@@ -160,7 +160,6 @@ describe("write requests", () => {
       includeText: false,
     });
     expect(requests.draft("mail:1", "Thanks")).toEqual({ action: "draft", key: "mail:1", body: "Thanks" });
-    expect(requests.keep("mail:1", "f")).toEqual({ op: "todo", key: "mail:1", fingerprint: "f" });
     expect(requests.snooze("mail:1", "tomorrow")).toEqual({ action: "snooze", key: "mail:1", until: { kind: "tomorrow" } });
     expect(requests.rule(offer.key, "never")).toEqual({ op: "never", proposal: offer.key });
   });
