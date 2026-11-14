@@ -115,13 +115,13 @@ describe("mail card", () => {
     expect(proposed).toContain("What goes into the 2027 budget?");
     expect(proposed).toContain("It is about the budget.");
     const none = render({ item: fixtures.meeting, initialPanel: "attach", initialProposal: { thread: null, reason: "No thread is active; it goes to the Studio inbox.", threads: [] } });
-    expect(none).toContain("Start a new thread");
+    expect(none).toContain("Start a new topic");
   });
 
   test("a proposed slug missing from the offered threads is labelled and sent as a new thread", () => {
     const stray = { thread: "gone", reason: "It fits.", threads: [{ slug: "other", question: "Something else?" }] };
     const html = render({ item: fixtures.meeting, initialPanel: "attach", initialProposal: stray });
-    expect(html).toContain("Start a new thread");
+    expect(html).toContain("Start a new topic");
     expect(html).not.toContain("Something else?");
     expect(requests.attach("mail:1", stray, "abcdefgh12")).toEqual({ action: "studio.add", key: "mail:1", requestId: "abcdefgh12", thread: null, includeText: false });
   });
