@@ -4,6 +4,7 @@ import { safeHref } from "../api/safe-link";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "./act";
+import { DiscussNote, TalkItThrough } from "./conversation";
 
 type Run = ReturnType<typeof useStudioAct>["run"];
 
@@ -54,9 +55,7 @@ function NoteView({ note, slug, busy, run }: { note: StudioNote; slug: string; b
           <button type="button" className="btn pri" disabled={busy} onClick={() => run({ act: "keep", thread: slug, note: note.at })}>
             {note.kind === "stand" ? t("studio.keepStand") : t("studio.keep")}
           </button>
-          <button type="button" className="btn" disabled title={t("studio.discussLater")}>
-            {t("studio.discuss")}
-          </button>
+          <DiscussNote thread={slug} note={note.at} />
           <button type="button" className="btn quiet" disabled={busy} onClick={() => run({ act: "dismiss", thread: slug, note: note.at })}>
             {t("studio.dismiss")}
           </button>
@@ -239,6 +238,7 @@ function StudioOpen({ thread, waits, onHide }: StudioCardProps) {
             </button>
           </div>
           <ErrorLine error={error} />
+          <TalkItThrough thread={slug} />
           {closing ? (
             <CloseForm slug={slug} busy={busy} run={run} onCancel={() => setClosing(false)} />
           ) : (

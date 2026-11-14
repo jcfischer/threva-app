@@ -36,6 +36,7 @@ export interface DeskClient {
   desk(): Promise<Result<DeskView>>;
   studio(): Promise<Result<StudioList>>;
   rules(): Promise<Result<MailRules>>;
+  get<T = Record<string, unknown>>(path: string): Promise<Result<T>>;
   post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
 }
 
@@ -44,6 +45,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     desk: () => call<DeskView>(fetchImpl, "/api/desk"),
     studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
     rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
+    get: <T,>(path: string) => call<T>(fetchImpl, path),
     post: <T,>(path: string, body: unknown) =>
       call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
   };
