@@ -135,6 +135,8 @@ export const de: Messages = {
   "day.left": "noch {length}",
   "day.empty": "Heute stehen keine Termine an.",
   "day.stillOpen": "Heute noch offen",
+  "day.earlier": "Heute früher",
+  "day.earlier.more": { one: "und {count} weitere", other: "und {count} weitere" },
   "day.length.m": "{m} Min.",
   "day.length.h": "{h} Std.",
   "day.length.hm": "{h} Std. {m} Min.",

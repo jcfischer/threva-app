@@ -46,4 +46,29 @@ export const budgetThread: StudioThread = {
   ],
 };
 
-export const studioList = (active: StudioThread[], parked: StudioThread[] = []): StudioList => ({ studio: { active, parked } });
+// Recorded from the dev stack's `GET /api/desk/studio` after a close act closed the budget thread as dropped, with the
+// fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp.
+export const closedThread: StudioThread = {
+  slug: "budget-next-year",
+  state: "closed",
+  closed: "2026-11-14",
+  outcome: "dropped",
+  question: "What goes into next year's budget?",
+  stand: "Keep the team as it is and cut travel.",
+  notes: [
+    {
+      at: "2026-11-13T20:49:01Z",
+      trigger: "Sample thread",
+      kind: "note",
+      status: "open",
+      text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
+    },
+  ],
+  responses: [],
+  material: [
+    { kind: "person", label: "Ada Lovelace" },
+    { kind: "mail", label: "Budget for next year" },
+  ],
+};
+
+export const studioList = (active: StudioThread[], parked: StudioThread[] = [], closed: StudioThread[] = []): StudioList => ({ studio: { active, parked, closed } });
