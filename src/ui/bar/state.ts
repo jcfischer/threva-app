@@ -1,7 +1,7 @@
 import type { Proposal } from "../api/capture";
 
 export type BarState =
-  | { phase: "idle"; text: string }
+  | { phase: "idle"; text: string; active: number }
   | { phase: "asking"; text: string }
   | { phase: "proposed"; text: string; proposal: Proposal }
   | { phase: "creating"; text: string; proposal: Proposal }
@@ -12,6 +12,8 @@ export type BarState =
 
 export type BarEvent =
   | { type: "typed"; text: string }
+  | { type: "move"; delta: number; count: number }
+  | { type: "clear" }
   | { type: "submit" }
   | { type: "proposed"; proposal: Proposal }
   | { type: "keep" }
@@ -22,7 +24,7 @@ export type BarEvent =
   | { type: "failed"; message: string | null }
   | { type: "reset" };
 
-export const INITIAL: BarState = { phase: "idle", text: "" };
+export const INITIAL: BarState = { phase: "idle", text: "", active: 0 };
 
 function textOf(state: BarState): string {
   return "text" in state ? state.text : "";
@@ -35,7 +37,14 @@ export function looksLikeQuestion(text: string): boolean {
 export function barReducer(state: BarState, event: BarEvent): BarState {
   switch (event.type) {
     case "typed":
-      return { phase: "idle", text: event.text };
+      return { phase: "idle", text: event.text, active: 0 };
+    case "move": {
+      if (state.phase !== "idle" || event.count <= 0) return state;
+      const active = (state.active + event.delta + event.count) % event.count;
+      return { phase: "idle", text: state.text, active };
+    }
+    case "clear":
+      return INITIAL;
     case "submit":
       return textOf(state).trim() && (state.phase === "idle" || state.phase === "error") ? { phase: "asking", text: textOf(state) } : state;
     case "proposed":
@@ -45,7 +54,7 @@ export function barReducer(state: BarState, event: BarEvent): BarState {
     case "created":
       return { phase: "created", message: event.message, undo: event.undo };
     case "reject":
-      return { phase: "idle", text: textOf(state) };
+      return { phase: "idle", text: textOf(state), active: 0 };
     case "ask":
       return textOf(state).trim() ? { phase: "talking", text: textOf(state) } : state;
     case "started":

@@ -11,7 +11,7 @@ const conversation: Proposal = { kind: "conversation", label: "Conversation", fi
 describe("bar state", () => {
   test("empty or blank text is never sent", () => {
     expect(barReducer(INITIAL, { type: "submit" })).toEqual(INITIAL);
-    expect(barReducer({ phase: "idle", text: "   " }, { type: "submit" })).toEqual({ phase: "idle", text: "   " });
+    expect(barReducer({ phase: "idle", text: "   ", active: 0 }, { type: "submit" })).toEqual({ phase: "idle", text: "   ", active: 0 });
   });
 
   test("text goes through asking, proposed, creating and created", () => {
@@ -33,7 +33,7 @@ describe("bar state", () => {
   });
 
   test("rejecting a proposal returns to the text", () => {
-    expect(barReducer({ phase: "proposed", text: "Buy milk", proposal: task }, { type: "reject" })).toEqual({ phase: "idle", text: "Buy milk" });
+    expect(barReducer({ phase: "proposed", text: "Buy milk", proposal: task }, { type: "reject" })).toEqual({ phase: "idle", text: "Buy milk", active: 0 });
   });
 
   test("a question offers asking", () => {

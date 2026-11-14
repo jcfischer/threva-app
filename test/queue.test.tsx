@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createClient, type Fetch } from "../src/ui/api/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { buildQueue, EMPTY_SESSION, pin, skip } from "../src/ui/queue/order";
+import { buildQueue, EMPTY_SESSION, openStudio, pin, skip } from "../src/ui/queue/order";
 import { QueueBody } from "../src/ui/queue/queue-view";
 import { loadDesk } from "../src/ui/queue/use-desk";
 import { item, NOW, studio, thread, view } from "./fixtures/desk";
@@ -35,6 +35,26 @@ describe("buildQueue", () => {
     expect(skipped.at(-1)?.k).toBe("i:agent");
     const pinned = buildQueue(desk, null, pin(EMPTY_SESSION, "d:t1"), NOW);
     expect(pinned[0]?.k).toBe("d:t1");
+  });
+
+  test("a pull brings the card in front of the Studio thread that was open", () => {
+    const threads = studio(thread("s1", "open", false));
+    const opened = openStudio(EMPTY_SESSION, "s1");
+    expect(buildQueue(desk, threads, opened, NOW).map((e) => e.k)).toEqual(["t:s1", "i:agent", "i:fresh", "i:old", "d:t1"]);
+    const pulled = pin(opened, "i:old");
+    expect(pulled.open).toBeNull();
+    expect(buildQueue(desk, threads, pulled, NOW).map((e) => e.k)).toEqual(["i:old", "i:agent", "t:s1", "i:fresh", "d:t1"]);
+  });
+
+  test("a pin and an open thread in one session still put the pin first", () => {
+    const threads = studio(thread("s1", "open", false));
+    const queue = buildQueue(desk, threads, { skip: [], pin: "i:old", open: "s1" }, NOW);
+    expect(queue.map((e) => e.k)).toEqual(["i:old", "t:s1", "i:agent", "i:fresh", "d:t1"]);
+  });
+
+  test("pinning the open thread keeps it open", () => {
+    const opened = openStudio(EMPTY_SESSION, "s1");
+    expect(pin(opened, "t:s1").open).toBe("s1");
   });
 });
 
