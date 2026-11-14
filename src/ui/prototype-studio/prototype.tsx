@@ -2,9 +2,13 @@
 // the topic page, switchable via ?prototype=studio&variant=A|B|C&screen=day|page. Throwaway. Writes are stubs in memory.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Header } from "../app";
+import { One, Sentence, SIMPLE_CSS, Talk } from "./simple";
 import { ago, dayOf, firstLine, firstSentence, fixture, MODES, modeLabel, record, waiting, type Mode, type Note, type Topic } from "./data";
 
 const VARIANTS = [
+  ["D", "One question"],
+  ["E", "Just talk"],
+  ["F", "The sentence"],
   ["A", "One column, one composer"],
   ["B", "Page and margin"],
   ["C", "Waiting first, record behind"],
@@ -86,9 +90,16 @@ const acts = (set: Set) => ({
     }),
   ask: (text: string) =>
     set((t) => ({ ...t, chat: [...t.chat, { who: "you", text }, { who: "assistant", text: "(Sample reply.) Short answer: the assistant's own card first. It is the only card no other product has." }], last: "asked now" })),
+  setStand: (text: string) => set((t) => ({ ...t, stand: text, standHistory: [{ at: Date.now(), text: t.stand }, ...t.standHistory], last: "rewrote the stand" })),
+  propose: () =>
+    set((t) => ({
+      ...t,
+      notes: [{ id: `n${Date.now()}`, at: Date.now(), kind: "stand", status: "open", mode: "think", trigger: "You answered", model: "Qwen 3.8 27B (local)", text: "(Sample rewrite.) Show the assistant's own card first, then one card at a time, and explain nothing up front." }, ...t.notes],
+      last: `${t.last}; the assistant proposed a rewrite`,
+    })),
   state: (state: Topic["state"]) => set((t) => ({ ...t, state, last: `topic ${state}` })),
 });
-type Acts = ReturnType<typeof acts>;
+export type Acts = ReturnType<typeof acts>;
 
 // --- small shared parts ---
 
@@ -96,7 +107,7 @@ function inline(text: string): ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/).map((part, i) => (part.startsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part));
 }
 
-function Md({ text }: { text: string }) {
+export function Md({ text }: { text: string }) {
   const out: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   const flush = () => {
@@ -333,7 +344,7 @@ function Material({ topic }: { topic: Topic }) {
 }
 
 /** Q4: the record grouped by day, each entry collapsed to one line. `collapse` picks the rule under test. */
-function Record({ topic, now, collapse }: { topic: Topic; now: number; collapse: (text: string) => string }) {
+export function Record({ topic, now, collapse }: { topic: Topic; now: number; collapse: (text: string) => string }) {
   const [open, setOpen] = useState<string | null>(null);
   let day = "";
   return (
@@ -657,15 +668,16 @@ function DayDone({ goPage }: { goPage: () => void }) {
   );
 }
 
-const DAY = { A: DayA, B: DayB, C: DayC };
-const PAGE = { A: PageA, B: PageB, C: PageC };
+const DAY = { A: DayA, B: DayB, C: DayC, D: One, E: Talk, F: Sentence };
+const PAGE = { A: PageA, B: PageB, C: PageC, D: One, E: Talk, F: Sentence };
+const SIMPLE = ["D", "E", "F"];
 
 export function StudioPrototype() {
   const now = useMemo(() => Date.now(), []);
   const [topic, setTopic] = useState(() => fixture(now));
   const act = useMemo(() => acts(setTopic), []);
   const params = new URLSearchParams(location.search);
-  const [variant, setVariantState] = useState<Key>(VARIANTS.some(([k]) => k === params.get("variant")) ? (params.get("variant") as Key) : "A");
+  const [variant, setVariantState] = useState<Key>(VARIANTS.some(([k]) => k === params.get("variant")) ? (params.get("variant") as Key) : "D");
   const [screen, setScreenState] = useState<Screen>(params.get("screen") === "page" ? "page" : "day");
   const go = (v: Key, s: Screen) => {
     setVariantState(v);
@@ -694,7 +706,7 @@ export function StudioPrototype() {
   const props: P = { topic, act, now, goPage: () => go(variant, "page") };
   return (
     <main className="wrap px">
-      <style>{CSS}</style>
+      <style>{CSS + SIMPLE_CSS}</style>
       <Header />
       <div className="px-state">
         prototype · waiting {waiting(topic).length} · notes {topic.notes.length} · answers {topic.responses.length} · runs {topic.runs.map((r) => `${r.mode}:${r.status}`).join(", ") || "none"} · topic {topic.state} · last: {topic.last}{" "}
@@ -702,7 +714,9 @@ export function StudioPrototype() {
           reset
         </button>
       </div>
-      {screen === "day" ? (
+      {SIMPLE.includes(variant) ? (
+        <Day key={variant} {...props} />
+      ) : screen === "day" ? (
         <div className="px-daycol" style={variant === "C" ? { maxWidth: 980 } : undefined}>
           <span className="faint">A question in the Studio waits for your answer.</span>
           <Day key={variant} {...props} />
@@ -716,8 +730,8 @@ export function StudioPrototype() {
           {variant} ({VARIANTS.find(([k]) => k === variant)![1]})
         </span>
         <button type="button" onClick={() => cycle(1)}>→</button>
-        <button type="button" className={screen === "day" ? "on" : ""} onClick={() => go(variant, "day")}>Day card</button>
-        <button type="button" className={screen === "page" ? "on" : ""} onClick={() => go(variant, "page")}>Topic page</button>
+        {!SIMPLE.includes(variant) && <><button type="button" className={screen === "day" ? "on" : ""} onClick={() => go(variant, "day")}>Day card</button>
+        <button type="button" className={screen === "page" ? "on" : ""} onClick={() => go(variant, "page")}>Topic page</button></>}
       </div>
     </main>
   );
