@@ -36,7 +36,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
   return (
     <Card eyebrow={t("card.agent.eyebrow")} pill={<span className="pill wait">{t("card.agent.waits")}</span>}>
       <span className="q"><Mentioned text={item.title} mentions={item.mentions} /></span>
-      <span className="sub"><Mentioned text={body}mentions={item.mentions} /></span>
+      <span className="sub"><Mentioned text={body} mentions={item.mentions} /></span>
       {choices.length > 0 && !sent && (
         <div role="group" aria-label={t("card.agent.choices")}>
           {choices.map((c) => (
@@ -65,7 +65,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
             </button>
           ))}
           {opens.map((a) => (
-            <a key={a.id} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
+            <a key={a.url} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
               {t("card.agent.action.open")}
             </a>
           ))}
