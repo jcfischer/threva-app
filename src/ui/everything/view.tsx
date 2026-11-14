@@ -26,6 +26,11 @@ const placeStore = (): PlaceStore => {
 
 const everyRow = (row: OutlineRow): OutlineRow[] => [row, ...row.children.flatMap(everyRow)];
 
+/** A URL from a row title, opened in a new tab. */
+function TitleLink({ href, text, className }: { href: string; text: string; className?: string }) {
+  return <a className={className} href={href} target="_blank" rel="noreferrer">{text}</a>;
+}
+
 /**
  * A row's title in the outline: its text opens the row, and each http or https URL in it opens in a new tab.
  * Only the first piece of text is a tab stop, so a row is still one stop plus its links.
@@ -36,7 +41,7 @@ function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: 
   let first = true;
   return <span className="outline-title">
     {parts.map((part, index) => {
-      if (part.href) return <a key={index} className="outline-link" href={part.href} target="_blank" rel="noreferrer">{part.text}</a>;
+      if (part.href) return <TitleLink key={index} className="outline-link" href={part.href} text={part.text} />;
       if (!part.text.trim()) return part.text;
       const stop = first;
       first = false;
@@ -244,7 +249,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const clean = !saver.holding(current.id);
   const hasPage = current.id !== root.id && !studioOwned(current.id);
   const body = <div className="cur">
-    <h2>{titleParts(current.title).map((part, index) => part.href ? <a key={index} href={part.href} target="_blank" rel="noreferrer">{part.text}</a> : part.text)}</h2>
+    <h2>{titleParts(current.title).map((part, index) => part.href ? <TitleLink key={index} href={part.href} text={part.text} /> : part.text)}</h2>
     {isArea(current.id) && <div className="stack">
       <span className="faint">{t("everything.importance", { value: current.weight })}</span>
       {share ? <><div className="balbar" aria-hidden="true"><i style={{ width: `${Math.round(share.actualShare * 100)}%` }} /><b style={{ left: `${Math.round(share.targetShare * 100)}%` }} /></div><span className="faint">{t("everything.share", { actual: Math.round(share.actualShare * 100), target: Math.round(share.targetShare * 100) })}</span></> : <span className="faint">{t("everything.shareUnavailable")}</span>}

@@ -3,13 +3,15 @@ import { act } from "react";
 import { EditorView } from "@codemirror/view";
 import { createClient } from "../src/ui/api/client";
 import { pathTo } from "../src/ui/everything/moves";
-import { NoteEditor } from "../src/ui/everything/editor";
+import { NotePage } from "../src/ui/everything/page";
+import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { EverythingView } from "../src/ui/everything/view";
 import { outlineFixture, row } from "./fixtures/outline";
 import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
 
 const FORUM = "https://forums.developer.nvidia.com/t/lets-optimize-dgx-spark/387929/4";
 const MAIL = "message://%3Cid@example.org%3E";
+const WIKI = "https://en.wikipedia.org/wiki/Spark_(software)";
 
 let close: (() => Promise<void>) | null = null;
 afterEach(async () => {
@@ -75,14 +77,14 @@ test("links on a page open with a plain click when not writing and with Cmd- or 
   const { container, render } = mount(CODEMIRROR_GLOBALS);
   const opened: string[] = [];
   window.open = ((url?: string | URL) => { opened.push(String(url)); return null; }) as typeof window.open;
-  const note = `From work-mail: mail:abc\n${MAIL}\n\nThe [forum thread](${FORUM}) and https://threva.example/a.`;
-  await render(<NoteEditor value={note} label="Page" hint="" place={null} linkHint="Click to open" onChange={() => {}} onLeave={() => {}} />);
+  const note = `From work-mail: mail:abc\n${MAIL}\n\nThe [forum thread](${FORUM}) and https://threva.example/a. See [the wiki](${WIKI}) (or ${WIKI}).`;
+  await render(<I18nProvider value={createI18n("en")}><NotePage row={row("mail", { title: "Answer the mail", note })} text={note} place={null} notice={null} onType={() => {}} onLeave={() => {}} /></I18nProvider>);
   const content = container.querySelector(".cm-content") as HTMLElement;
   const editor = EditorView.findFromDOM(content)!;
 
   const links = () => [...container.querySelectorAll(".cm-note-link")];
-  expect([...new Set(links().map(link => link.getAttribute("data-href")))]).toEqual([MAIL, FORUM, "https://threva.example/a"]);
-  expect(links()[0]!.getAttribute("title")).toBe("Click to open");
+  expect([...new Set(links().map(link => link.getAttribute("data-href")))]).toEqual([MAIL, FORUM, "https://threva.example/a", WIKI]);
+  expect(links()[0]!.getAttribute("title")).toMatch(/^Click to open, or (⌘|Ctrl)-click while you write$/);
   // A bare URL stays on the page when the cursor is elsewhere; a Markdown link shows its label.
   expect(content.textContent).toContain("https://threva.example/a.");
   expect(content.textContent).toContain("The forum thread and");
