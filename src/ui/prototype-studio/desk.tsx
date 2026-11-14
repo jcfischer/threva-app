@@ -3,12 +3,13 @@
 // notes small on the right. Click one and it comes to the desk beside the work; drag it onto the work to use it.
 // Select text in the work to act on that passage. The strip at the bottom is the topic's history.
 // Throwaway. The draft is not in the Cortex API today: a work document per topic is a gap.
-import { useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { NoteEditor, type PageController } from "../everything/editor";
 import { ago, firstSentence, waiting, type Note, type Topic } from "./data";
 import { Md, type Acts } from "./prototype";
 
 export const DESK_CSS = `
-.dk{display:grid;grid-template-columns:minmax(170px,1fr) auto minmax(480px,680px) auto minmax(170px,1fr);gap:18px;align-items:start}
+.dk{display:grid;grid-template-columns:minmax(170px,1fr) minmax(480px,720px) minmax(170px,1fr);gap:18px;align-items:start}
 .dk-edge{display:flex;flex-direction:column;gap:10px;padding-top:6px}
 .dk-edge.l{align-items:flex-end}
 .dk-edge.r{align-items:flex-start}
@@ -29,7 +30,12 @@ export const DESK_CSS = `
 .dk-block.quote{border-left:3px solid var(--line);padding-left:12px;color:var(--dim)}
 .dk-block.fresh{background:var(--accent-soft);box-shadow:0 0 0 6px var(--accent-soft)}
 .dk-block:focus{background:var(--sunk);box-shadow:0 0 0 6px var(--sunk)}
-.dk-slot{width:340px;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.18);position:sticky;top:14px;max-height:86vh;overflow:auto}
+.dk-mid{position:relative}
+.dk-slot{width:380px;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.18);position:absolute;top:34px;z-index:5;max-height:78vh;overflow:auto;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+.dk-slot.l{left:-28px}
+.dk-slot.r{right:-28px}
+.dk-paper .note-editor{border:0;border-radius:0;overflow:visible}
+.dk-paper .note-editor .cm-scroller{max-height:none;padding:0;font-size:16px;line-height:1.65}
 .dk-slot.note{border-color:var(--accent)}
 .dk-ask{font-weight:650;font-size:17px}
 .dk-sel{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--fg);color:var(--bg);border-radius:10px;padding:6px 8px;display:flex;gap:6px;align-items:center;font-size:13.5px;z-index:40;max-width:90vw}
@@ -43,15 +49,8 @@ export const DESK_CSS = `
 .dk-seg.mat{background:var(--wait);height:18px}
 .dk-legend span{white-space:nowrap}
 .dk-legend{display:flex;justify-content:space-between;max-width:900px;margin:4px auto 0;width:100%;font-size:12px;color:var(--faint)}
-@media (max-width:1100px){.dk{grid-template-columns:minmax(0,1fr)}.dk-edge.l,.dk-edge.r{align-items:stretch}.dk-slot{width:auto;position:static}}
+@media (max-width:1100px){.dk{grid-template-columns:minmax(0,1fr)}.dk-edge.l,.dk-edge.r{align-items:stretch}.dk-slot{position:static;width:auto}}
 `;
-
-interface Block {
-  id: string;
-  kind: "h" | "p" | "quote";
-  text: string;
-  fresh?: boolean;
-}
 
 interface Scrap {
   id: string;
@@ -63,15 +62,20 @@ interface Scrap {
 
 const DAY = 86_400_000;
 
-const DRAFT: Block[] = [
-  { id: "b1", kind: "h", text: "The first five minutes" },
-  { id: "b2", kind: "p", text: "A newcomer opens the Desk and sees one card. Not a list, not a tour. The card says what it is and why it is here, in one sentence each." },
-  { id: "b3", kind: "p", text: "The first three cards are chosen, not ranked. They are real cards from the person's own day." },
-  { id: "b4", kind: "h", text: "What we do not explain" },
-  { id: "b5", kind: "p", text: "The name of the product. The Everything view. The Studio. Each of them appears the first time it is needed." },
-  { id: "b6", kind: "h", text: "Open" },
-  { id: "b7", kind: "p", text: "How does the person learn that there is more behind the card?" },
-];
+const DRAFT = `## The first five minutes
+
+A newcomer opens the Desk and sees one card. Not a list, not a tour. The card says what it is and why it is here, in one sentence each.
+
+The first three cards are **chosen, not ranked**. They are real cards from the person's own day.
+
+## What we do not explain
+
+The name of the product. The Everything view. The Studio. Each of them appears the first time it is needed.
+
+## Open
+
+How does the person learn that there is more behind the card?
+`;
 
 const scraps = (now: number): Scrap[] => [
   { id: "m1", kind: "Recording", title: "First five minutes with the Desk", at: now - 9 * DAY, body: "00:04 reads the header.\n00:09 scrolls, looking for a list.\n00:11 clicks \"Everything\".\n02:40 comes back to the Day only after being told to.\n03:15 \"Oh, it is one at a time. Why did nobody say?\"" },
@@ -97,8 +101,15 @@ export function Desk({ topic, act, now }: { topic: Topic; act: Acts; now: number
   const notes = topic.notes.filter((n) => n.status !== "dismissed").sort((a, b) => b.at - a.at);
   const note = right ? (topic.notes.find((n) => n.id === right.id) ?? null) : null;
 
-  const add = (kind: Block["kind"], text: string, from: string) => {
-    setDraft((d) => [...d.map((b) => ({ ...b, fresh: false })), { id: `b${Date.now()}`, kind, text, fresh: true }]);
+  const page = useRef<PageController | null>(null);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setLeft(null); setRight(null); } };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, []);
+  const add = (kind: "p" | "quote", text: string, from: string) => {
+    const line = kind === "quote" ? `> ${text.replace(/\n/g, "\n> ")}` : text;
+    page.current?.apply((now) => `${now.trimEnd()}\n\n${line}\n`);
     setUsed((u) => [...u, from]);
     setSaid("Added at the end of the draft. Edit it like any other line.");
   };
@@ -148,14 +159,15 @@ export function Desk({ topic, act, now }: { topic: Topic; act: Acts; now: number
           ))}
         </div>
 
-        {left ? (
-          <div className="dk-slot" onMouseUp={picked}>
+        <div className="dk-mid">
+        {left && (
+          <div className="dk-slot l" onMouseUp={picked}>
             <span className="eyebrow">{left.kind}</span>
             <b>{left.title}</b>
             <div style={{ whiteSpace: "pre-wrap" }}>{left.body}</div>
             <span className="faint">Select a part to pull only that into the draft.</span>
             <div className="row">
-              <button type="button" className="btn pri" onClick={() => { useScrap(left, sel || undefined); setSel(""); }}>
+              <button type="button" className="btn pri" onClick={() => { useScrap(left, sel || undefined); setSel(""); setLeft(null); }}>
                 {sel ? "Pull the selection in" : "Pull into the draft"}
               </button>
               <button type="button" className="btn quiet" onClick={() => setLeft(null)}>
@@ -163,22 +175,16 @@ export function Desk({ topic, act, now }: { topic: Topic; act: Acts; now: number
               </button>
             </div>
           </div>
-        ) : (
-          <span />
         )}
 
         <div className={`dk-paper${over ? " over" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={drop} onMouseUp={picked}>
           <h2>{topic.question}</h2>
           <p className="dk-lead">{topic.stand}</p>
-          {draft.map((b) => (
-            <p key={b.id} className={`dk-block ${b.kind}${b.fresh ? " fresh" : ""}`} contentEditable suppressContentEditableWarning>
-              {b.text}
-            </p>
-          ))}
+          <NoteEditor value={draft} label="Draft" hint="Write here. Select a passage to ask the assistant about it." place={null} onChange={setDraft} onLeave={() => {}} controller={page} assistantName="the assistant" askLabel="Ask the assistant" shortenLabel="Shorten" onAsk={(kind) => { act.think("think", "now"); setSaid(kind === "shorten" ? "The assistant is shortening that passage. Its proposal will appear on the right." : "The assistant is thinking about that passage. Its note will appear on the right."); }} />
         </div>
 
-        {note ? (
-          <div className="dk-slot note">
+        {note && (
+          <div className="dk-slot r note">
             <span className="eyebrow">The assistant · {ago(note.at, now)}</span>
             {note.asks && <span className="dk-ask">{note.asks}</span>}
             <Md text={note.asks ? note.text.replace(`**${note.asks}**`, "").trimEnd() : note.text} />
@@ -207,9 +213,8 @@ export function Desk({ topic, act, now }: { topic: Topic; act: Acts; now: number
               </button>
             </div>
           </div>
-        ) : (
-          <span />
         )}
+        </div>
 
         <div className="dk-edge r">
           <span className="eyebrow">From the assistant</span>
@@ -242,7 +247,6 @@ export function Desk({ topic, act, now }: { topic: Topic; act: Acts; now: number
       {sel && !left && (
         <div className="dk-sel">
           <i>"{sel}"</i>
-          <button type="button" onClick={() => askAbout("think")}>Think about this</button>
           <button type="button" onClick={() => askAbout("red-team")}>Find holes in this</button>
           <button type="button" onClick={park}>Park on the left</button>
         </div>
