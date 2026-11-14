@@ -56,7 +56,7 @@ The feature map in `features/` says what to drive for each part of the UI.
 
 ## One command
 
-`bun run probe:ui` does Launch, Drive and Cleanup in one go: it starts a stack in a fresh temporary `THREVA_DEV_DIR` on a free port, runs every journey and a Bombadil run (`THREVA_PROBE_EXPLORE`, default `2m`), stops the stack, and prints `FAILED: verify:ui · explore:ui` for what failed. It needs `CORTEX_DIR` and `CORTEX_ADAPTERS_DIR`. Evidence goes to `THREVA_PROBE_OUT`, or to `evidence/` in the temporary directory. Ranger runs it as the repository's `probe` command before a pull request is marked ready.
+`bun run probe:ui` does Launch, Drive and Cleanup in one go: it starts a stack in a fresh temporary `THREVA_DEV_DIR` on a free port, runs every journey and a Bombadil run (`THREVA_PROBE_EXPLORE`, default `2m`), stops the stack, and prints `FAILED: verify:ui · explore:ui` for what failed. It needs `CORTEX_DIR` and `CORTEX_ADAPTERS_DIR`. Evidence goes to `THREVA_PROBE_OUT`, or to `evidence/` in the temporary directory. Set it as threva-app's `commands.probe` in ranger.yaml and ranger runs it before a pull request is marked ready.
 
 ## Evidence
 
