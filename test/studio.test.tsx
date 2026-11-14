@@ -9,11 +9,11 @@ import { closeAct, StudioCard, timeline } from "../src/ui/studio/card";
 import { NOW, view } from "./fixtures/desk";
 import { budgetThread, studioList } from "./fixtures/studio";
 
-const render = (open: boolean, locale: "en" | "de" = "en", thread = budgetThread) =>
+const render = (open: boolean, locale: "en" | "de" = "en", thread = budgetThread, personas: readonly string[] = []) =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
       <QueueContext.Provider value={{ client: createClient(async () => new Response("{}")), refresh: () => {} }}>
-        <StudioCard thread={thread} waits open={open} onOpen={() => {}} onHide={() => {}} />
+        <StudioCard thread={thread} waits open={open} onOpen={() => {}} onHide={() => {}} personas={personas} />
       </QueueContext.Provider>
     </I18nProvider>,
   );
@@ -64,6 +64,15 @@ describe("the Studio card", () => {
     for (const label of ["Your answer to the assistant", "Think it over tonight", "Close with an outcome", ">Park<"]) expect(en).toContain(label);
     const de = render(true, "de");
     for (const label of ["Wo ich stehe", "Deine Antwort an den Assistenten", "Heute Nacht durchdenken", "Parken", "Als Standpunkt übernehmen"]) expect(de).toContain(label);
+  });
+
+  test("open, its rail offers sparring, with a question per persona Cortex lists and without one when it lists none", () => {
+    const html = render(true, "en", budgetThread, ["Grace Hopper"]);
+    const rail = html.slice(html.indexOf('class="stside"'));
+    expect(rail).toContain("Sparring");
+    for (const label of ["Think now", "Grill me", "Argue the other side", "Red team", "First principles"]) expect(rail).toContain(`>${label}<`);
+    expect(rail).toContain("What would Grace Hopper say?");
+    expect(render(true)).not.toContain("What would");
   });
 
   test("a parked thread offers to bring it back", () => {
