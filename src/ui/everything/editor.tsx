@@ -93,7 +93,8 @@ function noteMarks(view: EditorView, decoration?: LineDecoration, assistant?: st
       }
       if (!HIDDEN.has(node.name) || node.from === node.to) return;
       // A bare URL is the text itself; only the target of a Markdown link is a mark to hide.
-      if (node.name === "URL" && node.node.parent?.name !== "Link" && node.node.parent?.name !== "Image") return;
+      const bareUrl = node.name === "URL" && node.node.parent?.name !== "Link" && node.node.parent?.name !== "Image";
+      if (bareUrl) return;
       if (live.has(state.doc.lineAt(node.from).number)) return;
       mark(node.from, node.to, Decoration.replace({}));
     },

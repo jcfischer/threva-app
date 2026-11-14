@@ -50,6 +50,7 @@ export function interruptionWatcher(notifier: Notifier, onOpen: (key: string) =>
         });
       } catch {
         // A browser may expose the API but refuse construction (for example on mobile).
+        continue;
       }
     }
     loaded = true;

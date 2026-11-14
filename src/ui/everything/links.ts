@@ -8,17 +8,20 @@ export interface TextLink {
 
 export type TitlePart = { text: string; href?: undefined } | { text: string; href: string };
 
-// A Markdown link `[label](target)`, or a bare http, https or message: URL.
-// A target may hold one level of balanced parentheses, as Wikipedia URLs do.
-const LINKS = /\[([^\]\n]*)\]\(((?:[^()\s]|\([^()\s]*\))+)\)|(?:https?:\/\/|message:)[^\s<>]+/g;
-// Punctuation that ends a sentence rather than the URL it follows.
-const TRAILING = /[.,;:!?'"\]]$/;
+const MARKDOWN_LABEL = String.raw`\[([^\]\n]*)\]`;
+const MARKDOWN_TARGET_WITH_ONE_LEVEL_OF_PARENTHESES = String.raw`\(((?:[^()\s]|\([^()\s]*\))+)\)`;
+const BARE_HTTP_OR_MESSAGE_URL = String.raw`(?:https?:\/\/|message:)[^\s<>]+`;
+const MARKDOWN_LINK_OR_BARE_URL = new RegExp(`${MARKDOWN_LABEL}${MARKDOWN_TARGET_WITH_ONE_LEVEL_OF_PARENTHESES}|${BARE_HTTP_OR_MESSAGE_URL}`, "g");
+const SENTENCE_PUNCTUATION_AT_END = /[.,;:!?'"\]]$/;
 
-// Drops sentence punctuation after a bare URL, and a closing parenthesis only when it has no partner in the URL.
-function trimBare(url: string): string {
+function endsWithUnpairedClosingParenthesis(url: string): boolean {
+  return url.endsWith(")") && url.split(")").length > url.split("(").length;
+}
+
+function withoutSentenceEnd(bareUrl: string): string {
+  let url = bareUrl;
   for (;;) {
-    if (TRAILING.test(url)) url = url.slice(0, -1);
-    else if (url.endsWith(")") && url.split(")").length > url.split("(").length) url = url.slice(0, -1);
+    if (SENTENCE_PUNCTUATION_AT_END.test(url) || endsWithUnpairedClosingParenthesis(url)) url = url.slice(0, -1);
     else return url;
   }
 }
@@ -26,10 +29,10 @@ function trimBare(url: string): string {
 /** The links in a text whose targets pass the safe-link rules, in order. */
 export function findLinks(text: string): TextLink[] {
   const found: TextLink[] = [];
-  for (const match of text.matchAll(LINKS)) {
+  for (const match of text.matchAll(MARKDOWN_LINK_OR_BARE_URL)) {
     const from = match.index;
     const bare = match[2] === undefined;
-    const raw = bare ? trimBare(match[0]) : match[2]!;
+    const raw = bare ? withoutSentenceEnd(match[0]) : match[2]!;
     const href = safeHref(raw);
     if (href) found.push({ from, to: bare ? from + raw.length : from + match[0].length, href });
   }
