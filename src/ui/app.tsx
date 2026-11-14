@@ -44,7 +44,7 @@ export function App({ client }: { client?: DeskClient }) {
       <Bar client={desk} entries={queue} onPull={pull} onChange={state.refresh} />
       <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
       {view === "day" && <DayView client={desk} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} />}
-      {openedEverything && <div hidden={view !== "everything"}><EverythingView client={desk} active={view === "everything"} shares={state.view?.mirror?.balance?.areas} onChange={state.refresh} /></div>}
+      {openedEverything && <div hidden={view !== "everything"}><EverythingView client={desk} active={view === "everything"} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} /></div>}
     </main>
   );
 }

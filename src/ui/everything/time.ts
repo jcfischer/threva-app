@@ -1,4 +1,4 @@
-import type { OutlineRow } from "../api/types";
+import type { OutlineRow, StudioProject } from "../api/types";
 import { createI18n, type I18n } from "../i18n";
 
 export interface RowTime {
@@ -69,12 +69,14 @@ export function rowTime(row: OutlineRow, today: string, i18n: I18n = createI18n(
   }
 }
 
-export function rowCounts(row: OutlineRow, today: string): { open: number; later: number; back?: string } {
+export function rowCounts(row: OutlineRow, today: string, projects: readonly StudioProject[] = []): { open: number; later: number; back?: string } {
+  const project = projects.find(project => project.id === row.id);
+  if (project) return { open: Number(project.state === "active" || project.state === null), later: Number(project.state === "parked") };
   if (!row.children.length) {
     const time = rowState(row, today);
     return { open: Number(time.state === "open"), later: Number(time.state === "later"), back: time.back };
   }
-  const counts = row.children.map(child => rowCounts(child, today));
+  const counts = row.children.map(child => rowCounts(child, today, projects));
   return {
     open: counts.reduce((n, c) => n + c.open, 0),
     later: counts.reduce((n, c) => n + c.later, 0),

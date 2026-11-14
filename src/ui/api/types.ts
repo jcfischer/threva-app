@@ -99,6 +99,7 @@ export interface DoneEntry {
 export interface DeskView {
   generatedAt: number;
   displayName: string | null;
+  assistantName?: string;
   items: DeskItem[];
   today: DeskEvent[];
   myDay?: { items: TodayTask[]; wins?: TodayWin[] };
@@ -142,13 +143,20 @@ export interface OutlineRow {
   estimateMinutes?: number | null;
 }
 
+export interface StudioProject {
+  id: string;
+  slug: string;
+  state: "active" | "parked" | "closed" | null;
+  openNotes: number | null;
+}
+
 export interface MyDayOutline {
   date: string;
   revision: number;
   outline: OutlineRow;
-  // Rows Cortex owns for a Studio thread, which Threva shows without a page.
+  // Rows Cortex owns for a Studio thread; projects open the thread's page.
   studioTasks?: { id: string; slug: string }[];
-  studioProjects?: { id: string; slug: string }[];
+  studioProjects?: StudioProject[];
 }
 
 // Every detail of a row as `outline-edit` takes it. Threva sends the row's own values back unchanged.

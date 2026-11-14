@@ -6,6 +6,7 @@ import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./m
 import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";
 import { liftSelection } from "./lift";
 import { NotePage } from "./page";
+import { ThreadPage } from "./thread-page";
 import { relativeDay, rowCounts, rowState, rowTime } from "./time";
 
 const inMemory = (): PlaceStore => {
@@ -23,11 +24,12 @@ const placeStore = (): PlaceStore => {
 
 const everyRow = (row: OutlineRow): OutlineRow[] => [row, ...row.children.flatMap(everyRow)];
 
-export function EverythingView({ client, active = true, initialDay = null, shares = [], onChange = () => {} }: {
+export function EverythingView({ client, active = true, initialDay = null, shares = [], assistantName, onChange = () => {} }: {
   client: DeskClient;
   active?: boolean;
   initialDay?: MyDayOutline | null;
   shares?: readonly AreaShare[];
+  assistantName?: string;
   onChange?: () => void;
 }) {
   const i18n = useI18n();
@@ -144,6 +146,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   };
 
   if (!day) return <section aria-label={t("everything.label")}><p role={error ? "alert" : "status"}>{error ?? t("everything.loading")}</p>{error && <button type="button" className="btn" onClick={() => { void retry(); }}>{t("everything.reload")}</button>}</section>;
+  if (day.studioProjects?.some(project => project.state === undefined)) return <section aria-label={t("everything.label")}><p role="alert">{t("thread.mappingMissing")}</p></section>;
   const root = day.outline;
   const path = (at && pathTo(root, at)) || [root];
   const current = path.at(-1)!;
@@ -151,6 +154,13 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const isArea = (id: string) => root.children.some(row => row.id === id);
   const studioIds = new Set([...(day.studioProjects ?? []).map(project => project.id), ...(day.studioTasks ?? []).map(task => task.id)]);
   const studioOwned = (id: string) => studioIds.has(id);
+  const projectOf = (id: string) => day.studioProjects?.find(project => project.id === id);
+  const currentProject = projectOf(current.id);
+  const stateOf = (row: OutlineRow) => {
+    const project = projectOf(row.id);
+    return project ? project.state === "closed" ? "done" : project.state === "parked" ? "later" : "open" : rowState(row, day.date).state;
+  };
+  const name = assistantName || t("studio.assistant");
   const draft = drafts[current.id] ?? "";
   const share = shares.find(area => area.areaId === current.id);
   const move = (id: string, target: Move | null, snapshot = day) => {
@@ -176,14 +186,15 @@ export function EverythingView({ client, active = true, initialDay = null, share
     }
   };
   const summary = (row: OutlineRow) => {
-    const counts = row.children.length ? rowCounts(row, day.date) : { open: 0, later: 0, back: undefined };
+    const counts = row.children.length ? rowCounts(row, day.date, day.studioProjects) : { open: 0, later: 0, back: undefined };
     return <span className="faint">{counts.open ? tn("everything.openCount", counts.open) : t("everything.nothingOpen")}{counts.later > 0 && ` · ${counts.back ? tn("everything.laterBack", counts.later, { date: relativeDay(counts.back, day.date, i18n) }) : tn("everything.laterCount", counts.later)}`}</span>;
   };
   const line = (row: OutlineRow) => {
     const area = isArea(row.id);
+    const project = projectOf(row.id);
     const time = rowTime(row, day.date, i18n);
     const options = area ? [] : destinations(root, row.id);
-    return <div key={row.id} className={`vrow outline-row${!area && time.state !== "open" ? " outline-grey" : ""}`} data-row={row.id} data-zone={drop?.id === row.id ? drop.zone : undefined}
+    return <div key={row.id} className={`vrow outline-row${!area && stateOf(row) !== "open" ? " outline-grey" : ""}`} data-row={row.id} data-zone={drop?.id === row.id ? drop.zone : undefined}
       draggable={!area && !busy}
       onDragStart={event => { dragging.current = { id: row.id, day }; event.dataTransfer.setData("text/plain", row.id); event.dataTransfer.effectAllowed = "move"; }}
       onDragEnd={() => { dragging.current = null; setDrop(null); }}
@@ -199,12 +210,12 @@ export function EverythingView({ client, active = true, initialDay = null, share
         </div>
       </details>}
       <button type="button" className="linkq outline-title" onClick={() => openRow(row.id)}>{row.title}</button>
-      {area || row.children.length ? summary(row) : <span className={`outline-margin ${time.warning ? "outline-warning" : "faint"}`}>{time.margin}</span>}
-      <span className="outline-page">{pageLine(row.note, i18n)}</span>
-      {!area && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: row.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: row.id, confirm: true }); }}>{t(row.done ? "everything.reopen" : "everything.done")}</button>}
+      {project ? <span className="faint">{t("thread.with", { name })}{project.openNotes !== null && ` · ${tn("thread.openNotes", project.openNotes)}`}</span> : area || row.children.length ? summary(row) : <span className={`outline-margin ${time.warning ? "outline-warning" : "faint"}`}>{time.margin}</span>}
+      <span className="outline-page">{project ? project.state === "parked" ? t("thread.putAway") : "" : pageLine(row.note, i18n)}</span>
+      {!area && !project && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: row.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: row.id, confirm: true }); }}>{t(row.done ? "everything.reopen" : "everything.done")}</button>}
     </div>;
   };
-  const done = current.children.filter(row => !isArea(row.id) && rowState(row, day.date).state === "done");
+  const done = current.children.filter(row => !isArea(row.id) && stateOf(row) === "done");
   const open = current.children.filter(row => !done.includes(row));
   const pageText = texts[current.id] ?? current.note ?? "";
   const clean = !saver.holding(current.id);
@@ -244,9 +255,10 @@ export function EverythingView({ client, active = true, initialDay = null, share
         }
       }}
       onLeave={(text, at) => { keepPlace(store, current.id, at); setTexts(previous => ({ ...previous, [current.id]: text })); saver.leave(current.id, text); }} />}
+    {currentProject && <ThreadPage key={current.id} client={client} project={currentProject} assistantName={assistantName} active={active} onChange={() => { void retry(); onChange(); }} />}
     <div>{open.map(line)}{!open.length && <p className="muted">{t("everything.empty")}</p>}</div>
     {done.length > 0 && <details className="outline-done"><summary>{tn("everything.doneCount", done.length)}</summary>{done.map(line)}</details>}
-    {current.id !== root.id && <form className="outline-add" onSubmit={event => {
+    {current.id !== root.id && !currentProject && <form className="outline-add" onSubmit={event => {
       event.preventDefault();
       const title = draft.trim();
       const parent = current.id;
@@ -257,7 +269,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
       <label>{t("everything.addTo", { title: current.title })}<input type="text" maxLength={300} value={draft} disabled={busy} placeholder={t("everything.addPlaceholder")} onInput={event => { const text = event.currentTarget.value; setDrafts(previous => ({ ...previous, [current.id]: text })); }} /></label>
       <button type="submit" className="btn" disabled={busy || !draft.trim()}>{t("everything.add")}</button>
     </form>}
-    {current.id !== root.id && !isArea(current.id) && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: current.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: current.id, confirm: true }); }}>{t(current.done ? "everything.reopen" : "everything.done")}</button>}
+    {current.id !== root.id && !isArea(current.id) && !currentProject && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: current.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: current.id, confirm: true }); }}>{t(current.done ? "everything.reopen" : "everything.done")}</button>}
   </div>;
   return <section className="everything" aria-label={t("everything.label")} aria-busy={busy}>
     {error && <div role="alert"><p>{error}</p><button type="button" className="btn" disabled={busy} onClick={() => { void retry(); }}>{t("everything.reload")}</button></div>}
