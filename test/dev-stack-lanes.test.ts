@@ -110,12 +110,22 @@ local:
     "/op/filer.yaml": FILER,
     "/op/local-only.yaml": "local: {baseUrl: http://127.0.0.1:8080/v1, model: m}\n",
     "/op/no-model.yaml": "baseUrl: https://x/v1\n",
+    "/op/inline-key.yaml": "baseUrl: https://x/v1\nmodel: m\napiKey: not-a-real-value\n",
+    "/op/inline-local-key.yaml": "local: {baseUrl: https://x/v1, model: m, apiKey: not-a-real-value}\n",
   };
   const readFiler = (path: string) => filerFiles[path] ?? null;
 
   test("names the variable when the file is missing, not a mapping or lacks baseUrl and model", () => {
     for (const file of ["/op/none.yaml", "/op/broken.yaml", "/op/list.yaml", "/op/no-model.yaml", "/op/lanes.yaml"]) {
       expect(readOperatorFiles({ THREVA_DEV_STUDIO_FILER: file }, readFiler)).toEqual({ ok: false, error: expect.stringContaining("THREVA_DEV_STUDIO_FILER") });
+    }
+  });
+
+  test("refuses fields Cortex's filer does not take, so a key never lands in the config by value", () => {
+    for (const file of ["/op/inline-key.yaml", "/op/inline-local-key.yaml"]) {
+      const r = readOperatorFiles({ THREVA_DEV_STUDIO_FILER: file }, readFiler);
+      expect(r).toEqual({ ok: false, error: expect.stringContaining("apiKey") });
+      expect(r.ok ? "" : r.error).not.toContain("not-a-real-value");
     }
   });
 

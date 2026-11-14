@@ -72,7 +72,8 @@ function readRouting(file: string, read: Read): Checked<ParserRouting> {
   return { ok: true, value: { file, permitted, timeoutSeconds } };
 }
 
-const isEndpoint = (v: Record<string, unknown>): boolean => typeof v.baseUrl === "string" && typeof v.model === "string";
+const FILER_FIELDS: readonly string[] = ["baseUrl", "model", "apiKeyEnv", "apiKeyFile", "caFile", "timeoutSeconds", "local"];
+const isEndpoint =(v: Record<string, unknown>): boolean => typeof v.baseUrl === "string" && typeof v.model === "string";
 
 function withAbsoluteFiles(endpoint: Record<string, unknown>, base: string): Record<string, unknown> {
   const out = { ...endpoint };
@@ -92,9 +93,18 @@ function readFiler(file: string, read: Read): Checked<StudioFiler> {
   } catch (e) {
     return { ok: false, error: `THREVA_DEV_STUDIO_FILER is not valid YAML (${file}): ${firstLine(e)}` };
   }
-  const local = isRecord(parsed) ? parsed.local : undefined;
-  if (!isRecord(parsed) || (local !== undefined && !(isRecord(local) && isEndpoint(local))) || (!isEndpoint(parsed) && local === undefined)) {
+  if (!isRecord(parsed)) return { ok: false, error: `THREVA_DEV_STUDIO_FILER must hold Cortex's mc.desk.studio.filer block as a mapping: ${file}` };
+  const local = parsed.local;
+  const localOk = local === undefined || (isRecord(local) && isEndpoint(local));
+  const hasEndpoint = isEndpoint(parsed) || local !== undefined;
+  if (!localOk || !hasEndpoint) {
     return { ok: false, error: `THREVA_DEV_STUDIO_FILER must hold Cortex's mc.desk.studio.filer block, with baseUrl and model or a local endpoint: ${file}` };
+  }
+  const unknown = [...Object.keys(parsed), ...(isRecord(local) ? Object.keys(local).map((k) => `local.${k}`) : [])].filter(
+    (k) => !FILER_FIELDS.includes(k.replace(/^local\./, "")) || k === "local.local",
+  );
+  if (unknown.length > 0) {
+    return { ok: false, error: `THREVA_DEV_STUDIO_FILER has fields Cortex's filer does not take (${unknown.join(", ")}); name a key only by apiKeyEnv or apiKeyFile: ${file}` };
   }
   const base = dirname(file);
   const filer = withAbsoluteFiles(parsed, base);
