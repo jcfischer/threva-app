@@ -1,4 +1,4 @@
-import type { DeskItem, DeskView, StudioList, StudioThread } from "../../src/ui/api/types";
+import type { DeskItem, DeskView, MailSweep, StudioList, StudioThread } from "../../src/ui/api/types";
 
 export const NOW = Date.parse("2026-11-13T10:00:00+01:00");
 
@@ -17,6 +17,10 @@ export function item(overrides: Partial<DeskItem> & Pick<DeskItem, "key" | "kind
 
 export function view(overrides: Partial<DeskView> = {}): DeskView {
   return { generatedAt: NOW, displayName: null, items: [], today: [], ...overrides };
+}
+
+export function sweep(overrides: Partial<MailSweep> = {}): MailSweep {
+  return { id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [], ...overrides };
 }
 
 export function thread(slug: string, noteStatus: string, answered: boolean): StudioThread {

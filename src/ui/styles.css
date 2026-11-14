@@ -135,16 +135,22 @@ kbd{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);border
 .cur{border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--panel);display:flex;flex-direction:column;gap:12px}
 .anc>.cur{border-color:var(--accent)}
 @media (max-width:520px){.cur{padding:12px}.anc{padding:4px 5px 5px}}
-.daygrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:22px;align-items:start}
-@media (max-width:900px){.daygrid{grid-template-columns:minmax(0,1fr)}.daygrid .rail{order:-1}}
+.daygrid{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+@media (min-width:900px){.daygrid{grid-template-columns:minmax(0,1fr) minmax(0,300px)}}
+.daygrid>.cards{min-width:0}
 .rail{display:flex;flex-direction:column;gap:6px;min-width:0}
 .slot{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;padding:8px 10px;border-radius:8px;font-size:13.5px;border:1px solid transparent}
 .slot.ev{background:var(--sunk)}
 .slot.free{border:1px dashed var(--line)}
 .slot.cur{border-color:var(--accent)}
 .slot.past{opacity:.5}
+button.slot,button.chip{width:100%;text-align:left}
+button.slot{background:none}
+button.slot.ev{background:var(--sunk)}
+button.slot:hover,button.chip:hover{border-color:var(--accent)}
 .tm{font-family:var(--mono);font-size:12px;color:var(--faint)}
 .chip{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;background:var(--accent-soft);border-radius:7px;padding:5px 8px;margin-top:6px}
+button.chip{border:1px solid transparent;font-size:inherit}
 .chip .linkq{font-size:13px;font-weight:500}
 .chip.off{opacity:.45}
 .evb{background:none;border:0;padding:0;text-align:left}
@@ -229,7 +235,7 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .kept{margin:0}
 .kept li{color:var(--ok,#1a7f37);font-weight:500}
 .chatlist .row{margin-top:4px}
-.keyhint{display:flex;gap:14px;align-items:center;color:var(--dim);font-size:12.5px}
+.keyhint{display:flex;flex-wrap:wrap;gap:14px;align-items:center;color:var(--dim);font-size:12.5px}
 .keyhint kbd{font:inherit;font-size:11.5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel)}
 .sugg button{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;color:inherit;font:inherit;cursor:pointer}
 .sugg button:hover{background:var(--panel-2,var(--accent-soft))}

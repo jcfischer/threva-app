@@ -4,6 +4,7 @@ import { newRequestId } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
 import { OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, type Outcome, type SnoozeTime } from "../arrivals/outcomes";
 import { useI18n, type TextKey } from "../i18n";
+import { sweepLetGo } from "../queue/keys";
 import { useAct } from "./act";
 import { Card, ErrorLine } from "./parts";
 
@@ -108,7 +109,11 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
       {panel === "attach" && (
         <div className="ivy">
           {!proposal ? (
-            <span className="faint">{busy ? t("card.mail.attach.looking") : ""}</span>
+            busy ? <span className="faint">{t("card.mail.attach.looking")}</span> : (
+              <button type="button" className="btn quiet" onClick={() => setPanel(null)}>
+                {t("card.mail.cancel")}
+              </button>
+            )
           ) : (
             <>
               <span className="from">{thread ? t("card.mail.attach.to") : t("card.mail.attach.none")}</span>
@@ -196,7 +201,7 @@ export function RuleOfferCard({ item }: { item: DeskItem }) {
 
 export function SweepCard({ sweep }: { sweep: MailSweep }) {
   const { t, tn } = useI18n();
-  const { busy, error, run } = useAct();
+  const { busy, error, perform } = useAct(sweepLetGo(sweep));
   return (
     <Card eyebrow={t("card.sweep.eyebrow")}>
       <span className="q">{tn("card.sweep.question", sweep.mails.length)}</span>
@@ -211,7 +216,7 @@ export function SweepCard({ sweep }: { sweep: MailSweep }) {
       </ul>
       {sweep.mails.length > 5 && <span className="faint">{tn("card.sweep.more", sweep.mails.length - 5)}</span>}
       <div className="row">
-        <button type="button" className="btn pri" disabled={busy} onClick={() => run("/api/desk/mail", { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target })}>
+        <button type="button" className="btn pri" disabled={busy} onClick={perform}>
           {t("card.sweep.letGo")}
         </button>
       </div>

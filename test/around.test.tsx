@@ -47,7 +47,7 @@ describe("around", () => {
   test("takes Cortex's why for the current card and lists up to three next titles", () => {
     const result = around(buildQueue(busyDesk, null, EMPTY_SESSION, NOW));
     expect(result.why).toEqual({ kind: "cortex", text: "Starts in 10 minutes." });
-    expect(result.then).toEqual({ titles: ["Invoice", "Workshop dates", "Lunch Friday"], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3 }] });
+    expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3 }] });
   });
 
   test("names a catalog reason for an after-meeting card, a waiting thread and a task", () => {
@@ -69,6 +69,17 @@ describe("around", () => {
     const pinned = buildQueue(busyDesk, null, pin(EMPTY_SESSION, link?.k ?? ""), NOW);
     expect(pinned[0]?.k).toBe("s:sw1");
   });
+
+  test("each Then title brings its own card to the front and can let it move again", () => {
+    const titles = around(buildQueue(busyDesk, null, EMPTY_SESSION, NOW)).then?.titles ?? [];
+    expect(titles).toHaveLength(3);
+    for (const title of titles) {
+      const session = pin(EMPTY_SESSION, title.k);
+      expect(buildQueue(busyDesk, null, session, NOW)[0]?.k).toBe(title.k);
+      expect(render(busyDesk, { session })).toContain("Let it move");
+      expect(buildQueue(busyDesk, null, pin(session, title.k), NOW)[0]?.k).toBe("i:standup");
+    }
+  });
 });
 
 describe("the lines around the card", () => {
@@ -77,6 +88,7 @@ describe("the lines around the card", () => {
     expect(html).toContain("<b>Why now:</b> Starts in 10 minutes.");
     expect(html).toContain("Then");
     expect(html).toContain("Invoice");
+    expect(html).toContain('<button type="button" class="lk">Invoice</button>');
     expect(html).toContain("and 1 more");
     expect(html).toContain("Newsletters: let 3 go?");
     expect(html.indexOf("Why now:")).toBeLessThan(html.indexOf("Team standup"));

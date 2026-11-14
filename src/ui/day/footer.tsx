@@ -1,22 +1,26 @@
 import { useState } from "react";
 import type { DeskView } from "../api/types";
 import { useI18n } from "../i18n";
-import { isMailItem } from "../queue/order";
+import { inboxCard } from "../queue/around";
+import { isMailItem, type Entry } from "../queue/order";
 import { formatLength } from "./timeline-view";
 
 const LINE = { gridTemplateColumns: "minmax(0,1fr)" } as const;
 
-function InboxLine({ view }: { view: DeskView }) {
+function InboxLine({ view, queue, onPull }: { view: DeskView; queue: readonly Entry[]; onPull?: (k: string) => void }) {
   const { t, tn } = useI18n();
   const mails = view.items.filter(isMailItem).length;
   const groups = (view.mailSweeps?.length ?? 0) + (view.mailDigests?.length ?? 0);
+  const card = inboxCard(queue);
+  const pull = card && onPull ? () => onPull(card.k) : undefined;
+  const Line = pull ? "button" : "div";
   return (
-    <div className="slot" style={LINE}>
+    <Line type={pull ? "button" : undefined} onClick={pull} className="slot" style={LINE}>
       <span>
         <b>{t("footer.inbox")}</b>{" "}
         <span className="faint">{mails === 0 && groups === 0 ? t("footer.inbox.clear") : `${tn("footer.inbox.mails", mails)} · ${tn("footer.inbox.groups", groups)}`}</span>
       </span>
-    </div>
+    </Line>
   );
 }
 
@@ -62,10 +66,10 @@ function DelegatedLine({ agents, now, defaultOpen }: { agents: NonNullable<DeskV
   );
 }
 
-export function Footer({ view, now, defaultOpen = false }: { view: DeskView; now?: number; defaultOpen?: boolean }) {
+export function Footer({ view, now, defaultOpen = false, queue = [], onPull }: { view: DeskView; now?: number; defaultOpen?: boolean; queue?: readonly Entry[]; onPull?: (k: string) => void }) {
   return (
     <section className="rail">
-      <InboxLine view={view} />
+      <InboxLine view={view} queue={queue} onPull={onPull} />
       {view.routines && <RoutinesLine routines={view.routines} />}
       {view.agents && <DelegatedLine agents={view.agents} now={now ?? Date.now()} defaultOpen={defaultOpen} />}
     </section>
