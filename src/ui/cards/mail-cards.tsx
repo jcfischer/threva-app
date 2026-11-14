@@ -1,5 +1,5 @@
 import { safeHref } from "../api/safe-link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { newRequestId } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
 import {
@@ -13,6 +13,23 @@ import { Card, ErrorLine } from "./parts";
 
 function mailLink(item: DeskItem): string | undefined {
   return item.detail.links.map((l) => safeHref(l.url)).find(Boolean) ?? item.actions.map((a) => safeHref(a.url)).find(Boolean);
+}
+
+function OpenInMail({ item }: { item: DeskItem }) {
+  const { t } = useI18n();
+  const link = mailLink(item);
+  return link ? (
+    <a className="btn quiet" href={link} target="_blank" rel="noreferrer">
+      {t("card.mail.open")}
+    </a>
+  ) : null;
+}
+
+// Posts one mail action and shows the message Cortex answers with. Returns whether Cortex accepted it.
+async function postMail(run: ReturnType<typeof useAct>["run"], body: unknown, show: (message: string) => void): Promise<boolean> {
+  const result = await run<{ message?: string }>("/api/desk/mail", body);
+  if (result.ok && result.data.message) show(result.data.message);
+  return result.ok;
 }
 
 const OUTCOME_LABEL: Record<Outcome, TextKey> = {
@@ -56,7 +73,6 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
   const [body, setBody] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const [invite, setInvite] = useState<InviteAsk | null>(null);
-  const link = mailLink(item);
   const suggested = suggestedOutcome(item);
   const more = wiredActions(item, MAIL_ACTIONS);
 
@@ -98,25 +114,24 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
     if (result.ok) finish(result.data.message, t("card.mail.snoozed"));
   };
   // Spam and Delete move the mail at once: Cortex logs the move, so the undo line offers it back. An invitation
-  // answer goes out only after a second, explicit click and keeps its request id, so a retry cannot answer twice.
+  // answer goes out only after a second, explicit click. Each answer keeps one request id for the card's life, also
+  // across Cancel and a new click, so Cortex can refuse a second send after a timeout that may have delivered it.
+  const inviteIds = useRef<Partial<Record<InviteReply, string>>>({});
   const act = async (action: MailAction) => {
     setDone(null);
     setPanel(null);
     setSnoozing(false);
     const does = MAIL_ACTION_DOES[action];
     if ("invite" in does) {
-      setInvite({ reply: does.invite, requestId: crypto.randomUUID() });
+      const requestId = (inviteIds.current[does.invite] ??= crypto.randomUUID());
+      setInvite({ reply: does.invite, requestId });
       return;
     }
     setInvite(null);
-    const result = await run<{ message?: string }>("/api/desk/mail", requests.move(item.key, does.move));
-    if (result.ok && result.data.message) setDone(result.data.message);
+    await postMail(run, requests.move(item.key, does.move), setDone);
   };
   const sendInvite = async (ask: InviteAsk) => {
-    const result = await run<{ message?: string }>("/api/desk/mail", requests.inviteReply(item.key, ask.reply, ask.requestId));
-    if (!result.ok) return;
-    setInvite(null);
-    if (result.data.message) setDone(result.data.message);
+    if (await postMail(run, requests.inviteReply(item.key, ask.reply, ask.requestId), setDone)) setInvite(null);
   };
   const thread = proposal ? proposedThread(proposal) : null;
 
@@ -141,11 +156,7 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
             {t(OUTCOME_LABEL[outcome])}
           </button>
         ))}
-        {link && (
-          <a className="btn quiet" href={link} target="_blank" rel="noreferrer">
-            {t("card.mail.open")}
-          </a>
-        )}
+        <OpenInMail item={item} />
         {more.map((action) => (
           <button key={action} type="button" className="btn quiet" disabled={busy} onClick={() => void act(action)}>
             {t(MAIL_ACTION_LABEL[action])}
@@ -290,11 +301,9 @@ export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: b
   const { t } = useI18n();
   const { busy, error, run } = useAct();
   const [done, setDone] = useState<string | null>(null);
-  const link = mailLink(item);
   const answer = async (action: WaitingAction) => {
     setDone(null);
-    const result = await run<{ message?: string }>("/api/desk/mail", requests.waiting(item.key, action));
-    if (result.ok && result.data.message) setDone(result.data.message);
+    await postMail(run, requests.waiting(item.key, action), setDone);
   };
   return (
     <Card eyebrow={t("card.mail.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>
@@ -306,11 +315,7 @@ export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: b
             {t(WAITING_LABEL[action])}
           </button>
         ))}
-        {link && (
-          <a className="btn quiet" href={link} target="_blank" rel="noreferrer">
-            {t("card.mail.open")}
-          </a>
-        )}
+        <OpenInMail item={item} />
       </div>
       {done && <span className="faint">{done}</span>}
       <ErrorLine error={error} />

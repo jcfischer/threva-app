@@ -141,6 +141,21 @@ describe("the mail actions Cortex lists", () => {
     expect(second).toEqual(first!);
   });
 
+  test("clicking Accept again after a timeout and a cancel keeps the same request id", async () => {
+    reply = () => Response.json({ ok: false, error: "The reply command timed out." }, { status: 504 });
+    await mount(<MailCard item={mail(listed)} />);
+    await click("Accept");
+    await click("Send the acceptance");
+    await click("Cancel");
+    await click("Accept");
+    await click("Send the acceptance");
+    await click("Decline");
+    await click("Send the decline");
+    const [first, again, decline] = (writes as Record<string, unknown>[]).map((w) => w.requestId);
+    expect(again).toBe(first);
+    expect(decline).not.toBe(first);
+  });
+
   test("declining can be cancelled before anything is sent", async () => {
     await mount(<MailCard item={mail(listed)} />, "de");
     await click("Absagen");
