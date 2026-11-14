@@ -69,9 +69,16 @@ export function rowTime(row: OutlineRow, today: string, i18n: I18n = createI18n(
   }
 }
 
+export function projectRowState(project: StudioProject): RowTime["state"] {
+  return project.state === "closed" ? "done" : project.state === "parked" ? "later" : "open";
+}
+
 export function rowCounts(row: OutlineRow, today: string, projects: readonly StudioProject[] = []): { open: number; later: number; back?: string } {
   const project = projects.find(project => project.id === row.id);
-  if (project) return { open: Number(project.state === "active" || project.state === null), later: Number(project.state === "parked") };
+  if (project) {
+    const state = projectRowState(project);
+    return { open: Number(state === "open"), later: Number(state === "later") };
+  }
   if (!row.children.length) {
     const time = rowState(row, today);
     return { open: Number(time.state === "open"), later: Number(time.state === "later"), back: time.back };

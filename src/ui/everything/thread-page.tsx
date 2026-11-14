@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { POLL_MS } from "../queue/use-desk";
 import { useStudioAct } from "../studio/act";
 import { NoteEditor } from "./editor";
+import { useAddressedLines } from "./addressed";
 import { Margin, ThreadDate } from "./margin";
 
 export interface ThreadEntry {
@@ -82,6 +83,7 @@ function ThreadDocument({ thread, closed, assistantName, text, setText }: { thre
       sending.current = false;
     }
   };
+  const addressed = useAddressedLines(assistantName ?? null, t("thread.enter", { name }), respond);
   return <div className="thread-page">
     <div className="thread-main stack">
       <div className="thread-stand">
@@ -94,7 +96,7 @@ function ThreadDocument({ thread, closed, assistantName, text, setText }: { thre
       {closed ? <p role="status">{t("thread.closed")}</p> : <>
         <NoteEditor value={text} label={t("thread.editor")} hint={t("thread.hint", { name })} place={null}
           onChange={type} onLeave={() => {}}
-          addressed={{ name: assistantName ?? null, hint: t("thread.enter", { name }), send: respond }} />
+          {...addressed} />
         <div className="row">
           <button type="button" className="btn" disabled={busy || !text.trim()} onClick={async () => {
             const sent = draft.current;

@@ -3,7 +3,7 @@ import { Window } from "happy-dom";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { EditorView } from "@codemirror/view";
-import { NoteEditor } from "../src/ui/everything/editor";
+import { NoteEditor, type LineDecoration } from "../src/ui/everything/editor";
 
 // CodeMirror needs the DOM globals of a browser window, including the observers happy-dom provides.
 const RICH = ["window", "document", "MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] as const;
@@ -13,7 +13,7 @@ interface Surface {
   container: HTMLElement;
   changes: string[];
   leaves: { text: string; at: number }[];
-  render: (value: string, clean?: boolean) => Promise<void>;
+  render: (value: string, clean?: boolean, decoration?: LineDecoration) => Promise<void>;
   close: () => Promise<void>;
 }
 
@@ -24,7 +24,7 @@ afterEach(async () => {
   open = null;
 });
 
-async function surface(globals: readonly string[], value: string, place: number | null): Promise<Surface> {
+async function surface(globals: readonly string[], value: string, place: number | null, decoration?: LineDecoration): Promise<Surface> {
   const dom = new Window();
   const originals = new Map<string, PropertyDescriptor | undefined>();
   for (const name of globals) {
@@ -39,9 +39,9 @@ async function surface(globals: readonly string[], value: string, place: number 
   const root = createRoot(container);
   const changes: string[] = [];
   const leaves: { text: string; at: number }[] = [];
-  const render = async (text: string, clean = true) => {
+  const render = async (text: string, clean = true, lineDecoration = decoration) => {
     await act(async () => {
-      root.render(<NoteEditor value={text} label="Page of Write the script" hint="Write on this page…" place={place} clean={clean}
+      root.render(<NoteEditor value={text} label="Page of Write the script" hint="Write on this page…" place={place} clean={clean} lineDecoration={lineDecoration}
         onChange={next => changes.push(next)} onLeave={(next, at) => leaves.push({ text: next, at })} />);
     });
   };
@@ -149,6 +149,20 @@ describe("the page's editor", () => {
     await page.render("## Plan from elsewhere", false);
     expect(field.value).toBe("## Plan\n\nmy draft");
   });
+});
+
+test("line decoration skips unrelated transactions and refreshes when its configuration changes", async () => {
+  let scans = 0;
+  const decoration: LineDecoration = { matches: text => { scans++; return text.startsWith("/"); }, className: "marked-line", plainClassName: "marked-field", hint: "Old hint" };
+  const page = await surface(RICH, "/ question", null, decoration);
+  const editor = EditorView.findFromDOM(page.container.querySelector<HTMLElement>(".cm-content")!)!;
+  expect(page.container.querySelector(".marked-line")?.getAttribute("data-hint")).toBe("Old hint");
+  const before = scans;
+  await act(async () => { editor.dispatch({}); });
+  expect(scans).toBe(before);
+  await page.render("/ question", true, { ...decoration, hint: "New hint" });
+  expect(scans).toBeGreaterThan(before);
+  expect(page.container.querySelector(".marked-line")?.getAttribute("data-hint")).toBe("New hint");
 });
 
 test("hides the marks of headings one to three, strike-through, code and links", async () => {

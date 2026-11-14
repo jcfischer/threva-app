@@ -7,7 +7,7 @@ import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, 
 import { liftSelection } from "./lift";
 import { NotePage } from "./page";
 import { ThreadPage } from "./thread-page";
-import { relativeDay, rowCounts, rowState, rowTime } from "./time";
+import { projectRowState, relativeDay, rowCounts, rowState, rowTime } from "./time";
 
 const inMemory = (): PlaceStore => {
   const kept = new Map<string, string>();
@@ -158,7 +158,7 @@ export function EverythingView({ client, active = true, initialDay = null, share
   const currentProject = projectOf(current.id);
   const stateOf = (row: OutlineRow) => {
     const project = projectOf(row.id);
-    return project ? project.state === "closed" ? "done" : project.state === "parked" ? "later" : "open" : rowState(row, day.date).state;
+    return project ? projectRowState(project) : rowState(row, day.date).state;
   };
   const name = assistantName || t("studio.assistant");
   const draft = drafts[current.id] ?? "";

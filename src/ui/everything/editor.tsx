@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiftOutcome } from "./lift";
-import { Compartment, EditorState, type ChangeDesc, type Extension } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, type ChangeDesc, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, keymap, placeholder, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { ensureSyntaxTree, HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
@@ -22,20 +22,23 @@ const highlights = HighlightStyle.define([
   { tag: tags.quote, color: "var(--dim)" },
 ]);
 
-export function addressedText(line: string, name: string | null): string | null {
-  const text = line.trimStart();
-  if (text.startsWith("/")) return text.slice(1).trim();
-  if (name && text.slice(0, name.length + 1).toLocaleLowerCase() === `${name},`.toLocaleLowerCase()) return text.slice(name.length + 1).trim();
-  return null;
-}
-
-interface AddressedLine {
-  name: string | null;
+export interface LineDecoration {
+  matches(text: string): boolean;
+  className: string;
+  plainClassName: string;
   hint: string;
-  send(text: string): Promise<boolean>;
 }
 
-function noteMarks(view: EditorView, addressed?: AddressedLine): DecorationSet {
+export interface EnterLine {
+  from: number;
+  to: number;
+  text: string;
+  /** Null when this editor is gone or cannot safely apply a delayed edit. */
+  read(): string | null;
+  remove(range: { from: number; to: number }): void;
+}
+
+function noteMarks(view: EditorView, decoration?: LineDecoration): DecorationSet {
   const { state } = view;
   const live = new Set<number>();
   if (view.hasFocus) {
@@ -47,10 +50,10 @@ function noteMarks(view: EditorView, addressed?: AddressedLine): DecorationSet {
   }
   const marks: { from: number; to: number; value: Decoration }[] = [];
   const mark = (from: number, to: number, value: Decoration) => marks.push({ from, to, value });
-  if (addressed) {
+  if (decoration) {
     for (let number = 1; number <= state.doc.lines; number++) {
       const line = state.doc.line(number);
-      if (addressedText(line.text, addressed.name) !== null) mark(line.from, line.from, Decoration.line({ class: "cm-thread-addressed", attributes: { "data-hint": addressed.hint } }));
+      if (decoration.matches(line.text)) mark(line.from, line.from, Decoration.line({ class: decoration.className, attributes: { "data-hint": decoration.hint } }));
     }
   }
   // A page is at most 10,000 characters, so the whole tree is parsed rather than only what is on screen.
@@ -82,13 +85,16 @@ function noteMarks(view: EditorView, addressed?: AddressedLine): DecorationSet {
   return Decoration.set(marks, true);
 }
 
-const formatted = (addressed: () => AddressedLine | undefined) => ViewPlugin.fromClass(class {
+const refreshMarks = Annotation.define<boolean>();
+const formatted = (decoration: () => LineDecoration | undefined) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
   constructor(view: EditorView) {
-    this.decorations = noteMarks(view, addressed());
+    this.decorations = noteMarks(view, decoration());
   }
   update(update: ViewUpdate) {
-    this.decorations = noteMarks(update.view, addressed());
+    if (update.docChanged || update.selectionSet || update.focusChanged || update.viewportChanged || update.transactions.some(tr => tr.annotation(refreshMarks))) {
+      this.decorations = noteMarks(update.view, decoration());
+    }
   }
 }, { decorations: plugin => plugin.decorations });
 
@@ -103,7 +109,9 @@ export interface NoteEditorProps {
   onLift?(request: { page: string; from: number; to: number }): Promise<LiftOutcome>;
   liftLabel?: string;
   liftKeys?: string;
-  addressed?: AddressedLine;
+  lineDecoration?: LineDecoration;
+  onEnter?(line: EnterLine): boolean;
+  onEdit?(changes: ChangeDesc): void;
 }
 
 interface Bar {
@@ -115,7 +123,7 @@ interface Bar {
  * The page's editor: Markdown shown formatted, with the marks of the line the cursor is in.
  * If the rich editor cannot start, the page still takes plain Markdown in a text field.
  */
-export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", addressed }: NoteEditorProps) {
+export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", lineDecoration, onEnter, onEdit }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
@@ -123,9 +131,8 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   const wrap = useRef<HTMLDivElement | null>(null);
   const lifting = useRef(false);
   const span = useRef<{ from: number; to: number } | null>(null);
-  const address = useRef(addressed);
-  address.current = addressed;
-  const sendingLine = useRef<{ from: number; to: number; text: string } | null>(null);
+  const lines = useRef({ lineDecoration, onEnter, onEdit });
+  lines.current = { lineDecoration, onEnter, onEdit };
   const lift = useRef(onLift);
   lift.current = onLift;
   const [plain, setPlain] = useState(false);
@@ -183,26 +190,13 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   runRef.current = run;
   const barRef = useRef(place_);
   barRef.current = place_;
-  const sendLine = (editor: EditorView) => {
-    const config = address.current;
-    if (!config || editor.composing || !editor.state.selection.main.empty) return false;
+  const enterLine = (editor: EditorView) => {
+    if (!lines.current.onEnter || editor.composing || !editor.state.selection.main.empty) return false;
     const line = editor.state.doc.lineAt(editor.state.selection.main.head);
-    const text = addressedText(line.text, config.name);
-    if (text === null) return false;
-    if (!text || sendingLine.current) return true;
-    sendingLine.current = { from: line.from, to: line.to, text: line.text };
-    void config.send(text).then(ok => {
-      const sent = sendingLine.current;
-      if (!ok || !sent || view.current !== editor || sent.from > sent.to || editor.state.doc.sliceString(sent.from, sent.to) !== sent.text) return;
-      const doc = editor.state.doc;
-      const currentLine = doc.lineAt(sent.from);
-      // Text inserted at either edge belongs to the user's newer line. Keep that line intact.
-      if (currentLine.from !== sent.from || currentLine.to !== sent.to) return;
-      const from = sent.to === doc.length && sent.from > 0 ? sent.from - 1 : sent.from;
-      const to = sent.to < doc.length ? sent.to + 1 : sent.to;
-      editor.dispatch({ changes: { from, to } });
-    }).finally(() => { sendingLine.current = null; });
-    return true;
+    return lines.current.onEnter({ from: line.from, to: line.to, text: line.text,
+      read: () => view.current === editor ? editor.state.doc.toString() : null,
+      remove: range => editor.dispatch({ changes: range }),
+    });
   };
   // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
   useEffect(() => {
@@ -210,11 +204,10 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     if (!parent) return;
     let editor: EditorView;
     try {
-      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint: hintSlot.of(placeholder(hint)), addressed: () => address.current, sendLine, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => {
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint: hintSlot.of(placeholder(hint)), decoration: () => lines.current.lineDecoration, enterLine, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => {
         const kept = span.current;
         if (kept) span.current = { from: changes.mapPos(kept.from, 1), to: changes.mapPos(kept.to, -1) };
-        const sent = sendingLine.current;
-        if (sent) sendingLine.current = { ...sent, from: changes.mapPos(sent.from, 1), to: changes.mapPos(sent.to, -1) };
+        lines.current.onEdit?.(changes);
       } }) }) });
     } catch {
       // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
@@ -252,34 +245,29 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     area.value = value;
   }, [value, clean]);
   useEffect(() => { view.current?.dispatch({ effects: hintSlot.reconfigure(placeholder(hint)) }); }, [hint, hintSlot]);
-  useEffect(() => { view.current?.dispatch({}); }, [addressed?.name, addressed?.hint]);
+  useEffect(() => { view.current?.dispatch({ annotations: refreshMarks.of(true) }); }, [lineDecoration]);
+  const hasDecoratedLine = plain && lineDecoration && value.split("\n").some(line => lineDecoration.matches(line));
   if (plain) return <div className="note-editor note-plain">
     <textarea ref={field} aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)}
-      className={addressed && value.split("\n").some(line => addressedText(line, addressed.name) !== null) ? "thread-addressed" : undefined}
-      onKeyDown={async event => {
-        if (!addressed || event.key !== "Enter" || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || event.nativeEvent.isComposing) return;
+      className={hasDecoratedLine ? lineDecoration.plainClassName : undefined}
+      onKeyDown={event => {
+        if (!onEnter || event.key !== "Enter" || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || event.nativeEvent.isComposing) return;
         const area = event.currentTarget;
         if (area.selectionStart !== area.selectionEnd) return;
         const before = area.value;
         const from = before.lastIndexOf("\n", area.selectionStart - 1) + 1;
         const end = before.indexOf("\n", area.selectionStart);
         const to = end === -1 ? before.length : end;
-        const text = addressedText(before.slice(from, to), addressed.name);
-        if (text === null) return;
-        event.preventDefault();
-        if (!text || sendingLine.current) return;
-        sendingLine.current = { from, to, text };
-        try {
-          if (await addressed.send(text) && area.value === before) {
-            const start = to === before.length && from > 0 ? from - 1 : from;
-            const stop = to < before.length ? to + 1 : to;
-            area.value = before.slice(0, start) + before.slice(stop);
-            area.setSelectionRange(start, start);
+        if (onEnter({ from, to, text: before.slice(from, to),
+          read: () => field.current === area && area.value === before ? before : null,
+          remove: range => {
+            area.value = before.slice(0, range.from) + before.slice(range.to);
+            area.setSelectionRange(range.from, range.from);
             onChange(area.value);
-          }
-        } finally { sendingLine.current = null; }
+          },
+        })) event.preventDefault();
       }} />
-    {addressed && value.split("\n").some(line => addressedText(line, addressed.name) !== null) && <span className="faint">{addressed.hint}</span>}
+    {hasDecoratedLine && <span className="faint">{lineDecoration.hint}</span>}
   </div>;
   return <div className="note-wrap" ref={wrap}>
     <div className="note-editor" ref={host} />
@@ -289,17 +277,17 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   </div>;
 }
 
-function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, addressed, sendLine }: { label: string; hint: Extension; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void; addressed: () => AddressedLine | undefined; sendLine: (view: EditorView) => boolean }): Extension[] {
+function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, decoration, enterLine }: { label: string; hint: Extension; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void; decoration: () => LineDecoration | undefined; enterLine: (view: EditorView) => boolean }): Extension[] {
   return [
     history(),
     EditorView.domEventHandlers({ blur: (_event, view) => { onLeave(view.state.doc.toString(), view.state.selection.main.head); } }),
     markdown({ base: markdownLanguage }),
     EditorView.lineWrapping,
-    keymap.of([{ key: "Enter", run: sendLine }, { key: "Mod-Enter", run: view => { if (view.state.selection.main.empty) return false; onLift(); return true; } }, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([{ key: "Enter", run: enterLine }, { key: "Mod-Enter", run: view => { if (view.state.selection.main.empty) return false; onLift(); return true; } }, ...defaultKeymap, ...historyKeymap]),
     hint,
     EditorView.contentAttributes.of({ "aria-label": label, "aria-multiline": "true" }),
     syntaxHighlighting(highlights),
-    formatted(addressed),
+    formatted(decoration),
     EditorView.updateListener.of(update => {
       if (update.docChanged) { onEdit(update.changes); onChange(update.state.doc.toString()); }
       if (update.selectionSet || update.docChanged || update.geometryChanged || update.viewportChanged || update.focusChanged) onSelect();

@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { EditorView } from "@codemirror/view";
 import { createClient } from "../src/ui/api/client";
 import type { MyDayOutline, StudioAct, StudioProject, StudioThread } from "../src/ui/api/types";
-import { addressedText } from "../src/ui/everything/editor";
+import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
 import { row } from "./fixtures/outline";
@@ -131,6 +131,14 @@ function studioClient() {
   return { client, acts, refuse: (message: string | null) => { refusal = message; }, breakStudio: () => { unavailable = true; } };
 }
 
+function pendingClient(readable = true) {
+  let finish!: (response: Response) => void;
+  const client = createClient(async (_url, init) => init
+    ? new Promise<Response>(resolve => { finish = resolve; })
+    : readable ? Response.json(studioList([budgetThread])) : Response.json({ error: "Studio unreadable" }, { status: 503 }));
+  return { client, finish: (response: Response) => finish(response), setReadable: (value: boolean) => { readable = value; } };
+}
+
 test("mapped state overrides done and dates, counts include threads, and thread pages have no add or completion field", async () => surface(async (container, render) => {
   const { client } = studioClient();
   await render(<EverythingView client={client} initialDay={day()} assistantName="Mira" />);
@@ -237,6 +245,62 @@ test("the rich Markdown editor tints addressed lines, follows a loaded name and 
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("Keep your question.");
 }, true));
 
+for (const rich of [false, true]) {
+  test(`${rich ? "rich" : "plain"} addressed sends remove first, last and sole lines without leaving extra newlines`, async () => surface(async (container, render) => {
+    const memory = studioClient();
+    await render(<ThreadPage client={memory.client} project={mapping} assistantName="Mira" onChange={noop} />);
+    for (const [text, at, remaining, sent] of [
+      ["/ first\nDraft", 2, "Draft", "first"],
+      ["Draft\nMira, last", 15, "Draft", "last"],
+      ["/ only", 6, "", "only"],
+    ] as const) {
+      const content = container.querySelector<HTMLElement>(".cm-content");
+      const editor = content ? EditorView.findFromDOM(content)! : null;
+      const field = editor ? null : await type(container, text);
+      await act(async () => {
+        if (editor) {
+          editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: text }, selection: { anchor: at } });
+          editor.focus();
+        } else {
+          field!.focus(); field!.setSelectionRange(at, at);
+        }
+        (content ?? field)!.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+      });
+      expect(editor ? editor.state.doc.toString() : field!.value).toBe(remaining);
+      expect(memory.acts.at(-1)).toEqual({ act: "respond", thread: mapping.slug, text: sent });
+    }
+    expect(memory.acts).toHaveLength(3);
+  }, rich));
+
+  test(`${rich ? "rich" : "plain"} addressed Enter consumes repeated and empty sends without changing the draft`, async () => surface(async (container, render) => {
+    const { client, finish } = pendingClient();
+    await render(<ThreadPage client={client} project={mapping} assistantName="Mira" onChange={noop} />);
+    const content = container.querySelector<HTMLElement>(".cm-content");
+    const editor = content ? EditorView.findFromDOM(content)! : null;
+    const field = editor ? null : await type(container, "/ question");
+    const enter = () => (content ?? field)!.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+    await act(async () => {
+      if (editor) {
+        editor.dispatch({ changes: { from: 0, insert: "/ question" }, selection: { anchor: 10 } });
+        editor.focus();
+      } else {
+        field!.focus(); field!.setSelectionRange(10, 10);
+      }
+      enter(); enter();
+    });
+    expect(editor ? editor.state.doc.toString() : field!.value).toBe("/ question");
+    await act(async () => { finish(Response.json({ ok: true })); });
+    expect(editor ? editor.state.doc.toString() : field!.value).toBe("");
+    if (!editor) await type(container, "/ ");
+    await act(async () => {
+      if (editor) editor.dispatch({ changes: { from: 0, insert: "/ " }, selection: { anchor: 2 } });
+      else field!.setSelectionRange(2, 2);
+      enter();
+    });
+    expect(editor ? editor.state.doc.toString() : field!.value).toBe("/ ");
+  }, rich));
+}
+
 test("a failed Studio read removes the editor", async () => surface(async (container, render) => {
   const memory = studioClient(); memory.breakStudio();
   await render(<ThreadPage client={memory.client} project={mapping} assistantName="Mira" onChange={noop} />);
@@ -245,8 +309,7 @@ test("a failed Studio read removes the editor", async () => surface(async (conta
 }));
 
 test("a successful response cannot erase text typed while Cortex writes", async () => surface(async (container, render) => {
-  let finish!: (response: Response) => void;
-  const client = createClient(async (_url, init) => init ? new Promise<Response>(resolve => { finish = resolve; }) : Response.json(studioList([budgetThread])));
+  const { client, finish } = pendingClient();
   await render(<ThreadPage client={client} project={mapping} assistantName="Mira" onChange={noop} />);
   await type(container, "Sent draft");
   await click(container, "Add to the thread");
@@ -257,8 +320,7 @@ test("a successful response cannot erase text typed while Cortex writes", async 
 }));
 
 test("an addressed line follows edits before it during a pending response and removes only that line", async () => surface(async (container, render) => {
-  let finish!: (response: Response) => void;
-  const client = createClient(async (_url, init) => init ? new Promise<Response>(resolve => { finish = resolve; }) : Response.json(studioList([budgetThread])));
+  const { client, finish } = pendingClient();
   await render(<ThreadPage client={client} project={mapping} assistantName="Mira" onChange={noop} />);
   const content = container.querySelector<HTMLElement>(".cm-content")!;
   const editor = EditorView.findFromDOM(content)!;
@@ -275,8 +337,7 @@ test("an addressed line follows edits before it during a pending response and re
 }, true));
 
 test("new text at either edge of an addressed line survives a successful pending response", async () => surface(async (container, render) => {
-  let finish!: (response: Response) => void;
-  const client = createClient(async (_url, init) => init ? new Promise<Response>(resolve => { finish = resolve; }) : Response.json(studioList([budgetThread])));
+  const { client, finish } = pendingClient();
   await render(<ThreadPage client={client} project={mapping} assistantName="Mira" onChange={noop} />);
   const content = container.querySelector<HTMLElement>(".cm-content")!;
   const editor = EditorView.findFromDOM(content)!;
@@ -293,36 +354,32 @@ test("new text at either edge of an addressed line survives a successful pending
 }, true));
 
 test("a failed refresh after responding hides the editor and preserves newer text for recovery", async () => surface(async (container, render) => {
-  let finish!: (response: Response) => void;
-  let readable = true;
-  const client = createClient(async (_url, init) => init ? new Promise<Response>(resolve => { finish = resolve; }) : readable ? Response.json(studioList([budgetThread])) : Response.json({ error: "Studio unreadable" }, { status: 503 }));
+  const { client, finish, setReadable } = pendingClient();
   const page = (active = true) => <ThreadPage client={client} project={mapping} active={active} assistantName="Mira" onChange={noop} />;
   await render(page());
   await type(container, "Sent draft");
   await click(container, "Add to the thread");
   await type(container, "Sent draft\nMore while waiting");
-  readable = false;
+  setReadable(false);
   await act(async () => { finish(Response.json({ ok: true })); });
   expect(container.textContent).toContain("Studio cannot be read.");
   expect(container.querySelector("textarea")).toBeNull();
-  readable = true;
+  setReadable(true);
   await render(page(false));
   await render(page());
   expect(container.querySelector("textarea")!.value).toBe("Sent draft\nMore while waiting");
 }));
 
 test("an old successful response cannot clear a draft written after Studio recovery", async () => surface(async (container, render) => {
-  let finish!: (response: Response) => void;
-  let readable = true;
-  const client = createClient(async (_url, init) => init ? new Promise<Response>(resolve => { finish = resolve; }) : readable ? Response.json(studioList([budgetThread])) : Response.json({ error: "Studio unreadable" }, { status: 503 }));
+  const { client, finish, setReadable } = pendingClient();
   const page = (active = true) => <ThreadPage client={client} project={mapping} active={active} assistantName="Mira" onChange={noop} />;
   await render(page());
   await type(container, "Sent draft");
   await click(container, "Add to the thread");
-  readable = false;
+  setReadable(false);
   await render(page(false)); await render(page());
   expect(container.textContent).toContain("Studio cannot be read.");
-  readable = true;
+  setReadable(true);
   await render(page(false)); await render(page());
   await type(container, "A newer draft after recovery");
   await act(async () => { finish(Response.json({ ok: true })); });
