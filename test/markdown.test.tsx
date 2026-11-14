@@ -109,6 +109,13 @@ describe("assistant text as Markdown", () => {
     expect(md.querySelector("ol")?.getAttribute("start")).toBe("3");
   });
 
+  test("reference-style links take their URL from the definition, which is not shown", async () => {
+    const text = "See [the docs][Plan B] and [summer].\n\n[plan  b]: https://example.com/b\n[summer]: javascript:alert(1)";
+    const md = (await render(<ExchangeView exchange={exchange(text)} />)).querySelector(".md")!;
+    expect([...md.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["the docs", "https://example.com/b"]]);
+    expect(md.textContent).toBe("See the docs and summer.");
+  });
+
   test("an underlined heading drops its underline", async () => {
     const container = await render(<ExchangeView exchange={exchange("Plan\n----\n\nbody")} />);
     expect(container.querySelector(".md h5")?.innerHTML).toBe("Plan");

@@ -26,6 +26,23 @@ function children(node: SyntaxNode): SyntaxNode[] {
 export function Markdown({ text }: { text: string }) {
   const tree = markdown.parse(text);
   const slice = (from: number, to: number) => text.slice(from, to);
+  const urlOf = (node: SyntaxNode) => {
+    const url = node.getChild("URL");
+    return url ? slice(url.from, url.to) : undefined;
+  };
+  const anchor = (key: number, href: string, label: ReactNode) => <a key={key} href={href} target="_blank" rel="noreferrer">{label}</a>;
+  const refKey = (label: string) => label.replace(/^\[|\]$/g, "").trim().replace(/\s+/g, " ").toLowerCase();
+  // Definitions like [1]: https://… anywhere in the text, for links written as [label][1] or [label].
+  const references = new Map<string, string>();
+  tree.iterate({
+    enter: (ref) => {
+      if (ref.name !== "LinkReference") return;
+      const label = ref.node.getChild("LinkLabel");
+      const url = urlOf(ref.node);
+      if (label && url && !references.has(refKey(slice(label.from, label.to)))) references.set(refKey(slice(label.from, label.to)), url);
+      return false;
+    },
+  });
 
   // Inline content between from and to: the text between child nodes, with soft line breaks kept as breaks.
   function inline(node: SyntaxNode, from = node.from, to = node.to, trim = false): ReactNode[] {
@@ -71,15 +88,17 @@ export function Markdown({ text }: { text: string }) {
       case "Link":
       case "Image": {
         const marks = node.getChildren("LinkMark");
-        const href = safeHref(node.getChild("URL") ? slice(node.getChild("URL")!.from, node.getChild("URL")!.to) : undefined);
+        const named = node.getChild("LinkLabel");
+        const reference = named && named.to - named.from > 2 ? slice(named.from, named.to) : marks.length >= 2 ? slice(marks[0]!.to, marks[1]!.from) : "";
+        const href = safeHref(urlOf(node) ?? references.get(refKey(reference)));
         const label = marks.length >= 2 ? inline(node, marks[0]!.to, marks[1]!.from) : [slice(node.from, node.to)];
-        return href ? [<a key={key} href={href} target="_blank" rel="noreferrer">{label}</a>] : label;
+        return href ? [anchor(key, href, label)] : label;
       }
       case "Autolink":
       case "URL": {
-        const url = node.name === "URL" ? slice(node.from, node.to) : slice(node.getChild("URL")?.from ?? node.from, node.getChild("URL")?.to ?? node.to);
+        const url = node.name === "URL" ? slice(node.from, node.to) : (urlOf(node) ?? slice(node.from, node.to));
         const href = safeHref(url);
-        return href ? [<a key={key} href={href} target="_blank" rel="noreferrer">{url}</a>] : [slice(node.from, node.to)];
+        return href ? [anchor(key, href, url)] : [slice(node.from, node.to)];
       }
       case "HardBreak": return [<br key={key} />];
       case "Escape": return [slice(node.from + 1, node.to)];
