@@ -38,9 +38,11 @@ export const MAIL_ACTION_DOES: Record<MailAction, { move: MoveTarget } | { invit
 export const WAITING_ACTIONS = ["waiting.snooze", "waiting.done"] as const;
 export type WaitingAction = (typeof WAITING_ACTIONS)[number];
 
-// The actions of `ids` the item lists with wired true, in the order of `ids`. Unlisted or unwired actions are left out.
+// The actions of `ids` the item lists with wired true, in its actions or under more, in the order of `ids`.
+// Unlisted or unwired actions are left out.
 export function wiredActions<T extends string>(item: DeskItem, ids: readonly T[]): T[] {
-  return ids.filter((id) => item.actions.some((a) => a.id === id && a.wired));
+  const listed = [...item.actions, ...(item.more ?? [])];
+  return ids.filter((id) => listed.some((a) => a.id === id && a.wired));
 }
 
 export const SNOOZE_TIMES = ["later", "tomorrow", "next-week"] as const;

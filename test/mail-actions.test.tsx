@@ -81,6 +81,16 @@ describe("the mail actions Cortex lists", () => {
     expect(buttons()).toEqual(expect.arrayContaining(["Spam", "Löschen", "Zusagen", "Absagen"]));
   });
 
+  test("actions Cortex lists under more are found too", async () => {
+    const it = mail([action("mail.archive", "Archive"), action("mail.trash", "Delete")], {
+      more: [action("vip.add", "Always show mail from Vera"), action("mail.spam", "Spam"), action("mail.unimportant", "Unimportant"), action("mail.snooze", "Snooze")],
+    });
+    await mount(<MailCard item={it} />);
+    expect(buttons()).toEqual(["Archive", "Attach", "Draft a reply", "Ask me", "Spam", "Delete"]);
+    await click("Spam");
+    expect(writes).toEqual([{ action: "move", key: "mail:1", target: "junk" }]);
+  });
+
   test("unlisted and unwired actions are not shown", async () => {
     await mount(<MailCard item={mail([action("mail.spam", "Spam", false), action("invite.accept", "Accept")])} />);
     expect(buttons()).toEqual(["Archive", "Attach", "Draft a reply", "Ask me", "Accept"]);
@@ -162,7 +172,7 @@ describe("a mail waiting for an answer", () => {
   });
 
   test("leaves out waiting actions that are unlisted or unwired", async () => {
-    await mount(entry(waiting([action("waiting.snooze", "Wait 2 more days", false)])));
+    await mount(entry({ ...waiting([action("waiting.snooze", "Wait 2 more days", false)]), more: [action("waiting.done", "Done", false)] }));
     expect(buttons()).toEqual([]);
   });
 });

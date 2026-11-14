@@ -40,6 +40,7 @@ export interface DeskItem {
   score: number;
   urgency: "now" | "today" | "this-week" | "waiting";
   actions: DeskAction[];
+  more?: DeskAction[];
   // refs[0] is the item's own reference; the rest point at related work.
   detail: { summary: string; links: DeskLink[]; refs?: string[]; history?: string[]; suspicion?: string[] };
   // Cortex node 3646; stacks without it omit the field.
