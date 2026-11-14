@@ -7,7 +7,7 @@ import { clockAt } from "./day/timeline";
 import { useI18n } from "./i18n";
 import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
-import { buildQueue, EMPTY_SESSION, pin, type Session } from "./queue/order";
+import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
 import { EverythingView } from "./everything/view";
 
@@ -35,18 +35,21 @@ export function App({ client }: { client?: DeskClient }) {
   const [dismissed, dismiss] = useDismissedMeetings();
   const [view, setView] = useState<"day" | "everything">("day");
   const [openedEverything, setOpenedEverything] = useState(false);
+  const now = Date.now();
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
+  const pull = (k: string) => setSession((current) => (current.pin === k ? current : pin(current, k)));
   return (
     <main className="wrap">
       <Header />
-      <Bar client={desk} onChange={state.refresh} />
+      <Bar client={desk} entries={queue} onPull={pull} onChange={state.refresh} />
       <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
-      {view === "day" && <DayView client={desk} state={state} session={session} setSession={setSession} now={Date.now()} dismissed={dismissed} onDismissMeeting={dismiss} />}
+      {view === "day" && <DayView client={desk} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} />}
       {openedEverything && <div hidden={view !== "everything"}><EverythingView client={desk} active={view === "everything"} shares={state.view?.mirror?.balance?.areas} onChange={state.refresh} /></div>}
     </main>
   );
 }
 
-export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {} }: {
+export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, queue: given }: {
   client: DeskClient;
   state: DeskState & { refresh: () => void };
   session: Session;
@@ -54,8 +57,9 @@ export function DayView({ client, state, session, setSession, now, dismissed = [
   now: number;
   dismissed?: readonly string[];
   onDismissMeeting?: (key: string) => void;
+  queue?: readonly Entry[];
 }) {
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
+  const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : []);
   const onPull = (k: string) => setSession(session.pin === k ? session : pin(session, k));
   return (
     <div className="daygrid one">

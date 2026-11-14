@@ -8,6 +8,13 @@ export interface Proposal {
   fields: Record<string, unknown>;
   problem?: string;
   alternative?: { kind: "conversation"; label: string; fields: Record<string, unknown> };
+  // Cortex marks a capture this way once studio.capture is granted: file it without the card.
+  automatic?: boolean;
+}
+
+// Only a capture Cortex marked as automatic is filed at once. Every other proposal shows its card.
+export function filesAtOnce(proposal: Proposal): boolean {
+  return proposal.automatic === true && proposal.kind === "capture" && !proposal.problem;
 }
 
 export interface Created {
