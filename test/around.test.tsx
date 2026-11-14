@@ -95,6 +95,11 @@ describe("the lines around the card", () => {
     expect(html.indexOf("Team standup")).toBeLessThan(html.indexOf('class="nextline"'));
   });
 
+  test("a sweep to Trash keeps its wording in the Then line", () => {
+    const html = render({ ...busyDesk, mailSweeps: [{ ...newsletters, target: "trash" }] });
+    expect(html).toContain("Newsletters: let 3 go?");
+  });
+
   test("shows the lines in German", () => {
     const html = render(busyDesk, { locale: "de" });
     expect(html).toContain("<b>Warum jetzt:</b>");
