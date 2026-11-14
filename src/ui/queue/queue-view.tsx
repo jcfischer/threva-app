@@ -73,7 +73,7 @@ function ThenLineView({ then, onPull }: { then: ThenLine; onPull: (k: string) =>
     ...(then.more > 0 ? [<span key="more" className="faint">{tn("queue.then.more", then.more)}</span>] : []),
     ...then.sweeps.map((s) => (
       <button key={s.k} type="button" className="lk" onClick={() => onPull(s.k)}>
-        {tn("queue.then.sweep", s.count, { label: s.label })}
+        {tn(s.archive ? "queue.then.sweepArchive" : "queue.then.sweep", s.count, { label: s.label })}
       </button>
     )),
   ];

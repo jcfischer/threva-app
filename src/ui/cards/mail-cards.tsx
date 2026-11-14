@@ -268,7 +268,7 @@ export function SweepCard({ sweep }: { sweep: MailSweep }) {
   const { busy, error, perform } = useAct(enter);
   return (
     <Card eyebrow={t("card.sweep.eyebrow")}>
-      <span className="q">{tn("card.sweep.question", sweep.mails.length)}</span>
+      <span className="q">{tn(sweep.target === "archive" ? "card.sweep.archiveQuestion" : "card.sweep.question", sweep.mails.length)}</span>
       <span className="sub">{sweep.title || sweep.label}</span>
       <span className="faint">{sweep.why}</span>
       <ul className="plain">

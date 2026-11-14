@@ -47,7 +47,7 @@ describe("around", () => {
   test("takes Cortex's why for the current card and lists up to three next titles", () => {
     const result = around(buildQueue(busyDesk, null, EMPTY_SESSION, NOW));
     expect(result.why).toEqual({ kind: "cortex", text: "Starts in 10 minutes." });
-    expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3 }] });
+    expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3, archive: true }] });
   });
 
   test("names a catalog reason for an after-meeting card, a waiting thread and a task", () => {
@@ -90,7 +90,7 @@ describe("the lines around the card", () => {
     expect(html).toContain("Invoice");
     expect(html).toContain('<button type="button" class="lk">Invoice</button>');
     expect(html).toContain("and 1 more");
-    expect(html).toContain("Newsletters: let 3 go?");
+    expect(html).toContain("Newsletters: archive 3?");
     expect(html.indexOf("Why now:")).toBeLessThan(html.indexOf("Team standup"));
     expect(html.indexOf("Team standup")).toBeLessThan(html.indexOf('class="nextline"'));
   });
@@ -100,7 +100,7 @@ describe("the lines around the card", () => {
     expect(html).toContain("<b>Warum jetzt:</b>");
     expect(html).toContain("Danach");
     expect(html).toContain("und 1 weitere");
-    expect(html).toContain("Newsletters: 3 weglegen?");
+    expect(html).toContain("Newsletters: 3 archivieren?");
   });
 
   test("uses a catalog sentence for an after-meeting card", () => {
