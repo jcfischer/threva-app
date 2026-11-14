@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiftOutcome } from "./lift";
-import { EditorState, type ChangeDesc, type Extension } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, type ChangeDesc, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, keymap, placeholder, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { ensureSyntaxTree, HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
@@ -22,7 +22,23 @@ const highlights = HighlightStyle.define([
   { tag: tags.quote, color: "var(--dim)" },
 ]);
 
-function noteMarks(view: EditorView): DecorationSet {
+export interface LineDecoration {
+  matches(text: string): boolean;
+  className: string;
+  plainClassName: string;
+  hint: string;
+}
+
+export interface EnterLine {
+  from: number;
+  to: number;
+  text: string;
+  /** Null when this editor is gone or cannot safely apply a delayed edit. */
+  read(): string | null;
+  remove(range: { from: number; to: number }): void;
+}
+
+function noteMarks(view: EditorView, decoration?: LineDecoration): DecorationSet {
   const { state } = view;
   const live = new Set<number>();
   if (view.hasFocus) {
@@ -34,6 +50,12 @@ function noteMarks(view: EditorView): DecorationSet {
   }
   const marks: { from: number; to: number; value: Decoration }[] = [];
   const mark = (from: number, to: number, value: Decoration) => marks.push({ from, to, value });
+  if (decoration) {
+    for (let number = 1; number <= state.doc.lines; number++) {
+      const line = state.doc.line(number);
+      if (decoration.matches(line.text)) mark(line.from, line.from, Decoration.line({ class: decoration.className, attributes: { "data-hint": decoration.hint } }));
+    }
+  }
   // A page is at most 10,000 characters, so the whole tree is parsed rather than only what is on screen.
   const tree = ensureSyntaxTree(state, state.doc.length, 100) ?? syntaxTree(state);
   tree.iterate({
@@ -63,13 +85,16 @@ function noteMarks(view: EditorView): DecorationSet {
   return Decoration.set(marks, true);
 }
 
-const formatted = () => ViewPlugin.fromClass(class {
+const refreshMarks = Annotation.define<boolean>();
+const formatted = (decoration: () => LineDecoration | undefined) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
   constructor(view: EditorView) {
-    this.decorations = noteMarks(view);
+    this.decorations = noteMarks(view, decoration());
   }
   update(update: ViewUpdate) {
-    if (update.docChanged || update.selectionSet || update.focusChanged || update.viewportChanged) this.decorations = noteMarks(update.view);
+    if (update.docChanged || update.selectionSet || update.focusChanged || update.viewportChanged || update.transactions.some(tr => tr.annotation(refreshMarks))) {
+      this.decorations = noteMarks(update.view, decoration());
+    }
   }
 }, { decorations: plugin => plugin.decorations });
 
@@ -84,6 +109,9 @@ export interface NoteEditorProps {
   onLift?(request: { page: string; from: number; to: number }): Promise<LiftOutcome>;
   liftLabel?: string;
   liftKeys?: string;
+  lineDecoration?: LineDecoration;
+  onEnter?(line: EnterLine): boolean;
+  onEdit?(changes: ChangeDesc): void;
 }
 
 interface Bar {
@@ -95,7 +123,7 @@ interface Bar {
  * The page's editor: Markdown shown formatted, with the marks of the line the cursor is in.
  * If the rich editor cannot start, the page still takes plain Markdown in a text field.
  */
-export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "" }: NoteEditorProps) {
+export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", lineDecoration, onEnter, onEdit }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
@@ -103,9 +131,12 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   const wrap = useRef<HTMLDivElement | null>(null);
   const lifting = useRef(false);
   const span = useRef<{ from: number; to: number } | null>(null);
+  const lines = useRef({ lineDecoration, onEnter, onEdit });
+  lines.current = { lineDecoration, onEnter, onEdit };
   const lift = useRef(onLift);
   lift.current = onLift;
   const [plain, setPlain] = useState(false);
+  const [hintSlot] = useState(() => new Compartment());
   const [bar, setBar] = useState<Bar | null>(null);
   const place_ = () => {
     const editor = view.current;
@@ -159,13 +190,25 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   runRef.current = run;
   const barRef = useRef(place_);
   barRef.current = place_;
+  const enterLine = (editor: EditorView) => {
+    if (!lines.current.onEnter || editor.composing || !editor.state.selection.main.empty) return false;
+    const line = editor.state.doc.lineAt(editor.state.selection.main.head);
+    return lines.current.onEnter({ from: line.from, to: line.to, text: line.text,
+      read: () => view.current === editor ? editor.state.doc.toString() : null,
+      remove: range => editor.dispatch({ changes: range }),
+    });
+  };
   // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
     let editor: EditorView;
     try {
-      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => { const kept = span.current; if (kept) span.current = { from: changes.mapPos(kept.from, 1), to: changes.mapPos(kept.to, -1) }; } }) }) });
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint: hintSlot.of(placeholder(hint)), decoration: () => lines.current.lineDecoration, enterLine, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => {
+        const kept = span.current;
+        if (kept) span.current = { from: changes.mapPos(kept.from, 1), to: changes.mapPos(kept.to, -1) };
+        lines.current.onEdit?.(changes);
+      } }) }) });
     } catch {
       // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
       setPlain(true);
@@ -201,8 +244,30 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     if (!area || !clean || area.value === value) return;
     area.value = value;
   }, [value, clean]);
+  useEffect(() => { view.current?.dispatch({ effects: hintSlot.reconfigure(placeholder(hint)) }); }, [hint, hintSlot]);
+  useEffect(() => { view.current?.dispatch({ annotations: refreshMarks.of(true) }); }, [lineDecoration]);
+  const hasDecoratedLine = plain && lineDecoration && value.split("\n").some(line => lineDecoration.matches(line));
   if (plain) return <div className="note-editor note-plain">
-    <textarea ref={field} aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)} />
+    <textarea ref={field} aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)}
+      className={hasDecoratedLine ? lineDecoration.plainClassName : undefined}
+      onKeyDown={event => {
+        if (!onEnter || event.key !== "Enter" || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || event.nativeEvent.isComposing) return;
+        const area = event.currentTarget;
+        if (area.selectionStart !== area.selectionEnd) return;
+        const before = area.value;
+        const from = before.lastIndexOf("\n", area.selectionStart - 1) + 1;
+        const end = before.indexOf("\n", area.selectionStart);
+        const to = end === -1 ? before.length : end;
+        if (onEnter({ from, to, text: before.slice(from, to),
+          read: () => field.current === area && area.value === before ? before : null,
+          remove: range => {
+            area.value = before.slice(0, range.from) + before.slice(range.to);
+            area.setSelectionRange(range.from, range.from);
+            onChange(area.value);
+          },
+        })) event.preventDefault();
+      }} />
+    {hasDecoratedLine && <span className="faint">{lineDecoration.hint}</span>}
   </div>;
   return <div className="note-wrap" ref={wrap}>
     <div className="note-editor" ref={host} />
@@ -212,17 +277,17 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   </div>;
 }
 
-function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit }: { label: string; hint: string; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void }): Extension[] {
+function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, decoration, enterLine }: { label: string; hint: Extension; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void; decoration: () => LineDecoration | undefined; enterLine: (view: EditorView) => boolean }): Extension[] {
   return [
     history(),
     EditorView.domEventHandlers({ blur: (_event, view) => { onLeave(view.state.doc.toString(), view.state.selection.main.head); } }),
     markdown({ base: markdownLanguage }),
     EditorView.lineWrapping,
-    keymap.of([{ key: "Mod-Enter", run: view => { if (view.state.selection.main.empty) return false; onLift(); return true; } }, ...defaultKeymap, ...historyKeymap]),
-    placeholder(hint),
+    keymap.of([{ key: "Enter", run: enterLine }, { key: "Mod-Enter", run: view => { if (view.state.selection.main.empty) return false; onLift(); return true; } }, ...defaultKeymap, ...historyKeymap]),
+    hint,
     EditorView.contentAttributes.of({ "aria-label": label, "aria-multiline": "true" }),
     syntaxHighlighting(highlights),
-    formatted(),
+    formatted(decoration),
     EditorView.updateListener.of(update => {
       if (update.docChanged) { onEdit(update.changes); onChange(update.state.doc.toString()); }
       if (update.selectionSet || update.docChanged || update.geometryChanged || update.viewportChanged || update.focusChanged) onSelect();
