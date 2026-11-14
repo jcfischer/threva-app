@@ -165,7 +165,7 @@ export interface OutlineDetails {
 }
 
 export type OutlineCommand =
-  | { op: "outline-add"; revision: number; parent: string; title: string }
+  | { op: "outline-add"; revision: number; parent: string; title: string; kind?: "task" }
   | { op: "outline-move"; revision: number; id: string; parent: string; index: number }
   | { op: "outline-edit"; revision: number; id: string; details: OutlineDetails; yes: boolean }
   | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };

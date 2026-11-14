@@ -4,6 +4,7 @@ import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
 import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";
+import { liftSelection } from "./lift";
 import { NotePage } from "./page";
 import { relativeDay, rowCounts, rowState, rowTime } from "./time";
 
@@ -220,8 +221,27 @@ export function EverythingView({ client, active = true, initialDay = null, share
       clean={clean}
       onType={text => {
         setTexts(previous => ({ ...previous, [current.id]: text }));
-        setNotice(previous => previous?.row === current.id && previous.state === "saved" ? null : previous);
+        setNotice(previous => previous?.row === current.id && previous.state !== "refused" ? null : previous);
         saver.type(current.id, text);
+      }}
+      onLift={async ({ page, from, to }) => {
+        const parent = current;
+        if (writing.current) return { state: "refused", message: t("error.network") };
+        await saver.flush();
+        writing.current = true;
+        ++readVersion.current;
+        try {
+          const outcome = await liftSelection({ client, date: day.date, revision: saver.revision, parent, page, from, to, fallback: t("error.network") });
+          if (outcome.state === "refused") setNotice({ row: parent.id, state: "refused", message: outcome.message });
+          if (outcome.state === "lifted" || outcome.state === "kept") {
+            setDay(outcome.view);
+            onChange();
+            setNotice(outcome.state === "lifted" ? { row: parent.id, state: "lifted", message: outcome.title } : { row: parent.id, state: "refused", message: outcome.message });
+          }
+          return outcome;
+        } finally {
+          writing.current = false;
+        }
       }}
       onLeave={(text, at) => { keepPlace(store, current.id, at); setTexts(previous => ({ ...previous, [current.id]: text })); saver.leave(current.id, text); }} />}
     <div>{open.map(line)}{!open.length && <p className="muted">{t("everything.empty")}</p>}</div>

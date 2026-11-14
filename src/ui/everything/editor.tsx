@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { LiftOutcome } from "./lift";
 import { EditorState, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, keymap, placeholder, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -80,25 +81,87 @@ export interface NoteEditorProps {
   clean?: boolean;
   onChange(text: string): void;
   onLeave(text: string, at: number): void;
+  onLift?(request: { page: string; from: number; to: number }): Promise<LiftOutcome>;
+  liftLabel?: string;
+  liftKeys?: string;
+}
+
+interface Bar {
+  left: number;
+  top: number;
 }
 
 /**
  * The page's editor: Markdown shown formatted, with the marks of the line the cursor is in.
  * If the rich editor cannot start, the page still takes plain Markdown in a text field.
  */
-export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave }: NoteEditorProps) {
+export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "" }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
   const syncing = useRef(false);
+  const wrap = useRef<HTMLDivElement | null>(null);
+  const lifting = useRef(false);
+  const lift = useRef(onLift);
+  lift.current = onLift;
   const [plain, setPlain] = useState(false);
+  const [bar, setBar] = useState<Bar | null>(null);
+  const place_ = () => {
+    const editor = view.current;
+    const box = wrap.current;
+    const range = editor?.state.selection.main;
+    if (!editor || !box || !range || range.empty || !lift.current) return setBar(null);
+    try {
+      const start = editor.coordsAtPos(range.from);
+      const outer = box.getBoundingClientRect();
+      if (!start) return setBar(null);
+      setBar({ left: Math.max(0, start.left - outer.left), top: start.top - outer.top - 40 });
+    } catch {
+      setBar({ left: 0, top: -40 });
+    }
+  };
+  const run = async () => {
+    const editor = view.current;
+    const act = lift.current;
+    if (!editor || !act || lifting.current) return false;
+    const { from, to } = editor.state.selection.main;
+    if (from === to) return false;
+    const page = editor.state.doc.toString();
+    lifting.current = true;
+    try {
+      const outcome = await act({ page, from, to });
+      if (outcome.state === "empty" || outcome.state === "refused" || view.current !== editor) return true;
+      const now = editor.state.doc.toString();
+      const at = Math.min(from, outcome.page.length);
+      if (now === outcome.page) {
+        editor.dispatch({ selection: { anchor: at } });
+      } else if (now === page) {
+        syncing.current = outcome.state === "lifted";
+        try {
+          editor.dispatch({ changes: { from: 0, to: page.length, insert: outcome.page }, selection: { anchor: at } });
+        } finally {
+          syncing.current = false;
+        }
+      } else {
+        editor.dispatch({ changes: { from, to: Math.min(to, now.length) } });
+      }
+      editor.focus();
+    } finally {
+      lifting.current = false;
+    }
+    return true;
+  };
+  const runRef = useRef(run);
+  runRef.current = run;
+  const barRef = useRef(place_);
+  barRef.current = place_;
   // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
     let editor: EditorView;
     try {
-      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave }) }) });
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current() }) }) });
     } catch {
       // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
       setPlain(true);
@@ -137,22 +200,28 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   if (plain) return <div className="note-editor note-plain">
     <textarea ref={field} aria-label={label} placeholder={hint} defaultValue={value} onInput={event => onChange(event.currentTarget.value)} onBlur={event => onLeave(event.currentTarget.value, event.currentTarget.selectionStart)} />
   </div>;
-  return <div className="note-editor" ref={host} />;
+  return <div className="note-wrap" ref={wrap}>
+    <div className="note-editor" ref={host} />
+    {bar && <div className="lift-bar" style={{ left: bar.left, top: bar.top }} onMouseDown={event => event.preventDefault()}>
+      <button type="button" className="btn" onClick={() => { void run(); }}>{liftLabel}<kbd>{liftKeys}</kbd></button>
+    </div>}
+  </div>;
 }
 
-function extensions({ label, hint, onChange, onLeave }: { label: string; hint: string; onChange: (text: string) => void; onLeave: (text: string, at: number) => void }): Extension[] {
+function extensions({ label, hint, onChange, onLeave, onLift, onSelect }: { label: string; hint: string; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void }): Extension[] {
   return [
     history(),
     EditorView.domEventHandlers({ blur: (_event, view) => { onLeave(view.state.doc.toString(), view.state.selection.main.head); } }),
     markdown({ base: markdownLanguage }),
     EditorView.lineWrapping,
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of([{ key: "Mod-Enter", run: view => { if (view.state.selection.main.empty) return false; onLift(); return true; } }, ...defaultKeymap, ...historyKeymap]),
     placeholder(hint),
     EditorView.contentAttributes.of({ "aria-label": label, "aria-multiline": "true" }),
     syntaxHighlighting(highlights),
     formatted(),
     EditorView.updateListener.of(update => {
       if (update.docChanged) onChange(update.state.doc.toString());
+      if (update.selectionSet || update.docChanged || update.geometryChanged || update.viewportChanged || update.focusChanged) onSelect();
     }),
   ];
 }
