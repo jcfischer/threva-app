@@ -5,6 +5,7 @@ import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "./act";
 import { DiscussNote, TalkItThrough } from "./conversation";
+import { Sparring } from "./sparring";
 
 type Run = ReturnType<typeof useStudioAct>["run"];
 
@@ -80,23 +81,21 @@ function ResponseView({ response }: { response: StudioResponse }) {
 function MaterialRail({ material }: { material: readonly StudioMaterial[] }) {
   const { t } = useI18n();
   return (
-    <div className="stside">
-      <div className="strel">
-        <span className="eyebrow">{t("studio.material")}</span>
-        {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
-        {material.map((m, i) => (
-          <span key={i}>
-            {safeHref(m.href) ? (
-              <a className="lk" href={safeHref(m.href)} target="_blank" rel="noreferrer">
-                {m.label}
-              </a>
-            ) : (
-              m.label
-            )}
-            {m.kind !== "link" && <span className="faint"> {m.kind}</span>}
-          </span>
-        ))}
-      </div>
+    <div className="strel">
+      <span className="eyebrow">{t("studio.material")}</span>
+      {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
+      {material.map((m, i) => (
+        <span key={i}>
+          {safeHref(m.href) ? (
+            <a className="lk" href={safeHref(m.href)} target="_blank" rel="noreferrer">
+              {m.label}
+            </a>
+          ) : (
+            m.label
+          )}
+          {m.kind !== "link" && <span className="faint"> {m.kind}</span>}
+        </span>
+      ))}
     </div>
   );
 }
@@ -126,7 +125,7 @@ function CloseForm({ slug, busy, run, onCancel }: { slug: string; busy: boolean;
   const [reviewOn, setReviewOn] = useState("");
   const act = closeAct(slug, { outcome, text, expect, reviewOn });
   const send = async () => {
-    if (act && (await run(act))) onCancel();
+    if (act && (await run(act)).ok) onCancel();
   };
   return (
     <div className="stack">
@@ -167,6 +166,8 @@ export interface StudioCardProps {
   open: boolean;
   onOpen: () => void;
   onHide: () => void;
+  /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
+  personas?: readonly string[];
 }
 
 export function StudioCard(props: StudioCardProps) {
@@ -198,7 +199,7 @@ function StudioClosed({ thread, waits, onOpen }: StudioCardProps) {
   );
 }
 
-function StudioOpen({ thread, waits, onHide }: StudioCardProps) {
+function StudioOpen({ thread, waits, onHide, personas = [] }: StudioCardProps) {
   const { t } = useI18n();
   const { busy, error, run } = useStudioAct();
   const [text, setText] = useState("");
@@ -206,7 +207,7 @@ function StudioOpen({ thread, waits, onHide }: StudioCardProps) {
   const slug = thread.slug;
   const parked = thread.state === "parked";
   const respond = async () => {
-    if (await run({ act: "respond", thread: slug, text: text.trim() })) setText("");
+    if ((await run({ act: "respond", thread: slug, text: text.trim() })).ok) setText("");
   };
   return (
     <div className="studio card">
@@ -263,7 +264,10 @@ function StudioOpen({ thread, waits, onHide }: StudioCardProps) {
             </div>
           )}
         </div>
-        <MaterialRail material={thread.material ?? []} />
+        <div className="stside">
+          <Sparring thread={thread} personas={personas} />
+          <MaterialRail material={thread.material ?? []} />
+        </div>
       </div>
     </div>
   );

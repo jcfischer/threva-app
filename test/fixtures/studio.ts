@@ -1,8 +1,12 @@
-import type { StudioList, StudioThread } from "../../src/ui/api/types";
+import type { StudioList, StudioThread, StudioThinking } from "../../src/ui/api/types";
 
 // Recorded from the dev stack's `GET /api/desk/studio` (thread budget-next-year), with a stand proposal, a kept idea
-// and a relation note added in the shape of Cortex's docs/desk-studio.md sample.
+// and a relation note added in the shape of Cortex's docs/desk-studio.md sample, and the per-thread `thinking`
+// Cortex adds to every thread (cortex#3613) in its open state.
+export const openThinking: Extract<StudioThinking, { kind: "ready" }> = { kind: "ready", budget: "open", reason: null, runs: [] };
+
 export const budgetThread: StudioThread = {
+  thinking: openThinking,
   slug: "budget-next-year",
   state: "active",
   thinkTonight: false,
@@ -71,4 +75,6 @@ export const closedThread: StudioThread = {
   ],
 };
 
-export const studioList = (active: StudioThread[], parked: StudioThread[] = [], closed: StudioThread[] = []): StudioList => ({ studio: { active, parked, closed } });
+export const studioList = (active: StudioThread[], parked: StudioThread[] = [], closed: StudioThread[] = [], personas: string[] = []): StudioList => ({
+  studio: { personas, active, parked, closed },
+});
