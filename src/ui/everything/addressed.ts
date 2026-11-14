@@ -9,7 +9,7 @@ export function addressedText(line: string, name: string | null): string | null 
   return null;
 }
 
-function lineRemovalRange(from: number, to: number, length: number) {
+export function lineRemovalRange(from: number, to: number, length: number) {
   return { from: to === length && from > 0 ? from - 1 : from, to: to < length ? to + 1 : to };
 }
 
