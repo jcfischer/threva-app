@@ -1,31 +1,19 @@
 import { expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { createClient } from "../src/ui/api/client";
 import type { MyDayOutline, OutlineCommand } from "../src/ui/api/types";
 import { App } from "../src/ui/app";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
+import { mountDom } from "./fixtures/dom";
 import recorded from "./fixtures/my-day.json";
 
-async function surface(run: (container: HTMLDivElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
-  const dom = new Window();
-  const globals = { window: dom, document: dom.document, IS_REACT_ACT_ENVIRONMENT: true };
-  const originals = new Map(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
+  const { root, container, cleanup } = mountDom();
   try { await run(container, async element => { await act(async () => root.render(element)); }); }
   finally {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [key, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
+    await cleanup();
   }
 }
 

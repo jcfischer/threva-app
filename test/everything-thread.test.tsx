@@ -1,7 +1,5 @@
 import { expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EditorView } from "@codemirror/view";
 import { createClient } from "../src/ui/api/client";
@@ -10,6 +8,7 @@ import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
 import { row } from "./fixtures/outline";
+import { CODEMIRROR_GLOBALS, mountDom } from "./fixtures/dom";
 import { budgetThread, closedThread, studioList } from "./fixtures/studio";
 
 const mapping: StudioProject = { id: "thread", slug: budgetThread.slug, state: "active", openNotes: 3 };
@@ -77,21 +76,10 @@ test("address marks use the runtime name literally and strip only the leading ma
 });
 
 async function surface(run: (container: HTMLElement, render: (element: ReactNode) => Promise<void>) => Promise<void>, rich = false) {
-  const dom = new Window();
-  const names = ["window", "document", "IS_REACT_ACT_ENVIRONMENT", ...(rich ? ["MutationObserver", "ResizeObserver", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "DOMRect", "Range"] : [])];
-  const originals = new Map(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
-  for (const name of names) Object.defineProperty(globalThis, name, { configurable: true, writable: true, value: name === "window" ? dom : name === "document" ? dom.document : name === "IS_REACT_ACT_ENVIRONMENT" ? true : (dom as unknown as Record<string, unknown>)[name] });
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { root, container, cleanup } = mountDom(rich ? CODEMIRROR_GLOBALS : []);
   try { await run(container, async element => { await act(async () => root.render(element)); }); }
   finally {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [name, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-      else Reflect.deleteProperty(globalThis, name);
-    }
+    await cleanup();
   }
 }
 async function click(container: Element, text: string) {

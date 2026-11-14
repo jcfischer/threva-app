@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient, type Fetch } from "../src/ui/api/client";
 import type { StudioThread } from "../src/ui/api/types";
@@ -10,6 +8,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
 import { sparAvailability, sparRequests, Sparring } from "../src/ui/studio/sparring";
 import { budgetThread, openThinking } from "./fixtures/studio";
+import { mountDom } from "./fixtures/dom";
 
 const MODES = ["Think now", "Grill me", "Argue the other side", "Red team", "First principles"];
 
@@ -118,13 +117,7 @@ async function withDom(
   ) => Promise<void>,
   fetchImpl: Fetch,
 ) {
-  const dom = new Window();
-  const globals = { window: dom, document: dom.document, IS_REACT_ACT_ENVIRONMENT: true };
-  const originals = new Map(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { root, container, cleanup } = mountDom();
   const click = async (label: string) => {
     const button = Array.from(container.querySelectorAll("button")).find((b) => b.textContent === label);
     if (!button) throw new Error(`no button labelled ${label}`);
@@ -148,12 +141,7 @@ async function withDom(
     await show(budgetThread);
     await run(click, container, show);
   } finally {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [key, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
+    await cleanup();
   }
 }
 

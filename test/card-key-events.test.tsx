@@ -1,36 +1,24 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { Window } from "happy-dom";
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { type Root } from "react-dom/client";
 import { DayView } from "../src/ui/app";
 import { createClient } from "../src/ui/api/client";
 import { EMPTY_SESSION, pin } from "../src/ui/queue/order";
 import { NOW, item, sweep, view } from "./fixtures/desk";
+import { mountDom } from "./fixtures/dom";
 
 describe("front-card keyboard events", () => {
-  let dom: Window;
   let root: Root;
-  let originals: Map<string, PropertyDescriptor | undefined>;
+  let cleanup: () => Promise<void>;
   let writes: unknown[];
 
   beforeEach(() => {
-    dom = new Window();
-    const globals = { window: dom, document: dom.document, HTMLElement: dom.HTMLElement, Element: dom.Element, IS_REACT_ACT_ENVIRONMENT: true };
-    originals = new Map(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-    for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-    const container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
+    ({ root, cleanup } = mountDom(["HTMLElement", "Element"]));
     writes = [];
   });
 
   afterEach(async () => {
-    await act(async () => root.unmount());
-    await dom.happyDOM.close();
-    for (const [key, descriptor] of originals) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
+    await cleanup();
   });
 
   async function render(front: "task" | "sweep") {
