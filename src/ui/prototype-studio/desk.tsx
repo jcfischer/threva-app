@@ -4,6 +4,7 @@
 // Three ways a card opens, one per variant: over the draft (G), outwards over its own edge (H), or as a floating
 // card you place anywhere and that stays there (I). Throwaway. The draft is not in the Cortex API today.
 import { useEffect, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
+import { keptQuote } from "../everything/assistant";
 import { NoteEditor, type PageController } from "../everything/editor";
 import { ago, firstSentence, waiting, type Note, type Topic } from "./data";
 import { Md, type Acts } from "./prototype";
@@ -37,6 +38,15 @@ export const DESK_CSS = `
 .dk-slot.r.out{left:calc(100% + 12px)}
 .dk-slot.float{top:auto;padding-top:0}
 .dk-grip{cursor:move;margin:0 -18px;padding:9px 18px 7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;user-select:none;touch-action:none;position:sticky;top:0;background:var(--panel)}
+.dk-req{width:100%;max-width:240px;border:1px dashed var(--line);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.4;display:flex;flex-direction:column;gap:4px;align-items:flex-start;background:none;color:inherit;font-family:inherit;text-align:left}
+.dk-req.failed{border-color:var(--wait)}
+.dk-req.delivered{border-style:solid;border-color:var(--accent);cursor:pointer}
+.dk-req .pill{font-size:11px}
+.dk-req .btn{padding:3px 9px;font-size:12px}
+.dk-doc{position:relative}
+.dk-mark{position:absolute;right:-38px;width:26px;height:26px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:12px;cursor:pointer;display:grid;place-items:center;padding:0}
+.dk-mark:hover{border-color:var(--accent);color:var(--accent)}
+.dk-mark.q{border-color:var(--accent);color:var(--accent);font-weight:700}
 .dk-ask{font-weight:650;font-size:17px}
 .dk-sel{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--fg);color:var(--bg);border-radius:10px;padding:6px 8px;display:flex;gap:6px;align-items:center;font-size:13.5px;z-index:40;max-width:90vw}
 .dk-sel i{opacity:.7;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -61,6 +71,31 @@ interface Scrap {
   body: string;
   at: number;
 }
+
+/** One thing asked of the assistant, from the asking to the person closing it (after Flores: request, promise, delivery, acceptance). */
+interface Req {
+  id: string;
+  what: "holes" | "ask";
+  passage: string;
+  state: "asked" | "promised" | "delivered" | "accepted" | "declined" | "failed";
+  note?: string;
+  reason?: string;
+}
+
+/** A passage of the draft and the card it came from or was asked about. */
+interface Source {
+  id: string;
+  text: string;
+  card: string | null;
+  kind: "from" | "about";
+}
+
+const WHAT = { holes: "Find holes in", ask: "Ask me about" } as const;
+const STATE = { asked: "Asked", promised: "Promised: in about a minute", delivered: "Delivered. Your turn.", accepted: "Accepted", declined: "Declined", failed: "Could not" } as const;
+const QUESTIONS = {
+  holes: ["What happens to this when the person arrives with forty things waiting?", "Who decides what counts here, and what if they decide wrong?", "What would have to be true for you to delete this sentence?"],
+  ask: ["What do you mean by this, in words a newcomer would use?", "Which example from your material shows it?", "What is the opposite position, and who holds it?"],
+} as const;
 
 interface Place {
   x: number;
@@ -124,6 +159,9 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
   const [sel, setSel] = useState<{ text: string; from: "draft" | string } | null>(null);
   const [answer, setAnswer] = useState("");
   const [said, setSaid] = useState("");
+  const [requests, setRequests] = useState<Req[]>([{ id: "q0", what: "holes", passage: "The first three cards are chosen, not ranked.", state: "failed", reason: "The local model ran out of memory while reading the material." }]);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [tops, setTops] = useState<{ [id: string]: number | null }>({});
   const page = useRef<PageController | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
   const grab = useRef<{ id: string; dx: number; dy: number } | null>(null);
@@ -157,19 +195,42 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
     setOut((o) => (o.includes(id) ? (at ? o : o.filter((x) => x !== id)) : mode === "float" ? [...o, id] : [...o.filter((x) => side(x) !== side(id)), id]));
   };
 
-  const add = (line: string, from: string, after: string | null) => {
-    page.current?.apply((text) => withLine(text, line, after));
+  const settle = (req: string, state: Req["state"], extra: Partial<Req> = {}) => setRequests((rs) => rs.map((r) => (r.id === req ? { ...r, state, ...extra } : r)));
+  const closeFor = (noteId: string, state: "accepted" | "declined") => setRequests((rs) => rs.map((r) => (r.note === noteId && r.state === "delivered" ? { ...r, state } : r)));
+  const request = (what: Req["what"], passage: string) => {
+    const id = `q${Date.now()}`;
+    const text = passage.trim().split("\n")[0] ?? "";
+    setRequests((rs) => [{ id, what, passage: text, state: "asked" }, ...rs]);
+    setSources((s) => [...s, { id, text, card: null, kind: "about" }]);
+    setSaid("Asked. The assistant answers with questions, never with a rewrite.");
+    setTimeout(() => setRequests((rs) => rs.map((r) => (r.id === id && r.state === "asked" ? { ...r, state: "promised" } : r))), 900);
+  };
+  const deliver = (r: Req) => {
+    const id = `n${Date.now()}`;
+    const head = `Three questions about "${bare(r.passage).slice(0, 48)}${r.passage.length > 48 ? "…" : ""}"`;
+    act.deliver({ id, at: Date.now(), kind: "note", status: "open", mode: r.what === "holes" ? "red-team" : "grill", trigger: "You asked", model: "Qwen 3.8 27B (local)", asks: head, text: QUESTIONS[r.what].map((q, i) => `${i + 1}. ${q}`).join("\n") });
+    settle(r.id, "delivered", { note: id });
+    setSources((s) => s.map((x) => (x.id === r.id ? { ...x, card: id } : x)));
+  };
+
+  // The assistant never writes as you: its words arrive as a marked quote, tied to the card they came from.
+  const add = (quote: string, first: string, from: string, after: string | null) => {
+    page.current?.apply((text) => withLine(text, quote, after));
     setUsed((u) => [...u, from]);
-    setSaid(after ? "Dropped into the draft at that line." : "Added at the end of the draft.");
+    setSources((s) => [...s, { id: `s${Date.now()}`, text: first, card: from, kind: "from" }]);
+    setSaid("Added as a quote with its source. Rewrite it in your own words.");
   };
   const useNote = (n: Note, after: string | null = null) => {
-    add(firstSentence(n.text.split("\n").find((l) => l.trim() && !l.startsWith("#")) ?? n.text), n.id, after);
+    const text = firstSentence(n.text.split("\n").find((l) => l.trim() && !l.startsWith("#")) ?? n.text).replace(/^\d+\.\s*/, "");
+    add(keptQuote("The assistant", new Date(n.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), text), text, n.id, after);
     if (n.kind === "note") act.answer(n.id, "(worked into the draft)");
     else act.keep(n.id);
+    closeFor(n.id, "accepted");
     put(n.id);
   };
   const useScrap = (s: Scrap, text: string | null = null, after: string | null = null) => {
-    add(`> ${(text ?? s.body.split("\n").pop() ?? s.body).replace(/\n/g, "\n> ")}`, s.id, after);
+    const body = text ?? s.body.split("\n").pop() ?? s.body;
+    add(keptQuote(s.title, s.kind.toLowerCase(), body), body.split("\n")[0] ?? body, s.id, after);
     put(s.id);
   };
 
@@ -263,13 +324,13 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && answer.trim()) { act.answer(n.id, answer.trim()); setAnswer(""); put(n.id); setSaid("Answered."); }
+          if (e.key === "Enter" && answer.trim()) { act.answer(n.id, answer.trim()); closeFor(n.id, "accepted"); setAnswer(""); put(n.id); setSaid("Answered."); }
         }}
       />
     )}
     <div className="row">
       <button type="button" className="btn pri" onClick={() => useNote(n)}>Work it into the draft</button>
-      {waits.has(n.id) && <button type="button" className="btn quiet" onClick={() => { act.dismiss(n.id); put(n.id); }}>Throw away</button>}
+      {waits.has(n.id) && <button type="button" className="btn quiet" onClick={() => { act.dismiss(n.id); closeFor(n.id, "declined"); put(n.id); }}>Throw away</button>}
       {mode !== "float" && <button type="button" className="btn quiet" onClick={() => put(n.id)}>Put back</button>}
     </div>
   </>);
@@ -303,19 +364,40 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
           <div className="dk-paper" onMouseUp={picked("draft")}>
             <h2>{topic.question}</h2>
             <p className="dk-lead">{topic.stand}</p>
-            <NoteEditor value={draft} label="Draft" hint="Write here. Select a passage to ask the assistant about it." place={null} onChange={setDraft} onLeave={() => {}} controller={page} assistantName="the assistant" askLabel="Ask the assistant" shortenLabel="Shorten" onAsk={(kind) => { act.think("think", "now"); setSaid(kind === "shorten" ? "The assistant is shortening that passage. Its proposal will appear on the right." : "The assistant is thinking about that passage. Its note will appear on the right."); }} />
+            <div className="dk-doc">
+              <NoteEditor value={draft} label="Draft" hint="Write here. Select a passage to have the assistant question it." place={null} onChange={setDraft} onLeave={() => {}} controller={page} assistantName="the assistant" shortenLabel="Find holes in this" askLabel="Ask me about this" passages={sources} onPassages={setTops} onAsk={(kind, passage) => request(kind === "shorten" ? "holes" : "ask", passage)} />
+              {sources.map((s) => {
+                const top = tops[s.id];
+                if (top === null || top === undefined) return null;
+                const pending = s.kind === "about" && !s.card;
+                return (
+                  <button key={s.id} type="button" className={`dk-mark${s.kind === "about" ? " q" : ""}`} style={{ top }} title={pending ? "Asked. Not delivered yet." : s.kind === "about" ? "The assistant's questions about this passage" : "Where this came from"} onClick={() => s.card && !out.includes(s.card) && bring(s.card)}>
+                    {pending ? "…" : s.kind === "about" ? "?" : "↗"}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         <div className="dk-edge r">
+          {requests.some((r) => r.state !== "accepted" && r.state !== "declined") && <span className="eyebrow">Asked of the assistant</span>}
+          {requests.filter((r) => r.state !== "accepted" && r.state !== "declined").map((r) => (
+            <div key={r.id} className={`dk-req ${r.state}`} onClick={() => r.state === "delivered" && r.note && !out.includes(r.note) && bring(r.note)}>
+              <span>{WHAT[r.what]} "{bare(r.passage).slice(0, 60)}{r.passage.length > 60 ? "…" : ""}"</span>
+              <span className={`pill ${r.state === "failed" ? "wait" : r.state === "delivered" ? "think" : "calm"}`}>{STATE[r.state]}</span>
+              {r.state === "failed" && <span>{r.reason}</span>}
+              {r.state === "failed" && <button type="button" className="btn" onClick={() => { settle(r.id, "asked"); setTimeout(() => settle(r.id, "promised"), 900); }}>Try again</button>}
+              {r.state === "promised" && <button type="button" className="btn quiet" onClick={() => deliver(r)}>(prototype: deliver now)</button>}
+            </div>
+          ))}
+          {requests.some((r) => r.state === "accepted" || r.state === "declined") && (
+            <span className="faint" style={{ fontSize: 12 }}>
+              Closed: {requests.filter((r) => r.state === "accepted").length} accepted, {requests.filter((r) => r.state === "declined").length} declined
+            </span>
+          )}
           <span className="eyebrow">From the assistant</span>
           {notes.map((n, i) => mini(n.id, waits.has(n.id) ? " waits" : i > 4 ? " far" : "", <><b>{n.asks ?? firstSentence(n.text)}</b>{ago(n.at, now)}</>))}
-          {topic.runs.filter((r) => r.status === "pending").map((r) => (
-            <button key={r.id} type="button" className="dk-mini waits" style={{ borderStyle: "dashed" }} onClick={() => act.land(r.id)}>
-              <b>Thinking…</b>
-              (prototype: click to let the note land)
-            </button>
-          ))}
         </div>
 
         {mode === "float" && cards}
@@ -335,7 +417,6 @@ export function Desk({ topic, act, now, mode = "over" }: { topic: Topic; act: Ac
       {sel?.from === "draft" && (
         <div className="dk-sel">
           <i>"{sel.text}"</i>
-          <button type="button" onClick={() => { act.think("red-team", "now"); setSaid("The assistant is looking for holes in that passage. Its note will appear on the right."); setSel(null); }}>Find holes in this</button>
           <button type="button" onClick={park}>Park on the left</button>
         </div>
       )}

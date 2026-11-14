@@ -85,6 +85,7 @@ const acts = (set: Set) => ({
   dismiss: (id: string) => set((t) => ({ ...t, notes: t.notes.map((n) => (n.id === id ? { ...n, status: "dismissed" as const } : n)), last: `dismissed ${id}` })),
   think: (mode: Mode, when: "now" | "tonight") =>
     set((t) => ({ ...t, runs: [...t.runs.filter((r) => r.mode !== mode), { id: `run${Date.now()}`, mode, when, status: "pending" }], last: `queued "${modeLabel(mode)}" for ${when}` })),
+  deliver: (note: Note) => set((t) => ({ ...t, notes: [note, ...t.notes], last: "the assistant delivered a note" })),
   land: (run: string) =>
     set((t) => {
       const r = t.runs.find((x) => x.id === run);
