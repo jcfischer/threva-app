@@ -42,6 +42,7 @@ export const en = {
   "everything.empty": "Nothing needs you here now.",
   "everything.reopen": "Reopen",
   "everything.moveRow": "Move {title}",
+  "everything.openRow": "Open",
   "everything.up": "Up",
   "everything.down": "Down",
   "everything.out": "Out",
@@ -57,6 +58,8 @@ export const en = {
 
   "note.label": "Page of {title}",
   "note.placeholder": "Write on this page…",
+  "note.openLinkMac": "Click to open, or ⌘-click while you write",
+  "note.openLinkOther": "Click to open, or Ctrl-click while you write",
   "note.words": { one: "{count} word", other: "{count} words" },
   "note.length": "{count} of {max} characters",
   "note.saved": "saved",

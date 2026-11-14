@@ -124,6 +124,7 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
   const status = notice === null ? null : notice.state === "saved" ? t("note.saved") : notice.state === "lifted" ? t("note.lifted", { title: notice.message ?? "" }) : notice.message ?? t("error.network");
   const parts = [tn("note.words", words), length > NOTE_WARN ? t("note.length", { count: length, max: NOTE_LIMIT }) : null].filter((part): part is string => part !== null);
   const assisted = !!client && !!store;
+  const mac = /Mac|iPhone|iPad/.test(typeof navigator === "undefined" ? "" : navigator.platform);
   return <div className="note-page">
     <div className={`assist-layout${open.length || waiting.length ? " has-notes" : ""}`}>
     <NoteEditor
@@ -134,7 +135,8 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
       clean={clean}
       onLift={onLift}
       liftLabel={t("lift.act")}
-      liftKeys={/Mac|iPhone|iPad/.test(typeof navigator === "undefined" ? "" : navigator.platform) ? t("lift.keysMac") : t("lift.keysOther")}
+      liftKeys={mac ? t("lift.keysMac") : t("lift.keysOther")}
+      linkHint={mac ? t("note.openLinkMac") : t("note.openLinkOther")}
       onChange={next => { count(next); onType(next); }}
       onLeave={(next, at) => { count(next); onLeave(next, at); }}
       {...(assisted ? { lineDecoration, onEnter, onEdit, passages, onPassages: setTops, onAsk: (kind: AskKind, passage: string) => { void send(kind, kind === "answer" ? t("assist.standing") : undefined, passage); }, askLabel: t("assist.ask"), shortenLabel: t("assist.shorten"), assistantName: name, controller } : {})}

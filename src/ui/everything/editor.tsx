@@ -7,6 +7,7 @@ import { ensureSyntaxTree, HighlightStyle, syntaxHighlighting, syntaxTree } from
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { tags } from "@lezer/highlight";
 import { findPassage } from "./assistant";
+import { findLinks } from "./links";
 
 // The Markdown marks hidden on every line the cursor is not in, so the page reads formatted.
 const HIDDEN = new Set(["HeaderMark", "QuoteMark", "EmphasisMark", "StrikethroughMark", "CodeMark", "CodeInfo", "LinkMark", "URL"]);
@@ -91,6 +92,8 @@ function noteMarks(view: EditorView, decoration?: LineDecoration, assistant?: st
         return;
       }
       if (!HIDDEN.has(node.name) || node.from === node.to) return;
+      // A bare URL is the text itself; only the target of a Markdown link is a mark to hide.
+      if (node.name === "URL" && node.node.parent?.name !== "Link" && node.node.parent?.name !== "Image") return;
       if (live.has(state.doc.lineAt(node.from).number)) return;
       mark(node.from, node.to, Decoration.replace({}));
     },
@@ -131,6 +134,32 @@ function underline(view: EditorView, passages: readonly PagePassage[]): Decorati
   return Decoration.set(spans, true);
 }
 
+// Every safe link on the page carries its target, so a click can open it without reading the text again.
+const linked = (hint: () => string) => ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+  constructor(view: EditorView) {
+    this.decorations = linkMarks(view, hint());
+  }
+  update(update: ViewUpdate) {
+    if (update.docChanged || update.transactions.some(tr => tr.annotation(refreshMarks))) this.decorations = linkMarks(update.view, hint());
+  }
+}, { decorations: plugin => plugin.decorations });
+
+function linkMarks(view: EditorView, hint: string): DecorationSet {
+  const links = findLinks(view.state.doc.toString());
+  return Decoration.set(links.map(link => Decoration.mark({ class: "cm-note-link", attributes: { "data-href": link.href, ...(hint ? { title: hint } : {}) } }).range(link.from, link.to)), true);
+}
+
+// A plain click opens a link while the page is not being edited; while it is, Cmd- or Ctrl-click does.
+function openLink(event: MouseEvent, view: EditorView): boolean {
+  if (event.button !== 0) return false;
+  const href = (event.target as Partial<Element> | null)?.closest?.(".cm-note-link")?.getAttribute("data-href");
+  if (!href || !(event.metaKey || event.ctrlKey || !view.hasFocus)) return false;
+  event.preventDefault();
+  window.open(href, "_blank", "noreferrer");
+  return true;
+}
+
 export interface NoteEditorProps {
   value: string;
   label: string;
@@ -152,6 +181,8 @@ export interface NoteEditorProps {
   shortenLabel?: string;
   assistantName?: string | null;
   controller?: MutableRefObject<PageController | null>;
+  /** Shown over a link on the page: how to open it while editing. */
+  linkHint?: string;
 }
 
 interface Bar {
@@ -165,7 +196,7 @@ interface Bar {
  */
 const NO_PASSAGES: readonly PagePassage[] = [];
 
-export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", lineDecoration, onEnter, onEdit, passages = NO_PASSAGES, onPassages, onAsk, askLabel = "", shortenLabel = "", assistantName = null, controller }: NoteEditorProps) {
+export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", lineDecoration, onEnter, onEdit, passages = NO_PASSAGES, onPassages, onAsk, askLabel = "", shortenLabel = "", assistantName = null, controller, linkHint = "" }: NoteEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
@@ -173,8 +204,8 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   const wrap = useRef<HTMLDivElement | null>(null);
   const lifting = useRef(false);
   const span = useRef<{ from: number; to: number } | null>(null);
-  const lines = useRef({ lineDecoration, onEnter, onEdit, passages, onPassages, assistantName });
-  lines.current = { lineDecoration, onEnter, onEdit, passages, onPassages, assistantName };
+  const lines = useRef({ lineDecoration, onEnter, onEdit, passages, onPassages, assistantName, linkHint });
+  lines.current = { lineDecoration, onEnter, onEdit, passages, onPassages, assistantName, linkHint };
   const ask = useRef(onAsk);
   ask.current = onAsk;
   const leaving = useRef(onLeave);
@@ -274,7 +305,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     if (!parent) return;
     let editor: EditorView;
     try {
-      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint: hintSlot.of(placeholder(hint)), decoration: () => lines.current.lineDecoration, assistant: () => lines.current.assistantName, passages: () => lines.current.passages, enterLine, onGeometry: () => reportRef.current(), onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => {
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint: hintSlot.of(placeholder(hint)), decoration: () => lines.current.lineDecoration, assistant: () => lines.current.assistantName, passages: () => lines.current.passages, linkHint: () => lines.current.linkHint, enterLine, onGeometry: () => reportRef.current(), onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => {
         const kept = span.current;
         if (kept) span.current = { from: changes.mapPos(kept.from, 1), to: changes.mapPos(kept.to, -1) };
         lines.current.onEdit?.(changes);
@@ -332,7 +363,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     area.value = value;
   }, [value, clean]);
   useEffect(() => { view.current?.dispatch({ effects: hintSlot.reconfigure(placeholder(hint)) }); }, [hint, hintSlot]);
-  useEffect(() => { view.current?.dispatch({ annotations: refreshMarks.of(true) }); }, [lineDecoration, passages, assistantName]);
+  useEffect(() => { view.current?.dispatch({ annotations: refreshMarks.of(true) }); }, [lineDecoration, passages, assistantName, linkHint]);
   useEffect(() => { reportRef.current(); }, [passages]);
   useEffect(() => {
     if (!plain || !controller) return;
@@ -387,7 +418,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   </div>;
 }
 
-function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, decoration, assistant, passages, enterLine, onGeometry }: { assistant: () => string | null | undefined; passages: () => readonly PagePassage[]; onGeometry: () => void; label: string; hint: Extension; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void; decoration: () => LineDecoration | undefined; enterLine: (view: EditorView) => boolean }): Extension[] {
+function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, decoration, assistant, passages, linkHint, enterLine, onGeometry }: { assistant: () => string | null | undefined; passages: () => readonly PagePassage[]; linkHint: () => string; onGeometry: () => void; label: string; hint: Extension; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void; decoration: () => LineDecoration | undefined; enterLine: (view: EditorView) => boolean }): Extension[] {
   return [
     history(),
     EditorView.domEventHandlers({ blur: (_event, view) => { onLeave(view.state.doc.toString(), view.state.selection.main.head); } }),
@@ -399,6 +430,8 @@ function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit, 
     syntaxHighlighting(highlights),
     formatted(decoration, assistant),
     underlined(passages),
+    linked(linkHint),
+    EditorView.domEventHandlers({ mousedown: openLink }),
     EditorView.domEventHandlers({ scroll: () => { onGeometry(); } }),
     EditorView.updateListener.of(update => {
       if (update.docChanged) { onEdit(update.changes); onChange(update.state.doc.toString()); }
