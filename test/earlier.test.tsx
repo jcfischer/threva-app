@@ -6,7 +6,7 @@ import { TimelineView } from "../src/ui/day/timeline-view";
 import type { Clock } from "../src/ui/day/timeline";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";
 import { view } from "./fixtures/desk";
-import { budgetThread } from "./fixtures/studio";
+import { closedThread } from "./fixtures/studio";
 
 process.env.TZ = "Europe/Zurich";
 const at = (hhmm: string) => Date.parse(`2026-11-13T${hhmm}:00+01:00`);
@@ -77,6 +77,19 @@ describe("what already happened today", () => {
     expect(rowTexts(placed)).toEqual([[], ["Message now"], [], []]);
   });
 
+  test("an entry after the last row sits under that row, not in the block above", () => {
+    const placed = buildEarlier(view({ today: day, autonomy: { done: [done("night", "19:00")] } }), null, CLOCK);
+    expect(placed.block).toEqual([]);
+    expect(rowTexts(placed)).toEqual([[], [], [], ["Message night"]]);
+  });
+
+  test("an entry in a gap between rows sits under the row before it", () => {
+    const tight = [meeting("a", "08:00", "09:00"), meeting("b", "09:05", "10:00")];
+    const placed = buildEarlier(view({ today: tight, autonomy: { done: [done("gap", "09:02")] } }), null, CLOCK);
+    expect(placed.block).toEqual([]);
+    expect(rowTexts(placed)).toEqual([["Message gap"], [], []]);
+  });
+
   test("on a day with no rows every entry goes to the block", () => {
     const placed = buildEarlier(view({ today: [], autonomy: { done: [done("d", "09:00")] } }), null, CLOCK);
     expect(placed.timeline.empty).toBe(true);
@@ -101,6 +114,10 @@ describe("what already happened today", () => {
   test("the block lists the Studio threads closed today with their question and outcome", () => {
     const studio = studioOf([closed("today", "2026-11-13"), closed("older", "2026-11-12", { outcome: "dropped" })]);
     expect(closedToday(studio, NOW)).toEqual([{ key: "closed:today", kind: "closed", text: "Question today?", ok: true, outcome: "decided" }]);
+  });
+
+  test("a thread closed today keeps its day even when the date carries a time", () => {
+    expect(closedToday(studioOf([closed("stamped", "2026-11-13T22:10:00+01:00")]), NOW).map((l) => l.key)).toEqual(["closed:stamped"]);
   });
 
   test("nothing that happened today leaves the block empty", () => {
@@ -182,12 +199,16 @@ describe("the timeline with earlier today", () => {
   });
 });
 
-// The recorded Studio fixture is plain data, so a render through it exercises the shapes Cortex sends.
+// Rendered from the thread as `GET /api/desk/studio` sent it, with nothing overridden, so this pins the `closed` day
+// and `outcome` Cortex writes.
 test("the recorded thread closed today renders with its question", () => {
+  const clock: Clock = { now: Date.parse("2026-11-14T10:00:00+01:00"), evening: Date.parse("2026-11-14T18:00:00+01:00") };
   const html = render(
     view({ myDay: { items: [], wins: [{ taskId: "t1", title: "Write the report" }] } }),
-    studioOf([{ ...budgetThread, state: "closed", closed: "2026-11-13", outcome: "decided" }]),
+    studioOf([closedThread]),
+    clock,
   );
   expect(html).toContain("Earlier today");
   expect(html).toContain("<b>What goes into next year&#x27;s budget?</b>");
+  expect(html).toContain("Dropped");
 });

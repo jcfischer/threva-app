@@ -44,16 +44,17 @@ function Happened({ line }: { line: EarlierLine }) {
 
 function HappenedList({ lines }: { lines: readonly EarlierLine[] }) {
   const { tn } = useI18n();
-  if (lines.length <= SHOWN) return <>{lines.map((line) => <Happened key={line.key} line={line} />)}</>;
   const latest = lines.slice(-SHOWN);
-  const rest = lines.slice(0, -SHOWN);
+  const rest = lines.slice(0, Math.max(0, lines.length - SHOWN));
   return (
     <>
       {latest.map((line) => <Happened key={line.key} line={line} />)}
-      <details className="more">
-        <summary>{tn("day.earlier.more", rest.length)}</summary>
-        {rest.map((line) => <Happened key={line.key} line={line} />)}
-      </details>
+      {rest.length > 0 && (
+        <details className="more">
+          <summary>{tn("day.earlier.more", rest.length)}</summary>
+          {rest.map((line) => <Happened key={line.key} line={line} />)}
+        </details>
+      )}
     </>
   );
 }
