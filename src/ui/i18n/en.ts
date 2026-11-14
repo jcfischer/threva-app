@@ -46,6 +46,10 @@ export const en = {
   "note.words": { one: "{count} word", other: "{count} words" },
   "note.length": "{count} of {max} characters",
   "note.saved": "saved",
+  "note.lifted": "added the row “{title}”",
+  "lift.act": "Make this a row",
+  "lift.keysMac": "⌘↵",
+  "lift.keysOther": "Ctrl+Enter",
 
   "app.title": "Threva",
   "app.tagline": "A place for the thread of your work.",

@@ -48,6 +48,10 @@ export const de: Messages = {
   "note.words": { one: "{count} Wort", other: "{count} Wörter" },
   "note.length": "{count} von {max} Zeichen",
   "note.saved": "gespeichert",
+  "note.lifted": "Zeile «{title}» hinzugefügt",
+  "lift.act": "Daraus eine Zeile machen",
+  "lift.keysMac": "⌘↵",
+  "lift.keysOther": "Strg+Enter",
 
   "app.title": "Threva",
   "app.tagline": "Ein Ort für den Faden deiner Arbeit.",

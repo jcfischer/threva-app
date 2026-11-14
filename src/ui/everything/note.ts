@@ -73,7 +73,7 @@ export type SaveResult = { ok: true; revision: number } | { ok: false; message: 
 
 export interface NoteNotice {
   row: string;
-  state: "saved" | "refused";
+  state: "saved" | "refused" | "lifted";
   message: string | null;
 }
 
@@ -117,6 +117,11 @@ export class NoteSaver {
 
   get waiting(): { row: string; text: string }[] {
     return [...this.#pending].map(([row, text]) => ({ row, text }));
+  }
+
+  /** The newest revision Threva knows of. */
+  get revision(): number {
+    return this.#revision ?? this.#options.revision();
   }
 
   /** True when this text still needs saving: it is neither saved nor already in flight. */
