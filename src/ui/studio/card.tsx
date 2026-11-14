@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { StudioAct, StudioMaterial, StudioNote, StudioOutcome, StudioResponse, StudioThread } from "../api/types";
 import { safeHref } from "../api/safe-link";
+import { Markdown } from "../markdown";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "./act";
@@ -49,7 +50,7 @@ function NoteView({ note, slug, busy, run }: { note: StudioNote; slug: string; b
         </span>
         <span className={`pill ${status.pill}`}>{t(status.key)}</span>
       </span>
-      <p>{note.text}</p>
+      <Markdown text={note.text} />
       {note.because && <p className="faint">{t("studio.because", { text: note.because })}</p>}
       {note.status === "open" && note.kind !== "note" && (
         <div className="row">
@@ -73,7 +74,7 @@ function ResponseView({ response }: { response: StudioResponse }) {
       <span className="eyebrow">
         {t("studio.you")} · <When at={response.at} />
       </span>
-      <p>{response.text}</p>
+      <p className="typed">{response.text}</p>
     </div>
   );
 }
