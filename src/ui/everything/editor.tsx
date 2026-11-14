@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiftOutcome } from "./lift";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorState, type ChangeDesc, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, keymap, placeholder, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { ensureSyntaxTree, HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
@@ -102,6 +102,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   const syncing = useRef(false);
   const wrap = useRef<HTMLDivElement | null>(null);
   const lifting = useRef(false);
+  const span = useRef<{ from: number; to: number } | null>(null);
   const lift = useRef(onLift);
   lift.current = onLift;
   const [plain, setPlain] = useState(false);
@@ -128,6 +129,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     if (from === to) return false;
     const page = editor.state.doc.toString();
     lifting.current = true;
+    span.current = { from, to };
     try {
       const outcome = await act({ page, from, to });
       if (outcome.state === "empty" || outcome.state === "refused" || view.current !== editor) return true;
@@ -143,11 +145,13 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
           syncing.current = false;
         }
       } else {
-        editor.dispatch({ changes: { from, to: Math.min(to, now.length) } });
+        const kept = span.current;
+        if (kept && kept.from < kept.to) editor.dispatch({ changes: { from: kept.from, to: kept.to } });
       }
       editor.focus();
     } finally {
       lifting.current = false;
+      span.current = null;
     }
     return true;
   };
@@ -161,7 +165,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
     if (!parent) return;
     let editor: EditorView;
     try {
-      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current() }) }) });
+      editor = new EditorView({ parent, state: EditorState.create({ doc: value, extensions: extensions({ label, hint, onChange: text => { if (!syncing.current) onChange(text); }, onLeave, onLift: () => { void runRef.current(); }, onSelect: () => barRef.current(), onEdit: changes => { const kept = span.current; if (kept) span.current = { from: changes.mapPos(kept.from, 1), to: changes.mapPos(kept.to, -1) }; } }) }) });
     } catch {
       // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
       setPlain(true);
@@ -208,7 +212,7 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
   </div>;
 }
 
-function extensions({ label, hint, onChange, onLeave, onLift, onSelect }: { label: string; hint: string; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void }): Extension[] {
+function extensions({ label, hint, onChange, onLeave, onLift, onSelect, onEdit }: { label: string; hint: string; onChange: (text: string) => void; onLeave: (text: string, at: number) => void; onLift: () => void; onSelect: () => void; onEdit: (changes: ChangeDesc) => void }): Extension[] {
   return [
     history(),
     EditorView.domEventHandlers({ blur: (_event, view) => { onLeave(view.state.doc.toString(), view.state.selection.main.head); } }),
@@ -220,7 +224,7 @@ function extensions({ label, hint, onChange, onLeave, onLift, onSelect }: { labe
     syntaxHighlighting(highlights),
     formatted(),
     EditorView.updateListener.of(update => {
-      if (update.docChanged) onChange(update.state.doc.toString());
+      if (update.docChanged) { onEdit(update.changes); onChange(update.state.doc.toString()); }
       if (update.selectionSet || update.docChanged || update.geometryChanged || update.viewportChanged || update.focusChanged) onSelect();
     }),
   ];
