@@ -44,6 +44,7 @@ export const de: Messages = {
   "everything.empty": "Hier braucht dich gerade nichts.",
   "everything.reopen": "Wieder öffnen",
   "everything.moveRow": "{title} verschieben",
+  "everything.openRow": "Öffnen",
   "everything.up": "Nach oben",
   "everything.down": "Nach unten",
   "everything.out": "Heraus",
@@ -59,6 +60,8 @@ export const de: Messages = {
 
   "note.label": "Seite von {title}",
   "note.placeholder": "Schreib auf diese Seite…",
+  "note.openLinkMac": "Klicken zum Öffnen, beim Schreiben ⌘-Klick",
+  "note.openLinkOther": "Klicken zum Öffnen, beim Schreiben Strg-Klick",
   "note.words": { one: "{count} Wort", other: "{count} Wörter" },
   "note.length": "{count} von {max} Zeichen",
   "note.saved": "gespeichert",

@@ -192,6 +192,10 @@ button.chip{border:1px solid transparent;font-size:inherit}
 .note-line{margin:0;padding-inline:2px;font-size:12.5px;color:var(--faint);min-height:1.2em}
 .note-line.warn{color:var(--wait)}
 .outline-title{min-width:0;overflow-wrap:anywhere;text-align:left}
+.outline-title .linkq,.outline-link{overflow-wrap:anywhere}
+.outline-link,.cur h2 a{color:var(--accent);text-underline-offset:3px}
+.cm-note-link{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.note-editor:not(:focus-within) .cm-note-link{cursor:pointer}
 .outline-grey{color:var(--faint)}
 .outline-grey .outline-title{color:var(--faint)}
 .outline-warning{color:var(--wait);font-size:13px;font-weight:600}
