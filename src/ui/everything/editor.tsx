@@ -9,7 +9,6 @@ import { tags } from "@lezer/highlight";
 import { findPassage } from "./assistant";
 import { findLinks } from "./links";
 
-// The Markdown marks hidden on every line the cursor is not in, so the page reads formatted.
 const HIDDEN = new Set(["HeaderMark", "QuoteMark", "EmphasisMark", "StrikethroughMark", "CodeMark", "CodeInfo", "LinkMark", "URL"]);
 const HEADINGS = new Map([["ATXHeading1", "cm-note-h1"], ["SetextHeading1", "cm-note-h1"], ["ATXHeading2", "cm-note-h2"], ["SetextHeading2", "cm-note-h2"], ["ATXHeading3", "cm-note-h3"]]);
 const BLOCKS = new Map([["Blockquote", "cm-note-quote"], ["FencedCode", "cm-note-code"], ["CodeBlock", "cm-note-code"]]);
@@ -35,7 +34,6 @@ export interface EnterLine {
   from: number;
   to: number;
   text: string;
-  /** Null when this editor is gone or cannot safely apply a delayed edit. */
   read(): string | null;
   remove(range: { from: number; to: number }): void;
   insert(at: number, text: string): void;
@@ -70,7 +68,6 @@ function noteMarks(view: EditorView, decoration?: LineDecoration, assistant?: st
       if (decoration.matches(line.text)) mark(line.from, line.from, Decoration.line({ class: decoration.className, attributes: { "data-hint": decoration.hint } }));
     }
   }
-  // A page is at most 10,000 characters, so the whole tree is parsed rather than only what is on screen.
   const tree = ensureSyntaxTree(state, state.doc.length, 100) ?? syntaxTree(state);
   tree.iterate({
     enter: node => {
@@ -92,8 +89,8 @@ function noteMarks(view: EditorView, decoration?: LineDecoration, assistant?: st
         return;
       }
       if (!HIDDEN.has(node.name) || node.from === node.to) return;
-      // A bare URL is the text itself; only the target of a Markdown link is a mark to hide.
-      if (node.name === "URL" && node.node.parent?.name !== "Link" && node.node.parent?.name !== "Image") return;
+      const bareUrl = node.name === "URL" && node.node.parent?.name !== "Link" && node.node.parent?.name !== "Image";
+      if (bareUrl) return;
       if (live.has(state.doc.lineAt(node.from).number)) return;
       mark(node.from, node.to, Decoration.replace({}));
     },
@@ -134,7 +131,6 @@ function underline(view: EditorView, passages: readonly PagePassage[]): Decorati
   return Decoration.set(spans, true);
 }
 
-// Every safe link on the page carries its target, so a click can open it without reading the text again.
 const linked = (hint: () => string) => ViewPlugin.fromClass(class {
   decorations: DecorationSet;
   constructor(view: EditorView) {
@@ -150,7 +146,6 @@ function linkMarks(view: EditorView, hint: string): DecorationSet {
   return Decoration.set(links.map(link => Decoration.mark({ class: "cm-note-link", attributes: { "data-href": link.href, ...(hint ? { title: hint } : {}) } }).range(link.from, link.to)), true);
 }
 
-// A plain click opens a link while the page is not being edited; while it is, Cmd- or Ctrl-click does.
 function openLink(event: MouseEvent, view: EditorView): boolean {
   if (event.button !== 0) return false;
   const href = (event.target as Partial<Element> | null)?.closest?.(".cm-note-link")?.getAttribute("data-href");
@@ -166,22 +161,21 @@ export interface NoteEditorProps {
   hint: string;
   place: number | null;
   clean?: boolean;
-  onChange(text: string): void;
-  onLeave(text: string, at: number): void;
-  onLift?(request: { page: string; from: number; to: number }): Promise<LiftOutcome>;
+  onChange: (text: string) => void;
+  onLeave: (text: string, at: number) => void;
+  onLift?: (request: { page: string; from: number; to: number }) => Promise<LiftOutcome>;
   liftLabel?: string;
   liftKeys?: string;
   lineDecoration?: LineDecoration;
-  onEnter?(line: EnterLine): boolean;
-  onEdit?(changes: ChangeDesc): void;
+  onEnter?: (line: EnterLine) => boolean;
+  onEdit?: (changes: ChangeDesc) => void;
   passages?: readonly PagePassage[];
-  onPassages?(tops: Record<string, number | null>): void;
-  onAsk?(kind: "answer" | "shorten", passage: string): void;
+  onPassages?: (tops: Record<string, number | null>) => void;
+  onAsk?: (kind: "answer" | "shorten", passage: string) => void;
   askLabel?: string;
   shortenLabel?: string;
   assistantName?: string | null;
   controller?: MutableRefObject<PageController | null>;
-  /** Shown over a link on the page: how to open it while editing. */
   linkHint?: string;
 }
 
@@ -190,10 +184,6 @@ interface Bar {
   top: number;
 }
 
-/**
- * The page's editor: Markdown shown formatted, with the marks of the line the cursor is in.
- * If the rich editor cannot start, the page still takes plain Markdown in a text field.
- */
 const NO_PASSAGES: readonly PagePassage[] = [];
 
 export function NoteEditor({ value, label, hint, place, clean = true, onChange, onLeave, onLift, liftLabel = "", liftKeys = "", lineDecoration, onEnter, onEdit, passages = NO_PASSAGES, onPassages, onAsk, askLabel = "", shortenLabel = "", assistantName = null, controller, linkHint = "" }: NoteEditorProps) {
@@ -299,7 +289,6 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
       insert: (at, text) => editor.dispatch({ changes: { from: Math.min(at, editor.state.doc.length), insert: text } }),
     });
   };
-  // One editor per page: only a clean page takes a later outline reload, so what the user is typing stays put.
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
@@ -311,7 +300,6 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
         lines.current.onEdit?.(changes);
       } }) }) });
     } catch {
-      // A host without the DOM pieces CodeMirror needs still takes the page as plain Markdown.
       setPlain(true);
       return;
     }
@@ -344,8 +332,6 @@ export function NoteEditor({ value, label, hint, place, clean = true, onChange, 
       editor.destroy();
     };
   }, []);
-  // A clean page follows a later outline reload, in the rich editor and in the plain field alike, so
-  // leaving after a reload sends the reloaded text rather than what was there before it.
   useEffect(() => {
     const editor = view.current;
     if (editor) {

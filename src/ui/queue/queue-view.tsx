@@ -16,9 +16,7 @@ import type { DeskState } from "./use-desk";
 export function EntryCard({ entry, onDismissMeeting, onOpenDesk, now = Date.now() }: {
   entry: Entry;
   onDismissMeeting: (key: string) => void;
-  /** Opens a Studio topic's desk. Without it a topic card shows no way out. */
   onOpenDesk?: (slug: string) => void;
-  /** The clock a card reads "how long ago" against. */
   now?: number;
 }) {
   switch (entry.type) {
@@ -109,10 +107,7 @@ export interface QueueBodyProps {
 export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, onOpenDesk }: QueueBodyProps) {
   const { t, tn } = useI18n();
   const outer = useQueue();
-  // The last item made a task. Its card leaves the queue, so the queue says where it went. Cortex returns no undo
-  // receipt for that move, so the line offers no Undo. It stays on the card that came next and goes when that one does.
   const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
-  // Retain successful feedback while navigating cards, including before the next poll arrives.
   const [answers, setAnswers] = useState<ReadonlyMap<string, "yes" | "no">>(() => new Map());
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const first = queue[0];

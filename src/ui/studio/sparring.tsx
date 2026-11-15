@@ -9,7 +9,6 @@ export type { SparMode } from "../api/types";
 export interface SparRequest {
   mode: SparMode;
   key: TextKey;
-  /** The persona behind a "What would X say?" button, as Cortex lists it. */
   name?: string;
 }
 
@@ -53,15 +52,12 @@ export function Sparring({ thread, personas = [] }: SparringProps) {
   const { t } = useI18n();
   const { busy, error, run } = useStudioAct();
   const [sent, setSent] = useState<{ mode: SparMode; message?: string } | null>(null);
-  // The thread snapshot the click was sent against, so a newer snapshot can settle the local mark.
   const sentFrom = useRef<StudioThread | null>(null);
   const thinking = thread.thinking;
   const availability = sparAvailability(thinking);
   const blocked = availability.ready ? null : (availability.reason ?? t("studio.spar.notLoaded"));
   const pending = pendingModes(thinking);
   const queued = sent ? [sent.mode, ...pending] : pending;
-  // The local mark holds until a newer snapshot settles it: Cortex's own queue is the truth once it serves the run,
-  // and a snapshot without a pending run for the mode means the run failed or finished between refreshes.
   useEffect(() => {
     if (!sent || !thread.thinking) return;
     if (pendingModes(thread.thinking).includes(sent.mode)) return;

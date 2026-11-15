@@ -145,7 +145,7 @@ describe("the acts on the card", () => {
 
   async function mount(thread: StudioThread, locale: "en" | "de" = "en") {
     const client = createClient(async (path, init) => {
-      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      const body = JSON.parse(typeof init?.body === "string" ? init.body : "") as Record<string, unknown>;
       writes.push({ path, body });
       return reply(body);
     });
@@ -296,7 +296,7 @@ describe("sendStudioAct", () => {
   test("posts the act with a request id Cortex accepts", async () => {
     const seen: { path: string; body: unknown }[] = [];
     const fetchStub: Fetch = async (path, init) => {
-      seen.push({ path, body: JSON.parse(String(init?.body)) });
+      seen.push({ path, body: JSON.parse(typeof init?.body === "string" ? init.body : "") });
       return Response.json({ ok: true, message: "Your answer is in." });
     };
     const result = await sendStudioAct(createClient(fetchStub), { act: "respond", thread: "budget-next-year", text: "One hire waits." });
@@ -310,7 +310,7 @@ describe("sendStudioAct", () => {
   test("sends a note act with the note's time as its identifier", async () => {
     let body: unknown;
     const fetchStub: Fetch = async (_path, init) => {
-      body = JSON.parse(String(init?.body));
+      body = JSON.parse(typeof init?.body === "string" ? init.body : "");
       return Response.json({ ok: true });
     };
     await sendStudioAct(createClient(fetchStub), { act: "keep", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" }, "req-12345678");

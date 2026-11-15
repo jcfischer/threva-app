@@ -26,16 +26,11 @@ const placeStore = (): PlaceStore => {
 
 const everyRow = (row: OutlineRow): OutlineRow[] => [row, ...row.children.flatMap(everyRow)];
 
-/** A URL from a row title, opened in a new tab. */
 function TitleLink({ href, text, className }: { href: string; text: string; className?: string }) {
   return <a className={className} href={href} target="_blank" rel="noreferrer">{text}</a>;
 }
 
-/**
- * A row's title in the outline: its text opens the row, and each http or https URL in it opens in a new tab.
- * Only the first piece of text is a tab stop, so a row is still one stop plus its links.
- */
-function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: string; onOpen(): void }) {
+function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: string; onOpen: () => void }) {
   const parts = titleParts(title);
   if (!parts.some(part => part.href)) return <button type="button" className="linkq outline-title" onClick={onOpen}>{title}</button>;
   let first = true;
@@ -109,7 +104,6 @@ export function EverythingView({ client, active = true, initialDay = null, share
     if (day) saver.setRevision(day.revision);
   }, [day, saver]);
 
-  // A reloaded outline is the new truth for every row the user is not editing; a row with a draft in hand keeps it.
   useEffect(() => {
     if (!day) return;
     for (const row of everyRow(day.outline)) saver.adopt(row.id, row.note ?? "");

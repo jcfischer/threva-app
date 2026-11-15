@@ -33,8 +33,6 @@ export function browserNotifier(): Notifier {
   };
 }
 
-// One watcher per mounted App: a successful first load is a quiet baseline. A held
-// item is not seen as an interruption until Cortex releases it on a later poll.
 export function interruptionWatcher(notifier: Notifier, onOpen: (key: string) => void) {
   const seen = new Set<string>();
   let loaded = false;
@@ -49,7 +47,7 @@ export function interruptionWatcher(notifier: Notifier, onOpen: (key: string) =>
           onOpen(item.key);
         });
       } catch {
-        // A browser may expose the API but refuse construction (for example on mobile).
+        continue;
       }
     }
     loaded = true;

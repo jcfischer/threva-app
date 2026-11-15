@@ -176,6 +176,28 @@ describe("saving a page", () => {
     expect(notices).toEqual([{ row: "due", state: "saved", message: null }]);
   });
 
+  test("does not send text again while the same text is still being saved", async () => {
+    let release = () => {};
+    const answered = new Promise<void>(resolve => { release = resolve; });
+    const sent: string[] = [];
+    const saver = new NoteSaver({
+      timer: fakeTimer().timer,
+      save: async (_detail, note, at) => { sent.push(note); await answered; return { ok: true, revision: at + 1 }; },
+      reload: async () => 99,
+      row: id => row(id),
+      date: () => DATE,
+      revision: () => 12,
+      notice: () => {},
+    });
+    saver.leave("due", "in flight");
+    await drain();
+    saver.leave("due", "in flight");
+    await drain();
+    release();
+    await drain();
+    expect(sent).toEqual(["in flight"]);
+  });
+
   test("takes a reloaded note as saved unless a draft is in hand", async () => {
     const { saver, sent } = saverFor();
     saver.adopt("due", "from elsewhere");

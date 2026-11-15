@@ -17,7 +17,6 @@ export const AFTER_WINDOW_MS = 60 * 60 * 1000;
 export interface Session {
   readonly skip: readonly string[];
   readonly pin: string | null;
-  // The Studio thread opened inside its card. It stays first while open, also after it stops waiting or is parked.
   readonly open: string | null;
 }
 
@@ -86,7 +85,6 @@ export function buildQueue(
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
   ];
 
-  // The open Studio thread joins the queue before the session applies, so a pull still lands in front of it.
   const held = openThread(studio, session.open);
   const withHeld: Entry[] = !held
     ? queue
@@ -96,12 +94,10 @@ export function buildQueue(
 
 function promoteInterruptions(ordered: readonly Entry[], items: readonly DeskItem[], pin: string | null): Entry[] {
   const byKey = new Map(ordered.map(entry => [entry.k, entry]));
-  // Read interruptions from the unsorted response: Cortex's order wins over kind and score.
   const urgent = items.filter(isInterrupting).flatMap(item => {
     const entry = byKey.get(`i:${item.key}`);
     return entry ? [entry] : [];
   });
-  // An explicit pull (including a notification click) can select another urgent card.
   const selected = urgent.findIndex(entry => entry.k === pin);
   if (selected > 0) urgent.unshift(...urgent.splice(selected, 1));
   const urgentKeys = new Set(urgent.map(entry => entry.k));
@@ -127,7 +123,6 @@ export function skip(session: Session, k: string): Session {
   return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin, open: openKey(session) === k ? null : session.open };
 }
 
-// A pull brings the named card to the front, so a Studio thread open in another card closes.
 export function pin(session: Session, k: string): Session {
   return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k, open: openKey(session) === k ? session.open : null };
 }

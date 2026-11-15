@@ -56,11 +56,11 @@ function NoteView({ note, slug, busy, run }: { note: StudioNote; slug: string; b
       {note.because && <p className="faint">{t("studio.because", { text: note.because })}</p>}
       {note.status === "open" && note.kind !== "note" && (
         <div className="row">
-          <button type="button" className="btn pri" disabled={busy} onClick={() => run({ act: "keep", thread: slug, note: note.at })}>
+          <button type="button" className="btn pri" disabled={busy} onClick={() => { void run({ act: "keep", thread: slug, note: note.at }); }}>
             {note.kind === "stand" ? t("studio.keepStand") : t("studio.keep")}
           </button>
           <DiscussNote thread={slug} note={note.at} />
-          <button type="button" className="btn quiet" disabled={busy} onClick={() => run({ act: "dismiss", thread: slug, note: note.at })}>
+          <button type="button" className="btn quiet" disabled={busy} onClick={() => { void run({ act: "dismiss", thread: slug, note: note.at }); }}>
             {t("studio.dismiss")}
           </button>
         </div>
@@ -136,23 +136,23 @@ function CloseForm({ slug, busy, run, onCancel }: { slug: string; busy: boolean;
       <div className="row" role="radiogroup" aria-label={t("studio.outcome")}>
         {OUTCOMES.map((o) => (
           <label key={o.id} className="sttog">
-            <input type="radio" name={`outcome-${slug}`} checked={outcome === o.id} onChange={() => setOutcome(o.id)} />
+            <input type="radio" name={`outcome-${slug}`} checked={outcome === o.id} onChange={() => { setOutcome(o.id); }} />
             {t(o.key)}
           </label>
         ))}
       </div>
-      <textarea aria-label={t("studio.outcomeText")} placeholder={t("studio.outcomeText")} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+      <textarea aria-label={t("studio.outcomeText")} placeholder={t("studio.outcomeText")} value={text} onChange={(e) => { setText(e.target.value); }} rows={3} />
       {outcome === "decided" && (
         <>
-          <input type="text" aria-label={t("studio.expect")} placeholder={t("studio.expect")} value={expect} onChange={(e) => setExpect(e.target.value)} />
+          <input type="text" aria-label={t("studio.expect")} placeholder={t("studio.expect")} value={expect} onChange={(e) => { setExpect(e.target.value); }} />
           <label className="faint">
             {t("studio.reviewOn")}
-            <input type="date" value={reviewOn} onChange={(e) => setReviewOn(e.target.value)} />
+            <input type="date" value={reviewOn} onChange={(e) => { setReviewOn(e.target.value); }} />
           </label>
         </>
       )}
       <div className="row">
-        <button type="button" className="btn pri" disabled={busy || !act} onClick={send}>
+        <button type="button" className="btn pri" disabled={busy || !act} onClick={() => { void send(); }}>
           {t("studio.closeSend")}
         </button>
         <button type="button" className="btn quiet" disabled={busy} onClick={onCancel}>
@@ -179,7 +179,6 @@ function Pills({ thread, delivered }: { thread: StudioThread; delivered: boolean
   );
 }
 
-/** The newest open note, as Markdown, at most six lines until the person asks for the rest. */
 function WaitingNote({ note, now, long }: { note: DayCardNote; now: number; long: boolean }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -191,7 +190,7 @@ function WaitingNote({ note, now, long }: { note: DayCardNote; now: number; long
         <Markdown text={note.text} />
       </div>
       {long && (
-        <button type="button" className="lk" aria-expanded={all} onClick={() => setAll(!all)}>
+        <button type="button" className="lk" aria-expanded={all} onClick={() => { setAll(!all); }}>
           {all ? t("card.thread.showLess") : t("card.thread.showAll")}
         </button>
       )}
@@ -199,7 +198,6 @@ function WaitingNote({ note, now, long }: { note: DayCardNote; now: number; long
   );
 }
 
-/** The one-line answer to a plain note. Cortex keeps the text on a refusal, so the field does too. */
 function AnswerLine({ thread, busy, run }: { thread: StudioThread; busy: boolean; run: Run }) {
   const { t } = useI18n();
   const [text, setText] = useState("");
@@ -208,23 +206,22 @@ function AnswerLine({ thread, busy, run }: { thread: StudioThread; busy: boolean
   };
   return (
     <div className="row" style={{ flexWrap: "nowrap" }}>
-      <input type="text" aria-label={t("card.thread.answer")} placeholder={t("card.thread.answer")} value={text} onInput={(e) => setText(e.currentTarget.value)} />
-      <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={send}>
+      <input type="text" aria-label={t("card.thread.answer")} placeholder={t("card.thread.answer")} value={text} onInput={(e) => { setText(e.currentTarget.value); }} />
+      <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={() => { void send(); }}>
         {t("studio.send")}
       </button>
     </div>
   );
 }
 
-/** Keep and dismiss for a proposal, a stand or an idea. Taking a stand says what it does. */
 function NoteActs({ thread, note, busy, run }: { thread: StudioThread; note: DayCardNote; busy: boolean; run: Run }) {
   const { t } = useI18n();
   return (
     <div className="row">
-      <button type="button" className="btn pri" disabled={busy} onClick={() => run({ act: "keep", thread: thread.slug, note: note.at })}>
+      <button type="button" className="btn pri" disabled={busy} onClick={() => { void run({ act: "keep", thread: thread.slug, note: note.at }); }}>
         {note.kind === "stand" ? t("studio.keepStand") : t("studio.keep")}
       </button>
-      <button type="button" className="btn quiet" disabled={busy} onClick={() => run({ act: "dismiss", thread: thread.slug, note: note.at })}>
+      <button type="button" className="btn quiet" disabled={busy} onClick={() => { void run({ act: "dismiss", thread: thread.slug, note: note.at }); }}>
         {t("studio.dismiss")}
       </button>
     </div>
@@ -262,7 +259,6 @@ export interface StudioOpenProps {
   thread: StudioThread;
   waits: boolean;
   onHide: () => void;
-  /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
   personas?: readonly string[];
 }
 
@@ -300,16 +296,16 @@ export function StudioOpen({ thread, waits, onHide, personas = [] }: StudioOpenP
               "note" in e ? <NoteView key={`n${e.at}`} note={e.note} slug={slug} busy={busy} run={run} /> : <ResponseView key={`r${e.at}`} response={e.response} />,
             )}
           </div>
-          <textarea aria-label={t("studio.response")} placeholder={t("studio.response")} value={text} onChange={(e) => setText(e.target.value)} rows={3} />
+          <textarea aria-label={t("studio.response")} placeholder={t("studio.response")} value={text} onChange={(e) => { setText(e.target.value); }} rows={3} />
           <div className="row">
-            <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={respond}>
+            <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={() => { void respond(); }}>
               {t("studio.send")}
             </button>
           </div>
           <ErrorLine error={error} />
           <TalkItThrough thread={slug} />
           {closing ? (
-            <CloseForm slug={slug} busy={busy} run={run} onCancel={() => setClosing(false)} />
+            <CloseForm slug={slug} busy={busy} run={run} onCancel={() => { setClosing(false); }} />
           ) : (
             <div className="row" style={{ justifyContent: "space-between" }}>
               <button
@@ -317,15 +313,15 @@ export function StudioOpen({ thread, waits, onHide, personas = [] }: StudioOpenP
                 className={`btn${thread.thinkTonight ? " pri" : ""}`}
                 aria-pressed={thread.thinkTonight ?? false}
                 disabled={busy}
-                onClick={() => run({ act: "think", thread: slug, on: !thread.thinkTonight })}
+                onClick={() => { void run({ act: "think", thread: slug, on: !thread.thinkTonight }); }}
               >
                 {t("studio.tonight")}
               </button>
               <span className="row">
-                <button type="button" className="btn" disabled={busy} onClick={() => setClosing(true)}>
+                <button type="button" className="btn" disabled={busy} onClick={() => { setClosing(true); }}>
                   {t("studio.finish")}
                 </button>
-                <button type="button" className="btn quiet" disabled={busy} onClick={() => run({ act: parked ? "unpark" : "park", thread: slug })}>
+                <button type="button" className="btn quiet" disabled={busy} onClick={() => { void run({ act: parked ? "unpark" : "park", thread: slug }); }}>
                   {parked ? t("studio.unpark") : t("studio.park")}
                 </button>
               </span>

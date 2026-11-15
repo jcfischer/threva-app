@@ -8,3 +8,4 @@ Read `README.md` first. These rules hold for every change.
 4. Use TypeScript and Bun. `bun run check` must pass before a pull request.
 5. Reference work-graph nodes with `Refs #N` in commits and pull request text, never `closes`, `fixes` or `resolves`.
 6. User-facing text is English first, written plainly, in the voice of the prototype. Every string the UI shows comes from the typed message catalog, so German and other languages can be added without touching components. Text that Cortex returns is shown as Cortex sends it.
+7. `bun run lint` (part of `bun run check`) runs ESLint with `threva/no-comments`. Inline `eslint-disable` does nothing. Existing violations live in `eslint-suppressions.json`, which may only shrink: after fixing one, run `bun run lint --prune-suppressions`.

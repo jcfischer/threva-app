@@ -1,9 +1,6 @@
 import type { DeskView, DoneEntry, StudioList, StudioOutcome } from "../api/types";
 import { buildTimeline, type Clock, type Timeline, type TimelineRow } from "./timeline";
 
-// What already happened today: what the Desk did for you, the tasks the day is done with and the Studio threads closed
-// today. Every line carries Cortex's own words; only the labels around them come from the catalog.
-
 export interface EarlierLine {
   key: string;
   kind: "done" | "win" | "closed";
@@ -15,17 +12,10 @@ export interface EarlierLine {
 
 export interface Earlier {
   timeline: Timeline;
-  // The lines under each row of `timeline.rows`, in the same order and of the same length.
   rows: EarlierLine[][];
-  // "Earlier today": what happened before the first row, plus the wins and the threads closed today.
   block: EarlierLine[];
 }
 
-/**
- * The row an entry belongs under, or -1 when it goes in the block above. An entry between two rows sits under the row
- * before it, and one after the last row under that row; only what happened before the first row (or on a day with no
- * rows) is earlier than the whole timeline.
- */
 function rowFor(rows: readonly TimelineRow[], at: number): number {
   const first = rows[0];
   if (!first || at < first.start) return -1;
@@ -66,7 +56,6 @@ export function winsToday(view: DeskView): EarlierLine[] {
 export function closedToday(studio: StudioList | null, now: number): EarlierLine[] {
   const today = localDate(now);
   return (studio?.studio?.closed ?? [])
-    // Cortex writes a `YYYY-MM-DD` day; take the day of a fuller timestamp too rather than drop the thread.
     .filter((t) => t.closed?.slice(0, 10) === today)
     .map((t) => ({ key: `closed:${t.slug}`, kind: "closed", text: t.question, ok: true, ...(t.outcome ? { outcome: t.outcome } : {}) }));
 }

@@ -106,3 +106,18 @@ test("links on a page open with a plain click when not writing and with Cmd- or 
   await press(MAIL, { ctrlKey: true });
   expect(opened).toEqual([MAIL, FORUM, FORUM, MAIL]);
 });
+
+test("a title split by a URL is one tab stop plus its link: only its first text is reachable by Tab", async () => {
+  const day = outlineFixture();
+  pathTo(day.outline, "project")!.at(-1)!.children.unshift(row("split", { title: `Before ${FORUM} after` }));
+  const { container, render } = mount();
+  await render(<EverythingView client={createClient()} initialDay={day} />);
+  await click(container, "Work");
+  await click(container, "Exercise");
+
+  const title = container.querySelector('[data-row="split"] .outline-title')!;
+  const texts = Array.from(title.querySelectorAll("button"));
+  expect(texts.map(button => button.textContent)).toEqual(["Before ", " after"]);
+  expect(texts.map(button => button.getAttribute("tabindex"))).toEqual([null, "-1"]);
+  expect(title.querySelector("a")?.getAttribute("tabindex")).toBeNull();
+});

@@ -3,8 +3,7 @@ import type { StudioNote, StudioThread } from "../api/types";
 /** The lines a waiting note takes on the Day card before "Show all" offers the rest. */
 export const NOTE_LINES = 6;
 
-// A note is prose in the card's own column. 72 characters per line understates that width on purpose: a note that
-// would be cut always offers "Show all", while one that fits may offer it too.
+
 const CHARS_PER_LINE = 72;
 
 /** What the card offers for its note: an answer in one line, or a ruling on a proposal. */
@@ -19,15 +18,10 @@ export interface DayCardNote {
 /** What a Studio topic's card in the Day view shows: the question, the note that waits, and the reason it is here. */
 export interface DayCard {
   question: string;
-  /** The stand is one quiet line, and only on a `question` topic (D11). */
   stand: string | null;
-  /** The newest open note: the one the answer or the ruling is for. Which note asks is a Cortex gap (cortex#3652). */
   note: DayCardNote | null;
-  /** A plain note is answered; a stand, an idea or a relation is kept or dismissed. */
   acts: NoteAct[];
-  /** Why the topic is on the Day view (D12). Until Cortex names the other reasons, a delivered note is the only one. */
   reason: "delivered" | null;
-  /** Whether the note runs past the six lines the card shows. */
   long: boolean;
 }
 

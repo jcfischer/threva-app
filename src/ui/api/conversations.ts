@@ -1,7 +1,5 @@
 import type { DeskClient, Result } from "./client";
 
-// The subset of Cortex's conversation and Studio session routes that Threva reads and writes.
-
 export interface ConversationMeta {
   id: string;
   title: string;
