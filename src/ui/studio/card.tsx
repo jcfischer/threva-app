@@ -4,8 +4,10 @@ import { safeHref } from "../api/safe-link";
 import { Markdown } from "../markdown";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
+import { ago } from "../i18n/ago";
 import { useStudioAct } from "./act";
 import { DiscussNote, TalkItThrough } from "./conversation";
+import { dayCard, type DayCardNote } from "./day-card";
 import { Sparring } from "./sparring";
 
 type Run = ReturnType<typeof useStudioAct>["run"];
@@ -163,50 +165,109 @@ function CloseForm({ slug, busy, run, onCancel }: { slug: string; busy: boolean;
 
 export interface StudioCardProps {
   thread: StudioThread;
-  waits: boolean;
-  open: boolean;
-  onOpen: () => void;
-  onHide: () => void;
+  now: number;
   onDesk?: () => void;
-  /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
-  personas?: readonly string[];
 }
 
-export function StudioCard(props: StudioCardProps) {
-  return props.open ? <StudioOpen {...props} /> : <StudioClosed {...props} />;
-}
-
-function Pills({ thread, waits }: { thread: StudioThread; waits: boolean }) {
+function Pills({ thread, delivered }: { thread: StudioThread; delivered: boolean }) {
   const { t } = useI18n();
   return (
     <span className="row">
       {thread.state === "parked" && <span className="pill calm">{t("studio.parked")}</span>}
-      {waits && <span className="pill think">{t("card.thread.waits")}</span>}
+      {delivered && <span className="pill think">{t("card.thread.note")}</span>}
     </span>
   );
 }
 
-function StudioClosed({ thread, waits, onOpen, onDesk }: StudioCardProps) {
+/** The newest open note, as Markdown, at most six lines until the person asks for the rest. */
+function WaitingNote({ note, now, long }: { note: DayCardNote; now: number; long: boolean }) {
+  const i18n = useI18n();
+  const { t } = i18n;
+  const [all, setAll] = useState(false);
+  return (
+    <div className="waitnote">
+      <span className="faint">{ago(i18n, note.at, now)}</span>
+      <div className={`waittext${long && !all ? " clamped" : ""}`}>
+        <Markdown text={note.text} />
+      </div>
+      {long && (
+        <button type="button" className="lk" aria-expanded={all} onClick={() => setAll(!all)}>
+          {all ? t("card.thread.showLess") : t("card.thread.showAll")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The one-line answer to a plain note. Cortex keeps the text on a refusal, so the field does too. */
+function AnswerLine({ thread, busy, run }: { thread: StudioThread; busy: boolean; run: Run }) {
+  const { t } = useI18n();
+  const [text, setText] = useState("");
+  const send = async () => {
+    if ((await run({ act: "respond", thread: thread.slug, text: text.trim() })).ok) setText("");
+  };
+  return (
+    <div className="row" style={{ flexWrap: "nowrap" }}>
+      <input type="text" aria-label={t("card.thread.answer")} placeholder={t("card.thread.answer")} value={text} onInput={(e) => setText(e.currentTarget.value)} />
+      <button type="button" className="btn pri" disabled={busy || !text.trim()} onClick={send}>
+        {t("studio.send")}
+      </button>
+    </div>
+  );
+}
+
+/** Keep and dismiss for a proposal, a stand or an idea. Taking a stand says what it does. */
+function NoteActs({ thread, note, busy, run }: { thread: StudioThread; note: DayCardNote; busy: boolean; run: Run }) {
   const { t } = useI18n();
   return (
-    <Card eyebrow={t("card.thread.eyebrow")} pill={<Pills thread={thread} waits={waits} />}>
-      <span className="q">{thread.question}</span>
-      {thread.stand && <span className="sub">{thread.stand}</span>}
-      <div className="row">
-        <button type="button" className="btn pri" onClick={onOpen}>
-          {t("studio.open")}
-        </button>
-        {onDesk && (
+    <div className="row">
+      <button type="button" className="btn pri" disabled={busy} onClick={() => run({ act: "keep", thread: thread.slug, note: note.at })}>
+        {note.kind === "stand" ? t("studio.keepStand") : t("studio.keep")}
+      </button>
+      <button type="button" className="btn quiet" disabled={busy} onClick={() => run({ act: "dismiss", thread: thread.slug, note: note.at })}>
+        {t("studio.dismiss")}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A Studio topic on the Day view: what it asks, the note that waits, and the act that answers it. "Open the desk" shows
+ * the topic in full. The open view this card used to hold is retired by its own node and is reachable nowhere else.
+ */
+export function StudioCard({ thread, now, onDesk }: StudioCardProps) {
+  const { t } = useI18n();
+  const { busy, error, run } = useStudioAct();
+  const card = dayCard(thread);
+  return (
+    <Card eyebrow={t("card.thread.eyebrow")} pill={<Pills thread={thread} delivered={card.reason !== null} />}>
+      <span className="sub">{card.question}</span>
+      {card.stand !== null && <span className="faint">{card.stand}</span>}
+      {card.note && <WaitingNote note={card.note} now={now} long={card.long} />}
+      {card.note && card.acts.includes("answer") && <AnswerLine thread={thread} busy={busy} run={run} />}
+      {card.note && card.acts.includes("keep") && <NoteActs thread={thread} note={card.note} busy={busy} run={run} />}
+      <ErrorLine error={error} />
+      {onDesk && (
+        <div className="row">
           <button type="button" className="btn" onClick={onDesk}>
             {t("desk.open")}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </Card>
   );
 }
 
-function StudioOpen({ thread, waits, onHide, personas = [] }: StudioCardProps) {
+export interface StudioOpenProps {
+  thread: StudioThread;
+  waits: boolean;
+  onHide: () => void;
+  /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
+  personas?: readonly string[];
+}
+
+/** The Studio's open view. No card reaches it; it is kept until its own node retires it. */
+export function StudioOpen({ thread, waits, onHide, personas = [] }: StudioOpenProps) {
   const { t } = useI18n();
   const { busy, error, run } = useStudioAct();
   const [text, setText] = useState("");
@@ -221,7 +282,7 @@ function StudioOpen({ thread, waits, onHide, personas = [] }: StudioCardProps) {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span className="row">
           <span className="eyebrow">{t("card.thread.eyebrow")}</span>
-          <Pills thread={thread} waits={waits} />
+          <Pills thread={thread} delivered={waits} />
         </span>
         <button type="button" className="btn quiet" onClick={onHide}>
           {t("studio.hide")}

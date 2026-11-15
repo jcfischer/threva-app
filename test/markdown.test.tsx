@@ -6,7 +6,7 @@ import { QueueContext } from "../src/ui/cards/act";
 import { AssistantMargin, Margin } from "../src/ui/everything/margin";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { ExchangeView, SessionView } from "../src/ui/studio/conversation";
-import { StudioCard } from "../src/ui/studio/card";
+import { StudioOpen } from "../src/ui/studio/card";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 import { budgetThread } from "./fixtures/studio";
 
@@ -82,7 +82,7 @@ describe("assistant text as Markdown", () => {
 
   test("a Studio note renders as Markdown", async () => {
     const thread = { ...budgetThread, notes: [{ ...budgetThread.notes[0]!, text: REPLY }] };
-    const container = await render(<StudioCard thread={thread} waits open onOpen={() => {}} onHide={() => {}} personas={[]} />);
+    const container = await render(<StudioOpen thread={thread} waits onHide={() => {}} personas={[]} />);
     expectFormatted(container);
   });
 

@@ -10,22 +10,16 @@ import { StudioCard } from "../studio/card";
 import { useI18n, type I18n } from "../i18n";
 import { around, interruptionReasonMessage, type ThenLine, type WhyNow } from "./around";
 import { allowsCardKey, keyMap } from "./keys";
-import { buildQueue, openStudio, pin, skip, type Entry, type Session } from "./order";
+import { buildQueue, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
 
-export interface StudioOpenState {
-  open: string | null;
-  setOpen: (slug: string | null) => void;
-  openDesk?: (slug: string) => void;
-}
-
-const NO_STUDIO: StudioOpenState = { open: null, setOpen: () => {} };
-
-export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, personas = [] }: {
+export function EntryCard({ entry, onDismissMeeting, onOpenDesk, now = Date.now() }: {
   entry: Entry;
   onDismissMeeting: (key: string) => void;
-  studio?: StudioOpenState;
-  personas?: readonly string[];
+  /** Opens a Studio topic's desk. Without it a topic card shows no way out. */
+  onOpenDesk?: (slug: string) => void;
+  /** The clock a card reads "how long ago" against. */
+  now?: number;
 }) {
   switch (entry.type) {
     case "soon":
@@ -38,12 +32,8 @@ export function EntryCard({ entry, onDismissMeeting, studio = NO_STUDIO, persona
       return (
         <StudioCard
           thread={entry.thread}
-          waits={entry.waits}
-          open={studio.open === entry.thread.slug}
-          onOpen={() => studio.setOpen(entry.thread.slug)}
-          onHide={() => studio.setOpen(null)}
-          onDesk={studio.openDesk && (() => studio.openDesk?.(entry.thread.slug))}
-          personas={personas}
+          now={now}
+          onDesk={onOpenDesk && (() => onOpenDesk(entry.thread.slug))}
         />
       );
     case "item":
@@ -180,8 +170,8 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
                 key={first.k}
                 entry={first}
                 onDismissMeeting={onDismissMeeting}
-                studio={{ open: session.open, setOpen: (slug) => setSession(openStudio(session, slug)), openDesk: onOpenDesk }}
-                personas={state.studio?.studio?.personas ?? []}
+                onOpenDesk={onOpenDesk}
+                now={now}
               />
             </CardFooterContext.Provider>
             {keys && <div className="keyhint">

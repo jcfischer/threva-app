@@ -77,11 +77,11 @@ describe("the desk", () => {
 });
 
 describe("the action", () => {
-  test("a Studio card offers the desk beside Open", () => {
+  test("a Studio card opens the desk", () => {
     const html = renderToStaticMarkup(
       <I18nProvider value={createI18n("en")}>
         <QueueContext.Provider value={{ client: createClient(async () => new Response("{}")), refresh: () => {} }}>
-          <StudioCard thread={budgetThread} waits open={false} onOpen={() => {}} onHide={() => {}} onDesk={() => {}} />
+          <StudioCard thread={budgetThread} now={NOW} onDesk={() => {}} />
         </QueueContext.Provider>
       </I18nProvider>,
     );

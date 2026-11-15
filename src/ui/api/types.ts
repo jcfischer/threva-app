@@ -271,8 +271,13 @@ export type StudioThinking =
   | { kind: "unavailable"; reason: string }
   | { kind: "ready"; budget: ThinkingBudget; reason: string | null; runs: StudioThinkingRun[] };
 
+// What a thread asks of its owner: an answer that ends as a decision, a deliverable, or a collection of notes (D10).
+export type StudioThreadType = "question" | "topic" | "making";
+
 export interface StudioThread {
   slug: string;
+  // Cortex always sends the thread's type; the Day card reads it to know whether a topic has a stand (D11).
+  type: StudioThreadType;
   state?: "active" | "parked" | "closed";
   closed?: string;
   outcome?: StudioOutcome;

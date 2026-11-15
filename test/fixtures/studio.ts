@@ -8,6 +8,7 @@ export const openThinking: Extract<StudioThinking, { kind: "ready" }> = { kind: 
 export const budgetThread: StudioThread = {
   thinking: openThinking,
   slug: "budget-next-year",
+  type: "question",
   state: "active",
   thinkTonight: false,
   question: "What goes into next year's budget?",
@@ -54,6 +55,7 @@ export const budgetThread: StudioThread = {
 // fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp.
 export const closedThread: StudioThread = {
   slug: "budget-next-year",
+  type: "question",
   state: "closed",
   closed: "2026-11-14",
   outcome: "dropped",

@@ -1,21 +1,10 @@
 import type { StudioList, StudioThread } from "../api/types";
 import { safeHref } from "../api/safe-link";
-import { useI18n, type I18n } from "../i18n";
+import { useI18n } from "../i18n";
+import { ago } from "../i18n/ago";
 import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
 import { materialCards, noteCards } from "./cards";
-
-const MINUTE = 60_000;
-
-export function ago(i18n: Pick<I18n, "t">, at: string, now: number): string {
-  const ms = now - Date.parse(at);
-  if (Number.isNaN(ms)) return at;
-  const minutes = Math.max(0, Math.floor(ms / MINUTE));
-  if (minutes < 1) return i18n.t("desk.ago.now");
-  if (minutes < 60) return i18n.t("desk.ago.m", { n: minutes });
-  if (minutes < 60 * 24) return i18n.t("desk.ago.h", { n: Math.floor(minutes / 60) });
-  return i18n.t("desk.ago.d", { n: Math.floor(minutes / 60 / 24) });
-}
 
 export function findThread(studio: StudioList | null, slug: string): StudioThread | undefined {
   const data = studio?.studio;
