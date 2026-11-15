@@ -26,6 +26,58 @@ export const journeys = {
     await loaded(page, "Loading your cards…");
     await shot("day");
   },
+  desk: async (page, shot) => {
+    await showsThreva(page);
+    await switchView(page, "Everything");
+    await loaded(page, "Loading your outline…");
+    await page.getByRole("button", { name: "Work", exact: true }).click();
+    await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    const notes = page.getByRole("complementary", { name: "The assistant's notes", exact: true });
+    const parked = notes.getByRole("button").first();
+    await parked.click();
+    const opened = page.locator('[data-desk-opened="right"]');
+    await opened.getByRole("textbox").waitFor();
+    await page.waitForFunction(() => document.querySelector('[data-desk-opened="right"]')?.getAttribute("data-placed") === "true");
+    const checkLayout = async (stacked: boolean) => {
+      const a = await parked.boundingBox();
+      const b = await opened.boundingBox();
+      const middle = await page.locator('[data-desk="middle"]').boundingBox();
+      if (!a || !b || !middle) throw new Error("A desk card has no rendered box.");
+      if (stacked) {
+        if (b.y < a.y + a.height || Math.abs(b.width - a.width) > 2) throw new Error("The narrow card does not open below its parked card at zone width.");
+      } else if (Math.abs(a.y - b.y) > 2 || b.x < middle.x + middle.width - 2) throw new Error("The opened card is not level with its parked card outside the middle.");
+    };
+    await checkLayout(false);
+    await opened.getByText("Details", { exact: true }).click();
+    await opened.getByText("Trigger: Sample thread", { exact: true }).waitFor();
+    await shot("note-wide");
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.waitForFunction(() => {
+      const card = document.querySelector('[data-desk-opened="right"]')?.getBoundingClientRect();
+      const note = document.querySelector(".desk-notes button")?.getBoundingClientRect();
+      return !!card && !!note && card.top >= note.bottom - 1;
+    });
+    await checkLayout(true);
+    await shot("note-stacked");
+    await page.keyboard.press("Escape");
+    await opened.waitFor({ state: "detached" });
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await parked.click();
+    await opened.getByRole("textbox").fill("One hire now, the second in summer.");
+    const response = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
+    await opened.getByRole("textbox").press("Enter");
+    const act = await response;
+    if (!act.ok()) throw new Error(`Studio respond refused: ${await act.text()}`);
+    await opened.waitFor({ state: "detached" });
+    await page.locator('[data-desk="middle"]').getByText("One hire now, the second in summer.", { exact: false }).waitFor();
+    await shot("answer-saved");
+    const material = page.getByRole("complementary", { name: "Material", exact: true }).getByRole("button").first();
+    await material.click();
+    await page.locator('[data-desk-opened="left"]').getByText("Ada Lovelace", { exact: true }).waitFor();
+    await shot("material-wide");
+    await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
+  },
   everything: async (page, shot) => {
     await showsThreva(page);
     await switchView(page, "Everything");

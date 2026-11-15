@@ -222,6 +222,7 @@ export type StudioNoteStatus = "open" | "kept" | "dismissed";
 export interface StudioNote {
   at: string;
   trigger?: string;
+  model?: string;
   kind: StudioNoteKind;
   status: StudioNoteStatus;
   because?: string;
