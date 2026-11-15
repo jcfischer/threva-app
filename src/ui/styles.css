@@ -371,3 +371,12 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .desk-block-log{height:10px;background:transparent;border-style:dotted}
 .desk-block:focus-visible{outline:2px solid var(--dim);outline-offset:1px}
 .desk-history-detail{margin:0;min-height:1.3em;font-size:12.5px;color:var(--dim)}
+.week-scroll{overflow-x:auto;margin-top:18px}
+.week-grid{display:grid;grid-template-columns:repeat(7,minmax(132px,1fr));gap:8px}
+.week-day{border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;font-size:13px;min-height:128px;min-width:0}
+.week-day.today{border-color:var(--accent)}
+.week-day h2{font-size:13px;margin:0 0 4px;font-weight:600}
+.week-day p{margin:0}
+.week-event{overflow-wrap:anywhere}
+.week-row{background:var(--wait-soft);color:var(--wait);border:0;border-radius:6px;padding:4px 7px;text-align:left;font:inherit;font-weight:600;cursor:pointer;overflow-wrap:anywhere}
+.week-margin{display:block;font-size:12px;font-weight:400;margin-top:3px}

@@ -26,9 +26,9 @@ async function run(name: string, journey: Journey): Promise<void> {
     if (response.status() >= 400) failedRequests.push(`${String(response.status())} ${response.url()}`);
   });
   const shots: string[] = [];
-  const shot = async (label: string) => {
+  const shot = async (label: string, options = { fullPage: true }) => {
     const file = join(out, `${name}-${String(shots.length + 1).padStart(2, "0")}-${label}.png`);
-    await page.screenshot({ path: file, fullPage: true });
+    await page.screenshot({ path: file, fullPage: options.fullPage });
     shots.push(file);
   };
   try {
