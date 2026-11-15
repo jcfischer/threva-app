@@ -4,9 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createClient, type Fetch } from "../src/ui/api/client";
 import type { StudioThread } from "../src/ui/api/types";
 import { Desk } from "../src/ui/desk/desk";
-import { closeAct, outcomesFor, standLine, threadType } from "../src/ui/desk/topic-menu";
+import { standLine } from "../src/ui/desk/topic-menu";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
+import { closeAct, outcomesFor, threadType } from "../src/ui/studio/close";
 import { inputText, mountDom } from "./fixtures/dom";
 import { budgetThread, closedThread, studioList } from "./fixtures/studio";
 
@@ -91,6 +92,28 @@ describe("the menu at the head of the desk", () => {
     expect(html).not.toContain('data-desk-menu="true"');
     expect(html).not.toContain(">Finish<");
   });
+
+  test("the form does not carry over when the desk switches to another topic", async () => {
+    const dom = mountDom();
+    const client = createClient(noFetch);
+    const desk = (thread: StudioThread) => (
+      <I18nProvider value={createI18n("en")}>
+        <Desk client={client} studio={studioList([thread])} slug={thread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
+      </I18nProvider>
+    );
+    const other: StudioThread = { ...budgetThread, slug: "other-topic", question: "Another question?" };
+    try {
+      await act(async () => { dom.root.render(desk(budgetThread)); });
+      const finish = Array.from(dom.container.querySelectorAll("button")).find((button) => button.textContent === "Finish");
+      if (!finish) throw new Error("no Finish");
+      await act(async () => { finish.click(); });
+      expect(dom.container.querySelector("textarea")).not.toBeNull();
+      await act(async () => { dom.root.render(desk(other)); });
+      expect(dom.container.querySelector("textarea")).toBeNull();
+    } finally {
+      await dom.cleanup();
+    }
+  });
 });
 
 describe("the stand and the overnight promise on the desk", () => {
@@ -116,6 +139,10 @@ describe("the stand and the overnight promise on the desk", () => {
 
   test("no promise line while thinking tonight is off", () => {
     expect(render()).not.toContain("overnight");
+  });
+
+  test("a closed topic shows no promise even while the flag is on", () => {
+    expect(render({ ...closedThread, thinkTonight: true })).not.toContain("overnight");
   });
 
   test("the labels come from the German catalog", () => {
@@ -258,7 +285,7 @@ describe("the acts through the Studio act client", () => {
     }
   });
 
-  test("finishing a topic offers all three outcomes", async () => {
+  test("finishing a topic-type thread offers all three outcomes", async () => {
     const wired = await mount(asTopic);
     try {
       await wired.click("Finish");
@@ -279,6 +306,22 @@ describe("the acts through the Studio act client", () => {
       await wired.click("Think about it tonight");
       expect(wired.container.textContent).toContain(refused);
       expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a thread without a type finishes as a question", async () => {
+    const wired = await mount({ ...budgetThread, type: undefined });
+    try {
+      await wired.click("Finish");
+      const offered = Array.from(wired.container.querySelectorAll("label.sttog")).map((label) => label.textContent);
+      expect(offered).toEqual(["Decided", "Dropped"]);
+      await inputText(field(wired, 'textarea[aria-label="The decision"]'), "We keep the team.");
+      await inputText(field(wired, 'input[aria-label="What you expect to see if it was right"]'), "A lighter year.");
+      await inputText(field(wired, 'input[type="date"]'), "2026-12-15");
+      await wired.click("Close the topic");
+      expect(wired.writes[0]?.body).toMatchObject({ act: "close", thread: budgetThread.slug, outcome: "decided", text: "We keep the team.", expect: "A lighter year.", reviewOn: "2026-12-15" });
     } finally {
       await wired.cleanup();
     }
