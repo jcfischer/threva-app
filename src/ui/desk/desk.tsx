@@ -9,7 +9,7 @@ import { useStudioAct } from "../studio/act";
 import { ago, materialCards, noteCards, openThing, type DeskSide } from "./cards";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
 
-type Open = { left: string | null; right: string | null };
+interface Open { left: string | null; right: string | null }
 
 const CLOSED: Open = { left: null, right: null };
 
@@ -23,7 +23,7 @@ export function findThread(studio: StudioList | null, slug: string): StudioThrea
  * A parked card opens outwards, at full size and level with itself, and one card is open per side. The desk
  * reads its acts through the queue's client, so a test can inject its own fetch.
  */
-export function Desk({ client, refresh = () => {}, ...rest }: {
+export function Desk({ client, refresh = () => { return; }, ...rest }: {
   studio: StudioList | null;
   slug: string;
   loading?: boolean;
@@ -53,7 +53,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
   const { busy, run } = useStudioAct();
   const thread = findThread(studio, slug);
   const [open, setOpen] = useState<Open>(CLOSED);
-  const [placement, setPlacement] = useState<Record<string, OpenPlacement>>({});
+  const [placement, setPlacement] = useState<Partial<Record<string, OpenPlacement>>>({});
   const grid = useRef<HTMLDivElement | null>(null);
 
   const anyOpen = open.left !== null || open.right !== null;
@@ -64,11 +64,9 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
       if (event.key === "Escape") setOpen(CLOSED);
     };
     window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
+    return () => { window.removeEventListener("keydown", close); };
   }, [anyOpen]);
 
-  // A parked card keeps its place, and its opened card stays level with it: measure again after every change
-  // of what is parked and whenever the window is resized.
   useEffect(() => {
     const root = grid.current;
     if (!root || !anyOpen) return;
@@ -92,7 +90,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => { window.removeEventListener("resize", measure); };
   }, [anyOpen, open.left, open.right, thread]);
 
   const back = <button type="button" className="btn quiet" onClick={onBack}>{backLabel}</button>;
@@ -108,19 +106,15 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
   const left = openThing(thread, open.left);
   const right = openThing(thread, open.right);
 
-  // Opening a second card on a side puts the first back, and a second click on the open card puts it back.
   const toggle = (side: DeskSide, id: string) => {
     setPlacement((previous) => {
       if (!(id in previous)) return previous;
-      const next = { ...previous };
-      delete next[id];
+      const next = Object.fromEntries(Object.entries(previous).filter(([key]) => key !== id));
       return next;
     });
     setOpen((current) => ({ ...current, [side]: current[side] === id ? null : id }));
   };
-  // Close the side only while it still shows the card whose act finished, so a slow act cannot put back a
-  // card opened in its place and throw away a draft typed there.
-  const close = (side: DeskSide, id: string) => setOpen((current) => (current[side] === id ? { ...current, [side]: null } : current));
+  const close = (side: DeskSide, id: string) => { setOpen((current) => (current[side] === id ? { ...current, [side]: null } : current)); };
   const frame = (id: string) => {
     const placed = placement[id];
     return placed?.mode === "out" ? { left: placed.left, top: placed.top, width: placed.width } : undefined;
@@ -139,7 +133,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
           id={card.id}
           className={`desk-card${open.left === card.id ? " desk-held" : ""}`}
           expanded={open.left === card.id}
-          onToggle={() => toggle("left", card.id)}
+          onToggle={() => { toggle("left", card.id); }}
           frame={frame(card.id)}
           placed={placed(card.id)}
           parked={<>
@@ -147,7 +141,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
             <span className="faint">{card.kind}</span>
           </>}
           opened={left?.id === card.id
-            ? <OpenCard thing={left} slug={slug} now={now} onClose={() => close("left", card.id)} run={run} busy={busy} />
+            ? <OpenCard thing={left} slug={slug} now={now} onClose={() => { close("left", card.id); }} run={run} busy={busy} />
             : null}
         />)}
       </aside>
@@ -167,7 +161,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
           id={card.id}
           className={`desk-card desk-${card.strength}${open.right === card.id ? " desk-held" : ""}`}
           expanded={open.right === card.id}
-          onToggle={() => toggle("right", card.id)}
+          onToggle={() => { toggle("right", card.id); }}
           frame={frame(card.id)}
           placed={placed(card.id)}
           parked={<>
@@ -175,7 +169,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
             <span className="faint">{ago(i18n, card.at, now)}</span>
           </>}
           opened={right?.id === card.id
-            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => close("right", card.id)} run={run} busy={busy} />
+            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} />
             : null}
         />)}
       </aside>
@@ -183,11 +177,6 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
   </section>;
 }
 
-/**
- * The shell every parked card shares: the card itself, which stays in place and dims while its card is open,
- * and the opened card beside it, held level with it by the placed frame. Both sides render their own content
- * and only their own open id, so opening and closing stay one implementation.
- */
 function DeskCardShell({ side, id, className, expanded, onToggle, frame, placed, parked, opened }: {
   side: DeskSide;
   id: string;

@@ -11,8 +11,8 @@ import { budgetThread, studioList } from "./fixtures/studio";
 import { inputText, mountDom } from "./fixtures/dom";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
-const note = budgetThread.notes[0]!;
-const stand = budgetThread.notes[2]!;
+const note = budgetThread.notes[0];
+const stand = budgetThread.notes[2];
 const noFetch: Fetch = async () => new Response("{}");
 
 const box = (left: number, top: number, width: number, height = 60): Frame => ({ left, top, right: left + width, bottom: top + height, width, height });
@@ -34,7 +34,6 @@ describe("where an opened card stands", () => {
   test("the opened card is as wide as the space outside its column allows, between 280 and 380 pixels", () => {
     const wide = openPlacement({ desk: desk(2000), card: box(1300, 40, 240), middle: { left: 1000, right: 1300 }, side: "right" });
     expect(wide.width).toBe(OPEN_CARD_MAX);
-    // Less than 280 pixels of room: the card keeps its 280 and overlaps its own column.
     const thin = openPlacement({ desk: desk(1400), card: box(1060, 300, 240), middle: { left: 700, right: 1060 }, side: "right" });
     expect(thin).toEqual({ mode: "out", left: 1400 - OPEN_CARD_MIN, top: 300, width: OPEN_CARD_MIN });
     expect(thin.left).toBeGreaterThanOrEqual(1060);
@@ -134,7 +133,7 @@ async function withDesk(run: (container: HTMLElement, click: (id: string) => Pro
     </I18nProvider>
   );
   const click = async (id: string) => {
-    const button = container.querySelector(`[data-desk-card="${id}"]`) as HTMLButtonElement | null;
+    const button = container.querySelector<HTMLButtonElement>(`[data-desk-card="${id}"]`);
     if (!button) throw new Error(`no parked card ${id}`);
     await act(async () => { button.click(); });
   };
@@ -147,12 +146,11 @@ async function withDesk(run: (container: HTMLElement, click: (id: string) => Pro
   return { refreshed: () => refreshed };
 }
 
-/** Patches a box onto an element, the way a browser would report it. */
 function place(element: Element, b: Frame) {
   Object.defineProperty(element, "getBoundingClientRect", { configurable: true, value: () => ({ ...b, x: b.left, y: b.top, toJSON: () => b }) });
 }
 
-const opened = (container: HTMLElement, side: "left" | "right") => container.querySelector(`[data-desk-opened="${side}"]`) as HTMLElement | null;
+const opened = (container: HTMLElement, side: "left" | "right") => container.querySelector<HTMLElement>(`[data-desk-opened="${side}"]`);
 
 describe("a click on a parked card", () => {
   test("opens the card at full size outside its column and dims the parked card in place", async () => {
@@ -161,7 +159,7 @@ describe("a click on a parked card", () => {
       const card = opened(container, "right");
       expect(card).not.toBeNull();
       expect(card!.textContent).toContain("Ada's draft adds two hires.");
-      const parked = container.querySelector(`[data-desk-card="${note.at}"]`) as HTMLButtonElement;
+      const parked = container.querySelector(`[data-desk-card="${note.at}"]`)!;
       expect(parked.getAttribute("aria-expanded")).toBe("true");
       expect(parked.className).toContain("desk-held");
       expect(parked.nextElementSibling).toBe(card);
@@ -192,7 +190,7 @@ describe("a click on a parked card", () => {
       await click(stand.at);
       expect(container.querySelectorAll("[data-desk-opened]")).toHaveLength(1);
       expect(opened(container, "right")!.textContent).toContain("Hire one now, the second in summer.");
-      expect((container.querySelector(`[data-desk-card="${note.at}"]`) as HTMLElement).getAttribute("aria-expanded")).toBe("false");
+      expect((container.querySelector(`[data-desk-card="${note.at}"]`)!).getAttribute("aria-expanded")).toBe("false");
       await click("m0");
       expect(container.querySelectorAll("[data-desk-opened]")).toHaveLength(2);
       expect(opened(container, "left")!.textContent).toContain("Ada Lovelace");
@@ -229,7 +227,7 @@ describe("acts on an opened note", () => {
       await act(async () => { keep.click(); });
       expect(opened(container, "right")).toBeNull();
     }, async (path, init) => {
-      posts.push({ path, body: JSON.parse(String(init?.body)) });
+      posts.push({ path, body: JSON.parse(typeof init?.body === "string" ? init.body : "{}") });
       return Response.json({ ok: true, message: "Kept. Your stand changed." });
     });
     expect(posts).toHaveLength(1);
@@ -247,7 +245,7 @@ describe("acts on an opened note", () => {
       await act(async () => { dismiss.click(); });
       expect(opened(container, "right")).toBeNull();
     }, async (_path, init) => {
-      body = JSON.parse(String(init?.body));
+      body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
       return Response.json({ ok: true, message: "Dismissed." });
     });
     expect(body).toMatchObject({ act: "dismiss", thread: budgetThread.slug, note: stand.at });
@@ -261,9 +259,8 @@ describe("acts on an opened note", () => {
       const keep = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Take it as my stand")!;
       await act(async () => { keep.click(); });
 
-      // While the act is still in flight, open another note and start a draft there.
       await click(note.at);
-      const field = opened(container, "right")!.querySelector("input") as HTMLInputElement;
+      const field = opened(container, "right")!.querySelector("input")!;
       await inputText(field, "Keep drafting.");
 
       await act(async () => { release(Response.json({ ok: true, message: "Kept." })); await pending; });
@@ -271,7 +268,7 @@ describe("acts on an opened note", () => {
       const card = opened(container, "right");
       expect(card).not.toBeNull();
       expect(card!.textContent).toContain("Ada's draft adds two hires.");
-      expect((card!.querySelector("input") as HTMLInputElement).value).toBe("Keep drafting.");
+      expect((card!.querySelector("input")!).value).toBe("Keep drafting.");
     }, async () => pending);
   });
 
@@ -279,12 +276,12 @@ describe("acts on an opened note", () => {
     let body: Record<string, unknown> = {};
     const wired = await withDesk(async (container, click) => {
       await click(note.at);
-      const field = opened(container, "right")!.querySelector("input") as HTMLInputElement;
+      const field = opened(container, "right")!.querySelector("input")!;
       await inputText(field, "One hire now, the second in summer.");
       await act(async () => { field.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true })); });
       expect(opened(container, "right")).toBeNull();
     }, async (_path, init) => {
-      body = JSON.parse(String(init?.body));
+      body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
       return Response.json({ ok: true, message: "Answered." });
     });
     expect(body).toMatchObject({ act: "respond", thread: budgetThread.slug, text: "One hire now, the second in summer." });
@@ -295,13 +292,13 @@ describe("acts on an opened note", () => {
     const refused = "This note is no longer open. Nothing was written.";
     const wired = await withDesk(async (container, click) => {
       await click(note.at);
-      const field = opened(container, "right")!.querySelector("input") as HTMLInputElement;
+      const field = opened(container, "right")!.querySelector("input")!;
       await inputText(field, "One hire now.");
       await act(async () => { field.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true })); });
       const card = opened(container, "right");
       expect(card).not.toBeNull();
       expect(card!.textContent).toContain(refused);
-      expect((card!.querySelector("input") as HTMLInputElement).value).toBe("One hire now.");
+      expect((card!.querySelector("input")!).value).toBe("One hire now.");
     }, async () => Response.json({ error: refused }, { status: 409 }));
     expect(wired.refreshed()).toBe(0);
   });

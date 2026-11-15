@@ -19,7 +19,6 @@ export type DeskSide = "left" | "right";
 
 export type DeskStrength = "open" | "dim" | "faint";
 
-// A parked card keeps the id of the thing it stands for, so an opened card can find it and its place.
 export type DeskCard =
   | { side: "left"; id: string; index: number; label: string; kind: string; href?: string }
   | { side: "right"; id: string; at: string; strength: DeskStrength; sentence: string };

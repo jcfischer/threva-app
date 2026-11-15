@@ -10,7 +10,7 @@ From a Studio card on the Day ("A question in the Studio waits for your answer."
 
 ## Driving it with Playwright
 
-No journey yet. Open with `getByRole("button", { name: "Open the desk" })`, prove "The assistant's notes" heading and the topic's material are shown, and return with "Back to the cards" or "Back to Everything".
+`bun run verify:ui desk` opens the sample budget topic through Everything, checks the note's wide and stacked geometry, reveals Details, sends an answer through the real Studio endpoint, checks it appears in the middle, and opens material. It saves screenshots of each layout and the saved answer.
 
 ## Gotchas
 

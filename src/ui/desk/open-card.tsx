@@ -56,14 +56,12 @@ export function openPlacement({ desk, card, middle, side }: {
   if (!beside(side, card, middle)) {
     return { mode: "stack", left: card.left - desk.left, top: card.bottom - desk.top + OPEN_CARD_GAP, width: card.width };
   }
-  // The middle zone's edge on this side, and the desk's own edge, both relative to the desk.
   const inner = (side === "right" ? middle.right : middle.left) - desk.left;
   const outer = side === "right" ? desk.width : 0;
   const room = side === "right"
     ? outer - (card.right - desk.left + OPEN_CARD_GAP)
     : card.left - desk.left - OPEN_CARD_GAP;
   const zone = side === "right" ? outer - inner : inner;
-  // Never wider than its own zone, so the opened card cannot cover the middle even on a thin screen.
   const width = Math.min(zone, outwards(room));
   const at = side === "right"
     ? Math.min(outer - width, card.right - desk.left + OPEN_CARD_GAP)
@@ -149,8 +147,7 @@ export function OpenCard({ thing, slug, now, onClose, run, busy = false }: OpenC
           aria-label={t("desk.card.answer.label")}
           placeholder={t("desk.card.answer")}
           value={answer}
-          onInput={(event) => setAnswer(event.currentTarget.value)}
-          // Captured, so the key that sends from this field never falls through to the desk around it.
+          onInput={(event) => { setAnswer(event.currentTarget.value); }}
           onKeyDownCapture={(event) => {
             if (event.key !== "Enter" || event.shiftKey) return;
             const text = answer.trim();

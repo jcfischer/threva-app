@@ -222,7 +222,6 @@ export type StudioNoteStatus = "open" | "kept" | "dismissed";
 export interface StudioNote {
   at: string;
   trigger?: string;
-  // The model policy or model Cortex recorded as the note's writer. Every note Cortex writes carries one.
   model?: string;
   kind: StudioNoteKind;
   status: StudioNoteStatus;
