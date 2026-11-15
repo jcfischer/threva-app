@@ -15,12 +15,14 @@ import { Desk } from "./desk/desk";
 import { browserNotifier, interruptionWatcher, type Notifier } from "./queue/notifier";
 import { NotifyControl } from "./day/notify-control";
 
+const VIEWS = ["day", "week", "everything"] as const;
+type View = typeof VIEWS[number];
 type Place = "day" | "everything";
 
-export function ViewSwitch({ view, onChange }: { view: "day" | "week" | "everything"; onChange: (view: "day" | "week" | "everything") => void }) {
+export function ViewSwitch({ view, onChange }: { view: View; onChange: (view: View) => void }) {
   const { t } = useI18n();
   return <div className="seg view-switch" role="group" aria-label={t("view.label")}>
-    {(["day", "week", "everything"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => onChange(key)}>{t(`view.${key}`)}</button>)}
+    {VIEWS.map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => onChange(key)}>{t(`view.${key}`)}</button>)}
   </div>;
 }
 
@@ -40,7 +42,7 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
   const state = useDesk(api);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
-  const [view, setView] = useState<"day" | "week" | "everything">("day");
+  const [view, setView] = useState<View>("day");
   const [openEverythingRow, setOpenEverythingRow] = useState<{ id: string; request: number } | null>(null);
   const [openedEverything, setOpenedEverything] = useState(false);
   const [desk, setDesk] = useState<{ slug: string; from: Place } | null>(null);

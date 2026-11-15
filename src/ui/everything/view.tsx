@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
 import { useI18n } from "../i18n";
@@ -155,16 +155,14 @@ export function EverythingView({ client, active = true, initialDay = null, openR
     }
   };
 
-  useEffect(() => {
-    if (!requestedRow) return;
-    void saver.flush();
-    setAt(requestedRow.id);
-  }, [requestedRow, saver]);
-
-  const openRow = (id: string) => {
+  const openRow = useCallback((id: string) => {
     void saver.flush();
     setAt(id);
-  };
+  }, [saver]);
+
+  useEffect(() => {
+    if (requestedRow) openRow(requestedRow.id);
+  }, [requestedRow, openRow]);
 
   const retry = async () => {
     if (writing.current) return;
