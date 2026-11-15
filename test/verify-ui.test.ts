@@ -5,7 +5,7 @@ import { parseExploreArgs } from "../scripts/explore-ui-lib";
 describe("verify:ui arguments", () => {
   test("runs every journey against the dev port when nothing is named", () => {
     const parsed = parseArgs([], { THREVA_DEV_PORT: "8791", THREVA_VERIFY_OUT: "out" });
-    expect(parsed).toEqual({ ok: true, value: { url: "http://127.0.0.1:8791/", out: "out", names: ["day", "desk", "everything"] } });
+    expect(parsed).toEqual({ ok: true, value: { url: "http://127.0.0.1:8791/", out: "out", names: ["day", "desk", "relations", "everything"] } });
   });
 
   test("takes named journeys, a URL and an output directory", () => {
@@ -14,7 +14,7 @@ describe("verify:ui arguments", () => {
   });
 
   test("refuses an unknown journey and a flag without a value", () => {
-    expect(parseArgs(["mail"], {})).toEqual({ ok: false, error: 'Unknown journey "mail". Journeys: day, desk, everything.' });
+    expect(parseArgs(["mail"], {})).toEqual({ ok: false, error: 'Unknown journey "mail". Journeys: day, desk, relations, everything.' });
     expect(parseArgs(["--out"], {})).toEqual({ ok: false, error: "--out needs a value." });
   });
 });

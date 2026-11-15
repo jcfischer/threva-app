@@ -233,18 +233,20 @@ describe("the open view", () => {
     expect(html.indexOf('class="stmain"')).toBeLessThan(html.indexOf('class="stside"'));
   });
 
-  test("an open stand or idea offers keep, discuss and dismiss; a plain note or a kept one does not", () => {
-    expect(open().match(/>Dismiss</g)?.length).toBe(1);
+  test("an open stand, idea or relation offers keep, discuss and dismiss; a plain note or a kept one does not", () => {
+    expect(open().match(/>Dismiss</g)?.length).toBe(2);
     const idea = { ...budgetThread, notes: budgetThread.notes.map((n) => (n.kind === "idea" ? { ...n, status: "open" as const } : n)) };
     const html = open(idea);
-    expect(html.match(/>Dismiss</g)?.length).toBe(2);
-    expect(html.match(/>Keep</g)?.length).toBe(1);
+    expect(html.match(/>Dismiss</g)?.length).toBe(3);
+    expect(html.match(/>Keep</g)?.length).toBe(2);
     expect(html).toContain("Discuss");
   });
 
-  test("relation notes stay out (F27)", () => {
-    expect(open()).not.toContain("This relates to the March offsite.");
-    expect(timeline(budgetThread).some((e) => "note" in e && e.note.kind === "relation")).toBe(false);
+  test("relation notes appear with their own catalog kind", () => {
+    expect(open()).toContain("This relates to the March offsite.");
+    expect(open()).toContain("Relation");
+    expect(open(undefined, "de")).toContain("Bezug");
+    expect(timeline(budgetThread).some((e) => "note" in e && e.note.kind === "relation")).toBe(true);
   });
 
   test("it offers the response field and the thread acts, in German too", () => {

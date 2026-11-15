@@ -45,6 +45,7 @@ export const budgetThread: StudioThread = {
       model: "sample",
       kind: "relation",
       status: "open",
+      relates: { kind: "thread", label: "offsite-in-march" },
       text: "This relates to the March offsite.",
     },
   ],

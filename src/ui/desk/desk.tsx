@@ -1,23 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
-import type { StudioList, StudioThread } from "../api/types";
+import type { StudioList } from "../api/types";
 import { QueueContext } from "../cards/act";
 import { useI18n } from "../i18n";
 import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
 import { useStudioAct } from "../studio/act";
-import { ago, materialCards, noteCards, openThing, type DeskSide } from "./cards";
+import { ago, findThread, materialCards, noteCards, openThing, relationTarget, type DeskSide } from "./cards";
 import { History } from "./history";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
 
-interface Open { left: string | null; right: string | null }
+type Left = { kind: "material"; id: string } | { kind: "topic"; slug: string };
+
+interface Open { left: Left | null; right: string | null }
+
+const leftId = (left: Left | null): string | null => left === null ? null : left.kind === "material" ? left.id : `topic:${left.slug}`;
 
 const CLOSED: Open = { left: null, right: null };
-
-export function findThread(studio: StudioList | null, slug: string): StudioThread | undefined {
-  const data = studio?.studio;
-  return data ? [...data.active, ...(data.parked ?? []), ...(data.closed ?? [])].find((thread) => thread.slug === slug) : undefined;
-}
 
 /**
  * The Studio desk: material parked on the left, the topic in the middle, the assistant's notes on the right.
@@ -33,21 +32,23 @@ export function Desk({ client, refresh = () => { return; }, ...rest }: {
   now: number;
   client: DeskClient;
   refresh?: () => void;
+  onOpenDesk?: (slug: string) => void;
 }) {
   return (
     <QueueContext.Provider value={{ client, refresh }}>
-      <DeskBody {...rest} />
+      <DeskBody key={rest.slug} {...rest} />
     </QueueContext.Provider>
   );
 }
 
-function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
+function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpenDesk }: {
   studio: StudioList | null;
   slug: string;
   loading?: boolean;
   backLabel: string;
   onBack: () => void;
   now: number;
+  onOpenDesk?: (slug: string) => void;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -77,9 +78,11 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
       if (!middle) return;
       const parked = [...root.querySelectorAll<HTMLElement>("[data-desk-card]")];
       const next: Record<string, OpenPlacement> = {};
-      for (const [side, id] of [["left", open.left], ["right", open.right]] as [DeskSide, string | null][]) {
+      for (const [side, id] of [["left", leftId(open.left)], ["right", open.right]] as [DeskSide, string | null][]) {
         if (id === null) continue;
-        const twin = parked.find((card) => card.getAttribute("data-desk-card") === id);
+        const twin = side === "left" && open.left?.kind === "topic"
+          ? root.querySelector<HTMLElement>(".desk-material")
+          : parked.find((card) => card.getAttribute("data-desk-card") === id);
         if (!twin) continue;
         next[id] = openPlacement({ desk, card: twin.getBoundingClientRect(), middle, side });
       }
@@ -104,7 +107,9 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
   const name = t("studio.assistant");
   const material = materialCards(thread.material ?? []);
   const notes = noteCards(thread.notes);
-  const left = openThing(thread, open.left);
+  const topic = open.left?.kind === "topic" ? findThread(studio, open.left.slug) : undefined;
+  const left = open.left?.kind === "material" ? openThing(thread, open.left.id) : null;
+  const topicId = topic ? `topic:${topic.slug}` : null;
   const right = openThing(thread, open.right);
 
   const toggle = (side: DeskSide, id: string) => {
@@ -113,9 +118,12 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
       const next = Object.fromEntries(Object.entries(previous).filter(([key]) => key !== id));
       return next;
     });
-    setOpen((current) => ({ ...current, [side]: current[side] === id ? null : id }));
+    setOpen((current) => side === "right"
+      ? { ...current, right: current.right === id ? null : id }
+      : { ...current, left: leftId(current.left) === id ? null : { kind: "material", id } });
   };
-  const close = (side: DeskSide, id: string) => { setOpen((current) => (current[side] === id ? { ...current, [side]: null } : current)); };
+  const close = (side: DeskSide, id: string) => { setOpen((current) => ((side === "left" ? leftId(current.left) : current.right) === id ? { ...current, [side]: null } : current)); };
+  const follow = (slug: string) => { setOpen((current) => ({ ...current, left: { kind: "topic", slug } })); };
   const frame = (id: string) => {
     const placed = placement[id];
     return placed?.mode === "out" ? { left: placed.left, top: placed.top, width: placed.width } : undefined;
@@ -127,13 +135,16 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
     <div className="desk-grid" ref={grid}>
       <aside className="desk-side desk-material" aria-label={t("studio.material")}>
         <span className="eyebrow">{t("studio.material")}</span>
+        {topic && topicId && <div className="desk-opened desk-opened-left" data-desk-opened="left" data-placed={placed(topicId) ? "true" : "false"} style={frame(topicId)}>
+          <OpenCard thing={{ side: "left", id: topicId, topic }} slug={slug} now={now} onClose={() => { close("left", topicId); }} run={run} onOpenDesk={onOpenDesk} />
+        </div>}
         {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
         {material.map((card) => <DeskCardShell
           key={card.id}
           side="left"
           id={card.id}
-          className={`desk-card${open.left === card.id ? " desk-held" : ""}`}
-          expanded={open.left === card.id}
+          className={`desk-card${leftId(open.left) === card.id ? " desk-held" : ""}`}
+          expanded={leftId(open.left) === card.id}
           onToggle={() => { toggle("left", card.id); }}
           frame={frame(card.id)}
           placed={placed(card.id)}
@@ -166,15 +177,16 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
           frame={frame(card.id)}
           placed={placed(card.id)}
           parked={<>
+            {card.kind === "relation" && <span className="eyebrow">{t("studio.kind.relation")}</span>}
             <span>{card.sentence}</span>
             <span className="faint">{ago(i18n, card.at, now)}</span>
           </>}
           opened={right?.id === card.id
-            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} />
+            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} target={right.side === "right" ? relationTarget(right.note, studio) : null} onFollow={follow} />
             : null}
         />)}
         {right && !notes.some((card) => card.id === right.id) && <div className="desk-opened desk-opened-right" data-desk-opened="right" data-placed="false">
-          <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", right.id); }} run={run} busy={busy} />
+          <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", right.id); }} run={run} busy={busy} target={right.side === "right" ? relationTarget(right.note, studio) : null} onFollow={follow} />
         </div>}
       </aside>
     </div>
