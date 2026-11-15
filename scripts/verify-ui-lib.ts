@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { DeskView } from "../src/ui/api/types";
 import type { Page } from "playwright-core";
 
-export type Shot = (label: string) => Promise<void>;
+export type Shot = (label: string, options?: { fullPage: boolean }) => Promise<void>;
 export type Journey = (page: Page, shot: Shot) => Promise<void>;
 
 async function showsThreva(page: Page): Promise<void> {
@@ -120,9 +120,16 @@ export const journeys = {
     await page.getByRole("button", { name: /Prepare the week review/ }).waitFor();
     await shot("week-wide");
     await page.setViewportSize({ width: 390, height: 844 });
-    await shot("week-narrow-start");
+    await shot("week-narrow-start", { fullPage: false });
     await page.locator(".week-scroll").evaluate(element => { element.scrollLeft = element.scrollWidth; });
-    await shot("week-narrow-end");
+    const scroll = await page.evaluate(() => {
+      const grid = document.querySelector(".week-scroll");
+      const header = document.querySelector("header")?.getBoundingClientRect();
+      const navigation = document.querySelector(".view-switch")?.getBoundingClientRect();
+      return { x: window.scrollX, width: window.innerWidth, body: document.body.scrollWidth, grid: grid?.scrollLeft, header: header && { x: header.x, y: header.y, right: header.right }, navigation: navigation && { x: navigation.x, y: navigation.y, right: navigation.right } };
+    });
+    if (scroll.x !== 0 || scroll.body > scroll.width || !scroll.grid || !scroll.header || !scroll.navigation || scroll.header.x < 0 || scroll.header.y < 0 || scroll.header.right > scroll.width || scroll.navigation.x < 0 || scroll.navigation.y < 0 || scroll.navigation.right > scroll.width) throw new Error(`Week scroll escaped its strip: ${JSON.stringify(scroll)}`);
+    await shot("week-narrow-end", { fullPage: false });
     await page.locator(".week-scroll").evaluate(element => { element.scrollLeft = 0; });
     await page.getByRole("button", { name: /Prepare the week review/ }).click();
     await page.getByRole("heading", { name: "Prepare the week review", exact: true }).waitFor();
