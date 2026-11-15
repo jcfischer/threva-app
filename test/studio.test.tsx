@@ -7,7 +7,7 @@ import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION, openStudio, skip } from "../src/ui/queue/order";
 import { sendStudioAct, STUDIO_ACT_PATH } from "../src/ui/studio/act";
-import { closeAct, StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
+import { StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
 import { dayCard, newestOpenNote, noteIsLong } from "../src/ui/studio/day-card";
 import { item, NOW as DESK_NOW, view } from "./fixtures/desk";
 import { mountDom, inputText, type MountedDom } from "./fixtures/dom";
@@ -267,28 +267,6 @@ describe("the open view", () => {
     const html = open({ ...budgetThread, state: "parked" });
     expect(html).toContain("Bring back");
     expect(html).toContain("Parked");
-  });
-});
-
-describe("closeAct", () => {
-  const base = { text: " It merges into the Desk. ", expect: "", reviewOn: "" };
-
-  test("a decision needs what you expect and a review date", () => {
-    expect(closeAct("t", { ...base, outcome: "decided" })).toBeNull();
-    expect(closeAct("t", { ...base, outcome: "decided", expect: "I use it daily." })).toBeNull();
-    expect(closeAct("t", { ...base, outcome: "decided", expect: " I use it daily. ", reviewOn: "2026-12-15" })).toEqual({
-      act: "close",
-      thread: "t",
-      outcome: "decided",
-      text: "It merges into the Desk.",
-      expect: "I use it daily.",
-      reviewOn: "2026-12-15",
-    });
-  });
-
-  test("done or dropped needs only the text, and sends no expectation", () => {
-    expect(closeAct("t", { ...base, outcome: "dropped", expect: "ignored", reviewOn: "2026-12-15" })).toEqual({ act: "close", thread: "t", outcome: "dropped", text: "It merges into the Desk." });
-    expect(closeAct("t", { ...base, text: "  ", outcome: "shipped" })).toBeNull();
   });
 });
 

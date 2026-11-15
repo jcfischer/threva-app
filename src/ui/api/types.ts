@@ -268,10 +268,11 @@ export interface StudioLogEntry {
 export interface StudioThread {
   slug: string;
 
-  type: StudioThreadType;
+  type?: StudioThreadType;
   state?: "active" | "parked" | "closed";
   closed?: string;
   outcome?: StudioOutcome;
+  outcomeText?: string;
   thinkTonight?: boolean;
   question: string;
   stand: string;
