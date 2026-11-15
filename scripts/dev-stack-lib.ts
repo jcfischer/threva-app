@@ -101,6 +101,8 @@ export function renderCalendar(now: number): string {
     ...vevent("design-review@example.org", slot - 50 * MIN, slot - 15 * MIN, "Design review", ["LOCATION:Room 2"]),
     ...vevent("budget-call@example.org", slot + 6 * MIN, slot + 36 * MIN, "Budget call with Ada", ["URL:https://meet.example.org/budget"]),
     ...vevent("team-sync@example.org", slot + 3 * 60 * MIN, slot + 3 * 60 * MIN + 30 * MIN, "Team sync", ["LOCATION:Room 1"]),
+    ...vevent("week-six@example.org", slot + 5 * 24 * 60 * MIN, slot + 5 * 24 * 60 * MIN + 30 * MIN, "Day six planning"),
+    ...vevent("week-seven@example.org", slot + 6 * 24 * 60 * MIN, slot + 6 * 24 * 60 * MIN + 30 * MIN, "Day seven review"),
     "END:VCALENDAR",
     "",
   ].join("\r\n");

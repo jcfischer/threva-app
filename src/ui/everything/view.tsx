@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { DeskClient } from "../api/client";
 import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
 import { useI18n } from "../i18n";
@@ -46,10 +46,11 @@ function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: 
   </span>;
 }
 
-export function EverythingView({ client, active = true, initialDay = null, shares = [], assistantName, onChange = () => {}, onOpenDesk }: {
+export function EverythingView({ client, active = true, initialDay = null, openRow: requestedRow, shares = [], assistantName, onChange = () => {}, onOpenDesk }: {
   client: DeskClient;
   active?: boolean;
   initialDay?: MyDayOutline | null;
+  openRow?: { id: string; request: number } | null;
   shares?: readonly AreaShare[];
   assistantName?: string;
   onChange?: () => void;
@@ -154,10 +155,14 @@ export function EverythingView({ client, active = true, initialDay = null, share
     }
   };
 
-  const openRow = (id: string) => {
+  const openRow = useCallback((id: string) => {
     void saver.flush();
     setAt(id);
-  };
+  }, [saver]);
+
+  useEffect(() => {
+    if (requestedRow) openRow(requestedRow.id);
+  }, [requestedRow, openRow]);
 
   const retry = async () => {
     if (writing.current) return;

@@ -8,3 +8,4 @@ One file per part of the UI a person uses. Each says how to reach it, how to dri
 | Everything: the outline and note pages | [everything.md](everything.md) | `everything` |
 | The bar: write, ask, find | [bar.md](bar.md) | none yet |
 | The desk: a Studio topic | [desk.md](desk.md) | none yet |
+| Week: seven rolling days with dated outline links | [week.md](week.md) | `week` |

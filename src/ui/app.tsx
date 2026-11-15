@@ -9,17 +9,20 @@ import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
+import { WeekView } from "./week/view";
 import { EverythingView } from "./everything/view";
 import { Desk } from "./desk/desk";
 import { browserNotifier, interruptionWatcher, type Notifier } from "./queue/notifier";
 import { NotifyControl } from "./day/notify-control";
 
+const VIEWS = ["day", "week", "everything"] as const;
+type View = typeof VIEWS[number];
 type Place = "day" | "everything";
 
-export function ViewSwitch({ view, onChange }: { view: "day" | "everything"; onChange: (view: "day" | "everything") => void }) {
+export function ViewSwitch({ view, onChange }: { view: View; onChange: (view: View) => void }) {
   const { t } = useI18n();
   return <div className="seg view-switch" role="group" aria-label={t("view.label")}>
-    {(["day", "everything"] as const).map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => onChange(key)}>{t(`view.${key}`)}</button>)}
+    {VIEWS.map(key => <button type="button" key={key} aria-pressed={view === key} onClick={() => onChange(key)}>{t(`view.${key}`)}</button>)}
   </div>;
 }
 
@@ -39,7 +42,8 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
   const state = useDesk(api);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
-  const [view, setView] = useState<"day" | "everything">("day");
+  const [view, setView] = useState<View>("day");
+  const [openEverythingRow, setOpenEverythingRow] = useState<{ id: string; request: number } | null>(null);
   const [openedEverything, setOpenedEverything] = useState(false);
   const [desk, setDesk] = useState<{ slug: string; from: Place } | null>(null);
   const watchInterruptions = useMemo(() => interruptionWatcher(notifier, key => {
@@ -61,7 +65,8 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
         <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
         {view === "day" && <NotifyControl notifier={notifier} />}
         {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} onOpenDesk={slug => setDesk({ slug, from: "day" })} />}
-        {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => setDesk({ slug, from: "everything" })} /></div>}
+        {view === "week" && <WeekView client={api} state={state} onOpenRow={id => { setOpenEverythingRow(current => ({ id, request: (current?.request ?? 0) + 1 })); setOpenedEverything(true); setView("everything"); }} />}
+        {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} openRow={openEverythingRow} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => setDesk({ slug, from: "everything" })} /></div>}
       </div>
       {desk && <DeskScreen client={api} slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => setDesk(null)} />}
     </main>
