@@ -151,6 +151,9 @@ function place(element: Element, b: Frame) {
 }
 
 const opened = (container: HTMLElement, side: "left" | "right") => container.querySelector<HTMLElement>(`[data-desk-opened="${side}"]`);
+const button = (container: HTMLElement, side: "left" | "right", label: string) =>
+  Array.from(opened(container, side)!.querySelectorAll("button")).find((candidate) => candidate.textContent === label)!;
+const bodyOf = (init?: RequestInit) => JSON.parse(typeof init?.body === "string" ? init.body : "{}");
 
 describe("a click on a parked card", () => {
   test("opens the card at full size outside its column and dims the parked card in place", async () => {
@@ -174,7 +177,7 @@ describe("a click on a parked card", () => {
       expect(opened(container, "right")).toBeNull();
 
       await click(stand.at);
-      const putBack = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Put back")!;
+      const putBack = button(container, "right", "Put back");
       await act(async () => { putBack.click(); });
       expect(opened(container, "right")).toBeNull();
 
@@ -223,11 +226,11 @@ describe("acts on an opened note", () => {
     const posts: { path: string; body: Record<string, unknown> }[] = [];
     const wired = await withDesk(async (container, click) => {
       await click(stand.at);
-      const keep = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Take it as my stand")!;
+      const keep = button(container, "right", "Take it as my stand");
       await act(async () => { keep.click(); });
       expect(opened(container, "right")).toBeNull();
     }, async (path, init) => {
-      posts.push({ path, body: JSON.parse(typeof init?.body === "string" ? init.body : "{}") });
+      posts.push({ path, body: bodyOf(init) });
       return Response.json({ ok: true, message: "Kept. Your stand changed." });
     });
     expect(posts).toHaveLength(1);
@@ -241,11 +244,11 @@ describe("acts on an opened note", () => {
     let body: Record<string, unknown> = {};
     await withDesk(async (container, click) => {
       await click(stand.at);
-      const dismiss = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Dismiss")!;
+      const dismiss = button(container, "right", "Dismiss");
       await act(async () => { dismiss.click(); });
       expect(opened(container, "right")).toBeNull();
     }, async (_path, init) => {
-      body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+      body = bodyOf(init);
       return Response.json({ ok: true, message: "Dismissed." });
     });
     expect(body).toMatchObject({ act: "dismiss", thread: budgetThread.slug, note: stand.at });
@@ -256,7 +259,7 @@ describe("acts on an opened note", () => {
     const pending = new Promise<Response>((resolve) => { release = resolve; });
     await withDesk(async (container, click) => {
       await click(stand.at);
-      const keep = Array.from(opened(container, "right")!.querySelectorAll("button")).find((button) => button.textContent === "Take it as my stand")!;
+      const keep = button(container, "right", "Take it as my stand");
       await act(async () => { keep.click(); });
 
       await click(note.at);
@@ -281,7 +284,7 @@ describe("acts on an opened note", () => {
       await act(async () => { field.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true })); });
       expect(opened(container, "right")).toBeNull();
     }, async (_path, init) => {
-      body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+      body = bodyOf(init);
       return Response.json({ ok: true, message: "Answered." });
     });
     expect(body).toMatchObject({ act: "respond", thread: budgetThread.slug, text: "One hire now, the second in summer." });

@@ -53,7 +53,11 @@ export const journeys = {
     await opened.getByText("Trigger: Sample thread", { exact: true }).waitFor();
     await shot("note-wide");
     await page.setViewportSize({ width: 900, height: 900 });
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() => {
+      const card = document.querySelector('[data-desk-opened="right"]')?.getBoundingClientRect();
+      const note = document.querySelector(".desk-notes button")?.getBoundingClientRect();
+      return !!card && !!note && card.top >= note.bottom - 1;
+    });
     await checkLayout(true);
     await shot("note-stacked");
     await page.keyboard.press("Escape");
