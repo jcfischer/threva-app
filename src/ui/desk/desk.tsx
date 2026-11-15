@@ -173,9 +173,12 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
             ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} />
             : null}
         />)}
+        {right && !notes.some((card) => card.id === right.id) && <div className="desk-opened desk-opened-right" data-desk-opened="right" data-placed="false">
+          <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", right.id); }} run={run} busy={busy} />
+        </div>}
       </aside>
     </div>
-    <History thread={thread} onOpenNote={(id) => { if (notes.some((card) => card.id === id)) setOpen((current) => ({ ...current, right: id })); }} />
+    <History thread={thread} onOpenNote={(id) => { setOpen((current) => ({ ...current, right: id })); }} />
   </section>;
 }
 

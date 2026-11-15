@@ -78,6 +78,22 @@ describe("the history strip on the desk", () => {
     });
   });
 
+  test("a click on a dismissed note's block opens its card", async () => {
+    const oldest = thread.notes.filter((n) => n.kind !== "relation").sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0];
+    const dismissed: StudioThread = { ...thread, notes: thread.notes.map((n) => (n === oldest ? { ...n, status: "dismissed" } : n)) };
+    const { root, container, cleanup } = mountDom();
+    try {
+      await act(async () => {
+        root.render(<I18nProvider value={createI18n("en")}>
+          <Desk client={createClient(noFetch)} studio={studioList([dismissed])} slug={dismissed.slug} backLabel="Back" onBack={() => {}} now={NOW} />
+        </I18nProvider>);
+      });
+      expect(container.querySelector(`[data-desk-card="${oldest.at}"]`)).toBeNull();
+      await act(async () => { container.querySelector<HTMLButtonElement>('[data-history="note"]')?.click(); });
+      expect(container.querySelector('[data-desk-opened="right"]')).not.toBeNull();
+    } finally { await cleanup(); }
+  });
+
   test("is German too", async () => {
     await mount("de", async (container) => {
       expect(container.textContent).toContain("Jetzt");
