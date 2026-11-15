@@ -126,7 +126,17 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
   Object.assign(childEnv, secrets);
 
   record(deps, log, OK_MARK);
-  return deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
+  let code: number;
+  try {
+    code = await deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
+  } catch (error) {
+    record(deps, log, `Cortex could not be started: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  if (code !== 0) {
+    record(deps, log, `Cortex exited with code ${code}. See the Cortex output in this log for the cause.`);
+  }
+  return code;
 }
 
 export function lastLauncherError(logText: string | null): string {

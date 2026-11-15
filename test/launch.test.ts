@@ -39,6 +39,20 @@ describe("threva launch", () => {
     expect(r.lines.join("\n")).not.toContain("sk-secret");
   });
 
+  test("a failed Cortex start is the last recorded error for doctor", async () => {
+    const r = rig("x: 1", { exec: () => Promise.resolve(3) });
+    expect(await launch(argv, r.deps)).toBe(3);
+    expect(r.lines).toHaveLength(2);
+    const out = doctor(["--log", "/l"], { readLog: () => r.lines.join("\n") + "\n" });
+    expect(out.output).toContain("exited with code 3");
+  });
+
+  test("a spawn error is recorded and exits non-zero", async () => {
+    const r = rig("x: 1", { exec: () => Promise.reject(new Error("no bun")) });
+    expect(await launch(argv, r.deps)).toBe(1);
+    expect(r.lines.at(-1)).toContain("no bun");
+  });
+
   test("a missing Keychain item records one line and does not start Cortex", async () => {
     const r = rig("apiKey: env:ANTHROPIC_API_KEY", {
       security: () => Promise.resolve({ status: 44, stdout: "" }),
