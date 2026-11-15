@@ -3,6 +3,7 @@ import { act, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient, type Fetch } from "../src/ui/api/client";
 import type { StudioList, StudioMaterial, StudioNote, StudioThread } from "../src/ui/api/types";
+import { TopicCard } from "../src/ui/desk/topic-card";
 import { noteCards, relationTarget } from "../src/ui/desk/cards";
 import { Desk } from "../src/ui/desk/desk";
 import { OpenCard } from "../src/ui/desk/open-card";
@@ -109,7 +110,7 @@ describe("opened relation content", () => {
         for (const state of ["active", "parked", "closed"] as const) {
           const i18n = createI18n(locale);
           const html = renderToStaticMarkup(<I18nProvider value={i18n}>
-            <OpenCard thing={{ side: "left", id: "topic:offsite", topic: { ...topic, type, state } }} slug={budgetThread.slug} now={NOW} onClose={() => {}} run={run} onOpenDesk={() => {}} />
+            <TopicCard topic={{ ...topic, type, state }} now={NOW} onClose={() => {}} onOpenDesk={() => {}} />
           </I18nProvider>);
           expect(html).toContain(i18n.t(`desk.topic.type.${type}`));
           expect(html).toContain(topic.question);

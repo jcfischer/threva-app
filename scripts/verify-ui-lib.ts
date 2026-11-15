@@ -100,16 +100,12 @@ export const journeys = {
     await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
   },
   relations: async (page, shot) => {
-    await page.route("**/api/desk/studio", async route => {
-      const response = await route.fetch();
-      const data = await response.json() as StudioList;
-      const source = data.studio?.active.find(topic => topic.slug === "budget-next-year");
-      if (!source) throw new Error("The sample budget topic is missing.");
-      if (!source.notes.some(note => note.kind === "relation" && note.relates?.kind === "thread" && note.relates.label === "offsite-in-march")) {
-        source.notes.push({ at: "2026-11-14T12:00:00Z", kind: "relation", status: "open", text: "The offsite and the budget share a decision.", relates: { kind: "thread", label: "offsite-in-march" } });
-      }
-      await route.fulfill({ response, json: data });
-    });
+    const response = await page.request.get(new URL("/api/desk/studio", page.url()).href);
+    if (!response.ok()) throw new Error(`Studio refused: ${await response.text()}`);
+    const data = await response.json() as StudioList;
+    const source = data.studio?.active.find(topic => topic.slug === "budget-next-year");
+    const relation = source?.notes.find(note => note.kind === "relation" && note.status !== "dismissed" && note.relates?.kind === "thread" && note.relates.label === "offsite-in-march");
+    if (!relation) throw new Error("Cortex did not serve the sample relation with relates. Use a fresh dev stack, or add the relation to its budget topic file.");
     await page.reload({ waitUntil: "networkidle" });
     await showsThreva(page);
     await switchView(page, "Everything");
@@ -119,7 +115,7 @@ export const journeys = {
     await page.getByRole("button", { name: "Open the desk", exact: true }).click();
     await page.setViewportSize({ width: 1920, height: 1080 });
     const notes = page.getByRole("complementary", { name: "The assistant's notes", exact: true });
-    await notes.locator("button[data-desk-card]").filter({ hasText: "Relation" }).first().click();
+    await notes.locator("button[data-desk-card]").filter({ hasText: "Relation" }).filter({ hasText: relation.text }).click();
     const right = page.locator('[data-desk-opened="right"]');
     await right.getByRole("button", { name: "Follow", exact: true }).click();
     const left = page.locator('[data-desk-opened="left"]');

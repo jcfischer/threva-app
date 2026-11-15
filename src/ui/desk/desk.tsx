@@ -7,6 +7,7 @@ import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
 import { useStudioAct } from "../studio/act";
 import { ago, findThread, materialCards, noteCards, openThing, relationTarget, type DeskSide } from "./cards";
+import { TopicCard } from "./topic-card";
 import { History } from "./history";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
 
@@ -109,8 +110,9 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
   const notes = noteCards(thread.notes);
   const topic = open.left?.kind === "topic" ? findThread(studio, open.left.slug) : undefined;
   const left = open.left?.kind === "material" ? openThing(thread, open.left.id) : null;
-  const topicId = topic ? `topic:${topic.slug}` : null;
+  const topicId = topic ? leftId(open.left) : null;
   const right = openThing(thread, open.right);
+  const rightTarget = right?.side === "right" ? relationTarget(right.note, studio) : null;
 
   const toggle = (side: DeskSide, id: string) => {
     setPlacement((previous) => {
@@ -136,7 +138,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
       <aside className="desk-side desk-material" aria-label={t("studio.material")}>
         <span className="eyebrow">{t("studio.material")}</span>
         {topic && topicId && <div className="desk-opened desk-opened-left" data-desk-opened="left" data-placed={placed(topicId) ? "true" : "false"} style={frame(topicId)}>
-          <OpenCard thing={{ side: "left", id: topicId, topic }} slug={slug} now={now} onClose={() => { close("left", topicId); }} run={run} onOpenDesk={onOpenDesk} />
+          <TopicCard topic={topic} now={now} onClose={() => { close("left", topicId); }} onOpenDesk={onOpenDesk} />
         </div>}
         {material.length === 0 && <span className="faint">{t("studio.material.none")}</span>}
         {material.map((card) => <DeskCardShell
@@ -182,11 +184,11 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
             <span className="faint">{ago(i18n, card.at, now)}</span>
           </>}
           opened={right?.id === card.id
-            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} target={right.side === "right" ? relationTarget(right.note, studio) : null} onFollow={follow} />
+            ? <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", card.id); }} run={run} busy={busy} target={rightTarget} onFollow={follow} />
             : null}
         />)}
         {right && !notes.some((card) => card.id === right.id) && <div className="desk-opened desk-opened-right" data-desk-opened="right" data-placed="false">
-          <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", right.id); }} run={run} busy={busy} target={right.side === "right" ? relationTarget(right.note, studio) : null} onFollow={follow} />
+          <OpenCard thing={right} slug={slug} now={now} onClose={() => { close("right", right.id); }} run={run} busy={busy} target={rightTarget} onFollow={follow} />
         </div>}
       </aside>
     </div>

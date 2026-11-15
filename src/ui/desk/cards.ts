@@ -15,7 +15,6 @@ export type DeskCard =
 
 export type OpenThing =
   | { side: "left"; id: string; material: StudioMaterial }
-  | { side: "left"; id: string; topic: StudioThread }
   | { side: "right"; id: string; note: StudioNote };
 
 export type RelationTarget =

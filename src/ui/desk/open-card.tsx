@@ -6,7 +6,7 @@ import { ErrorLine } from "../cards/parts";
 import type { ActError } from "../cards/act";
 import { useI18n } from "../i18n";
 import { Markdown } from "../markdown";
-import { ago, noteCards, type OpenThing, type RelationTarget } from "./cards";
+import { ago, type OpenThing, type RelationTarget } from "./cards";
 
 /** The narrowest and widest an opened card gets when it opens outwards. */
 export const OPEN_CARD_MIN = 280;
@@ -91,7 +91,6 @@ export interface OpenCardProps {
   busy?: boolean;
   target?: RelationTarget | null;
   onFollow?: (slug: string) => void;
-  onOpenDesk?: (slug: string) => void;
 }
 
 /**
@@ -100,7 +99,7 @@ export interface OpenCardProps {
  * behind a details toggle, and while it is open the acts the Studio offers: keep, dismiss and a one-line
  * answer. A refused act shows Cortex's own message and keeps what was typed.
  */
-export function OpenCard({ thing, slug, now, onClose, run, busy = false, target, onFollow, onOpenDesk }: OpenCardProps) {
+export function OpenCard({ thing, slug, now, onClose, run, busy = false, target, onFollow }: OpenCardProps) {
   const i18n = useI18n();
   const { t } = i18n;
   const [answer, setAnswer] = useState("");
@@ -114,25 +113,6 @@ export function OpenCard({ thing, slug, now, onClose, run, busy = false, target,
   }
 
   const putBack = <button type="button" className="btn quiet" onClick={onClose}>{t("desk.card.putBack")}</button>;
-
-  if ("topic" in thing) {
-    const { topic } = thing;
-    const latest = noteCards(topic.notes).at(0);
-    return <div className="desk-opened-body">
-      <span className="eyebrow">{t(`desk.topic.type.${topic.type}`)}</span>
-      <b>{topic.question}</b>
-      {topic.state === "parked" && <span className="faint">{t("desk.topic.parked")}</span>}
-      {topic.state === "closed" && <span className="faint">{t("desk.topic.closed")}</span>}
-      {latest && <>
-        <span>{latest.sentence}</span>
-        <span className="faint">{ago(i18n, latest.at, now)}</span>
-      </>}
-      <div className="row">
-        {onOpenDesk && <button type="button" className="btn" onClick={() => { onOpenDesk(topic.slug); }}>{t("desk.topic.open")}</button>}
-        {putBack}
-      </div>
-    </div>;
-  }
 
   if (thing.side === "left") {
     const { material } = thing;

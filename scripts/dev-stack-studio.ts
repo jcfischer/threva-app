@@ -17,6 +17,7 @@ const isoDate = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 interface Note {
   at: number;
   text: string;
+  relates?: string;
 }
 
 interface Response {
@@ -54,7 +55,7 @@ function renderThread(t: SampleThread): StudioFile {
     "",
     "## Ivy's notes",
     "",
-    ...t.notes.flatMap((n) => [`### ${isoTime(n.at)}`, "trigger: Sample thread", "model: sample", "sample: true", "", n.text, ""]),
+    ...t.notes.flatMap((n) => [`### ${isoTime(n.at)}`, "trigger: Sample thread", "model: sample", "sample: true", ...(n.relates ? ["kind: relation", `relates: ${n.relates}`] : []), "", n.text, ""]),
     "## Material",
     "",
     ...t.material.map((m) => `- ${m}`),
@@ -79,7 +80,10 @@ export function renderStudioThreads(now: number): StudioFile[] {
       opened: now - 6 * DAY,
       question: "What goes into next year's budget?",
       stand: "Keep the team as it is and cut travel.",
-      notes: [{ at: waitingNote, text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?" }],
+      notes: [
+        { at: waitingNote, text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?" },
+        { at: now - 3 * 60 * MIN, text: "The offsite and the budget share a decision.", relates: "thread: offsite-in-march" },
+      ],
       responses: [],
       material: ["person: Ada Lovelace", "mail: Budget for next year"],
     }),

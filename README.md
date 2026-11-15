@@ -42,6 +42,8 @@ The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/t
 
 To prove a UI change in a real browser, start a second stack with its own `THREVA_DEV_DIR` and `THREVA_DEV_PORT`, then run `bun run verify:ui` (scripted journeys with screenshots) and `bun run explore:ui` (Bombadil property exploration). `.claude/skills/verify-threva` has the steps.
 
+The sample budget topic includes a relation note to the offsite topic. The `relations` journey requires Cortex to serve that note's `relates` field from disk. For a dev stack seeded before this sample was added, use a fresh `THREVA_DEV_DIR` for verification.
+
 ### Conversations and the parser
 
 Without more configuration, the dev stack has no model: the bar falls back to Cortex's built-in rules, and a conversation refuses its first turn. Two files, kept outside this repository, add the models you already use:
