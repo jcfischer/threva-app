@@ -117,6 +117,8 @@ export interface DoneEntry {
 }
 
 export interface DeskView {
+  timeZone?: string;
+  ahead?: DeskEvent[];
   generatedAt: number;
   displayName: string | null;
   assistantName?: string;

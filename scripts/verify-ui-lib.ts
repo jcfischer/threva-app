@@ -11,7 +11,7 @@ async function showsThreva(page: Page): Promise<void> {
   await page.getByRole("group", { name: "View" }).waitFor();
 }
 
-async function switchView(page: Page, name: "Day" | "Everything"): Promise<void> {
+async function switchView(page: Page, name: "Day" | "Week" | "Everything"): Promise<void> {
   const button = page.getByRole("group", { name: "View" }).getByRole("button", { name });
   await button.click();
   if ((await button.getAttribute("aria-pressed")) !== "true") throw new Error(`The ${name} button is not pressed after a click.`);
@@ -98,6 +98,47 @@ export const journeys = {
     await page.locator('[data-desk-opened="left"]').getByText("Ada Lovelace", { exact: true }).waitFor();
     await shot("material-wide");
     await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
+  },
+  week: async (page, shot) => {
+    await showsThreva(page);
+    const response = await page.request.get(new URL("/api/desk/my-day", page.url()).href);
+    let outline = await response.json() as import("../src/ui/api/types").MyDayOutline;
+    const change = async (command: Record<string, unknown>) => {
+      const result = await page.request.post(new URL("/api/desk/my-day", page.url()).href, { data: { date: outline.date, requestId: crypto.randomUUID(), command: { ...command, revision: outline.revision } } });
+      if (!result.ok()) throw new Error(`Week fixture refused: ${await result.text()}`);
+      outline = (await result.json() as { view: import("../src/ui/api/types").MyDayOutline }).view;
+    };
+    await change({ op: "outline-add", parent: "area:work", title: "Prepare the week review" });
+    const row = outline.outline.children.flatMap(area => area.children).find(row => row.title === "Prepare the week review");
+    if (!row) throw new Error("Week fixture row was not created.");
+    await change({ op: "outline-edit", id: row.id, details: { title: row.title, weight: row.weight, note: "Week review notes", ordering: row.ordering, focus: false, dueDate: outline.date, context: "", effort: 1, estimateMinutes: null }, yes: false });
+    await switchView(page, "Week");
+    await loaded(page, "Loading your week…");
+    if (await page.locator("[data-week-date]").count() !== 7) throw new Error("Week does not show seven columns.");
+    await page.getByText("Day six planning", { exact: false }).waitFor();
+    await page.getByText("Day seven review", { exact: false }).waitFor();
+    await page.getByRole("button", { name: /Prepare the week review/ }).waitFor();
+    await shot("week-wide");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await shot("week-narrow-start");
+    await page.locator(".week-scroll").evaluate(element => { element.scrollLeft = element.scrollWidth; });
+    await shot("week-narrow-end");
+    await page.locator(".week-scroll").evaluate(element => { element.scrollLeft = 0; });
+    await page.getByRole("button", { name: /Prepare the week review/ }).click();
+    await page.getByRole("heading", { name: "Prepare the week review", exact: true }).waitFor();
+    await shot("week-row-page");
+    await page.route("**/api/desk/my-day", route => route.fulfill({ status: 503, json: { error: "Synthetic outline unavailable" } }));
+    await switchView(page, "Week");
+    await page.getByRole("alert").filter({ hasText: "Your outline could not be read." }).waitFor();
+    await page.getByText("Day seven review", { exact: false }).waitFor();
+    await shot("week-outline-unavailable");
+    await page.unroute("**/api/desk/my-day");
+    await page.route("**/api/desk", route => route.fulfill({ status: 503, json: { error: "Synthetic Desk unavailable" } }));
+    await page.reload({ waitUntil: "networkidle" });
+    await switchView(page, "Week");
+    await page.getByRole("alert").filter({ hasText: "The Desk could not be read." }).waitFor();
+    await page.getByRole("button", { name: /Prepare the week review/ }).waitFor();
+    await shot("week-desk-unavailable");
   },
   everything: async (page, shot) => {
     await showsThreva(page);

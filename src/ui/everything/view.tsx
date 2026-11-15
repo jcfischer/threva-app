@@ -46,10 +46,11 @@ function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: 
   </span>;
 }
 
-export function EverythingView({ client, active = true, initialDay = null, shares = [], assistantName, onChange = () => {}, onOpenDesk }: {
+export function EverythingView({ client, active = true, initialDay = null, openRow: requestedRow, shares = [], assistantName, onChange = () => {}, onOpenDesk }: {
   client: DeskClient;
   active?: boolean;
   initialDay?: MyDayOutline | null;
+  openRow?: { id: string; request: number } | null;
   shares?: readonly AreaShare[];
   assistantName?: string;
   onChange?: () => void;
@@ -153,6 +154,12 @@ export function EverythingView({ client, active = true, initialDay = null, share
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (!requestedRow) return;
+    void saver.flush();
+    setAt(requestedRow.id);
+  }, [requestedRow, saver]);
 
   const openRow = (id: string) => {
     void saver.flush();
