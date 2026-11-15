@@ -246,10 +246,10 @@
   },
   "src/ui/queue/queue-view.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
-      "count": 12
+      "count": 10
     },
     "@typescript-eslint/no-empty-function": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 5
@@ -258,14 +258,6 @@
   "src/ui/queue/use-desk.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
-    }
-  },
-  "src/ui/studio/card.tsx": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 7
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 6
     }
   },
   "src/ui/studio/conversation.tsx": {
@@ -423,11 +415,6 @@
     },
     "threva/no-comments": {
       "count": 1
-    }
-  },
-  "test/studio.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 2
     }
   }
 }

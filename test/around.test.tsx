@@ -108,6 +108,14 @@ describe("the lines around the card", () => {
     expect(html).toContain("Newsletters: 3 archivieren?");
   });
 
+  test("a waiting topic says why it is there: the assistant delivered a note", () => {
+    const waiting = studio(thread("s1", "open", false));
+    const html = render(view(), { studio: waiting });
+    expect(html).toContain("<b>Why now:</b> The assistant left you a note on this topic.");
+    expect(html).not.toContain("Your turn");
+    expect(render(view(), { studio: waiting, locale: "de" })).toContain("<b>Warum jetzt:</b> Der Assistent hat dir eine Notiz zu diesem Thema hinterlassen.");
+  });
+
   test("uses a catalog sentence for an after-meeting card", () => {
     const ended = view({ today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
     expect(render(ended)).toContain("“Board call” just ended.");

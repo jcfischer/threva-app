@@ -25,6 +25,7 @@ const done = (key: string, when: string, overrides: Partial<DoneEntry> = {}): Do
 });
 const closed = (slug: string, day: string, overrides: Partial<StudioThread> = {}): StudioThread => ({
   slug,
+  type: "question",
   state: "closed",
   closed: day,
   outcome: "decided",

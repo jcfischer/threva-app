@@ -256,6 +256,8 @@ export type StudioThinking =
   | { kind: "unavailable"; reason: string }
   | { kind: "ready"; budget: ThinkingBudget; reason: string | null; runs: StudioThinkingRun[] };
 
+export type StudioThreadType = "question" | "topic" | "making";
+
 export interface StudioLogEntry {
   at: string;
   text: string;
@@ -263,6 +265,8 @@ export interface StudioLogEntry {
 
 export interface StudioThread {
   slug: string;
+
+  type: StudioThreadType;
   state?: "active" | "parked" | "closed";
   closed?: string;
   outcome?: StudioOutcome;

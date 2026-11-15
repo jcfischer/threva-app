@@ -53,7 +53,7 @@ const RESPONSE_META = /^(re):[ \t]*(.*)$/;
 function asThread(slug: string, p: Parsed) {
   const notes = entries(p.sections.get("ivy's notes") ?? "", NOTE_META).map((n) => ({ at: n.at, kind: (n.meta.kind ?? "note") as StudioNote["kind"], status: (n.meta.status ?? "open") as StudioNote["status"], text: n.text, trigger: n.meta.trigger, model: n.meta.model }));
   const responses = entries(p.sections.get("responses") ?? "", RESPONSE_META).map((r) => ({ at: r.at, re: r.meta.re, text: r.text }));
-  return { slug, question: (p.sections.get("question") ?? "").trim(), stand: (p.sections.get("where i stand") ?? "").trim(), notes, responses };
+  return { slug, type: "question" as const, question: (p.sections.get("question") ?? "").trim(), stand: (p.sections.get("where i stand") ?? "").trim(), notes, responses };
 }
 
 describe("renderStudioThreads", () => {

@@ -5,7 +5,7 @@ import { createClient, type Fetch } from "../src/ui/api/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { ExchangeView, SessionView } from "../src/ui/studio/conversation";
-import { StudioCard } from "../src/ui/studio/card";
+import { StudioOpen } from "../src/ui/studio/card";
 import { budgetThread } from "./fixtures/studio";
 
 const meta = { id: "c1", title: "What goes into next year's budget?", activity: { lastAt: "2026-11-14T08:00:00Z", status: "idle" as const } };
@@ -109,7 +109,7 @@ describe("discussing a note", () => {
   test("an open note offers Discuss, now live", () => {
     const html = wrap(
       <QueueContext.Provider value={{ client: createClient(async () => new Response("{}")), refresh: () => {} }}>
-        <StudioCard thread={budgetThread} waits open onOpen={() => {}} onHide={() => {}} />
+        <StudioOpen thread={budgetThread} waits onHide={() => {}} />
       </QueueContext.Provider>,
     );
     expect(html).toContain(">Discuss<");

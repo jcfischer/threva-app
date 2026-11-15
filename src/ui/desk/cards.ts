@@ -1,19 +1,8 @@
-import type { I18n } from "../i18n";
 import type { StudioMaterial, StudioNote, StudioThread } from "../api/types";
 
 export const FAINT_FROM = 5;
 
-const MINUTE = 60_000;
-
-export function ago(i18n: Pick<I18n, "t">, at: string, now: number): string {
-  const ms = now - Date.parse(at);
-  if (Number.isNaN(ms)) return at;
-  const minutes = Math.max(0, Math.floor(ms / MINUTE));
-  if (minutes < 1) return i18n.t("desk.ago.now");
-  if (minutes < 60) return i18n.t("desk.ago.m", { n: minutes });
-  if (minutes < 60 * 24) return i18n.t("desk.ago.h", { n: Math.floor(minutes / 60) });
-  return i18n.t("desk.ago.d", { n: Math.floor(minutes / 60 / 24) });
-}
+export { ago } from "../i18n/ago";
 
 export type DeskSide = "left" | "right";
 

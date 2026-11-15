@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import type { DeskView } from "../src/ui/api/types";
 import type { Page } from "playwright-core";
 
 export type Shot = (label: string) => Promise<void>;
@@ -25,6 +26,26 @@ export const journeys = {
     await showsThreva(page);
     await loaded(page, "Loading your cards…");
     await shot("day");
+    await page.route("**/api/desk", async route => {
+      const response = await route.fetch();
+      const desk = await response.json() as DeskView;
+      await route.fulfill({ response, json: { ...desk, items: [], today: [], myDay: { ...desk.myDay, items: [] } } });
+    });
+    await page.reload({ waitUntil: "networkidle" });
+    await loaded(page, "Loading your cards…");
+    const question = page.locator(".card .sub").filter({ hasText: "What goes into next year's budget?" });
+    await question.waitFor();
+    await page.getByRole("textbox", { name: "Your answer", exact: true }).waitFor();
+    await shot("studio-note-wide");
+    await page.setViewportSize({ width: 650, height: 900 });
+    await shot("studio-note-narrow");
+    await page.getByRole("textbox", { name: "Your answer", exact: true }).fill("Day card answer: one hire now, the second in summer.");
+    const response = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    const act = await response;
+    if (!act.ok()) throw new Error(`Day card respond refused: ${await act.text()}`);
+    await question.waitFor({ state: "hidden" });
+    await shot("studio-answer-saved");
   },
   desk: async (page, shot) => {
     await showsThreva(page);
@@ -56,7 +77,7 @@ export const journeys = {
     await page.waitForFunction(() => {
       const card = document.querySelector('[data-desk-opened="right"]')?.getBoundingClientRect();
       const note = document.querySelector(".desk-notes button")?.getBoundingClientRect();
-      return !!card && !!note && card.top >= note.bottom - 1;
+      return !!card && !!note && card.top >= note.bottom - 1 && Math.abs(card.width - note.width) <= 2;
     });
     await checkLayout(true);
     await shot("note-stacked");

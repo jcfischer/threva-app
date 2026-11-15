@@ -27,6 +27,7 @@ export function sweep(overrides: Partial<MailSweep> = {}): MailSweep {
 export function thread(slug: string, noteStatus: string, answered: boolean): StudioThread {
   return {
     slug,
+    type: "question",
     question: `Question ${slug}?`,
     stand: "Where it stands.",
     notes: [{ at: "2026-11-13T08:00:00+01:00", kind: "stand", status: noteStatus as StudioThread["notes"][number]["status"], text: "A proposed stand." }],
