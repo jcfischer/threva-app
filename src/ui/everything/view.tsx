@@ -35,7 +35,7 @@ function TitleLink({ href, text, className }: { href: string; text: string; clas
  * A row's title in the outline: its text opens the row, and each http or https URL in it opens in a new tab.
  * Only the first piece of text is a tab stop, so a row is still one stop plus its links.
  */
-function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: string; onOpen(): void }) {
+function OutlineTitle({ title, openLabel, onOpen }: { title: string; openLabel: string; onOpen: () => void }) {
   const parts = titleParts(title);
   if (!parts.some(part => part.href)) return <button type="button" className="linkq outline-title" onClick={onOpen}>{title}</button>;
   let first = true;

@@ -16,9 +16,9 @@ export interface NotePageProps {
   place: number | null;
   notice: NoteNotice | null;
   clean?: boolean;
-  onType(text: string): void;
-  onLeave(text: string, at: number): void;
-  onLift?(request: { page: string; from: number; to: number }): Promise<LiftOutcome>;
+  onType: (text: string) => void;
+  onLeave: (text: string, at: number) => void;
+  onLift?: (request: { page: string; from: number; to: number }) => Promise<LiftOutcome>;
   client?: Pick<DeskClient, "post">;
   notes?: AssistantNotes;
   assistantName?: string;
