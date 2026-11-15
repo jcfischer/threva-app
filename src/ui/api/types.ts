@@ -258,6 +258,11 @@ export type StudioThinking =
 
 export type StudioThreadType = "question" | "topic" | "making";
 
+export interface StudioLogEntry {
+  at: string;
+  text: string;
+}
+
 export interface StudioThread {
   slug: string;
 
@@ -270,6 +275,7 @@ export interface StudioThread {
   stand: string;
   notes: StudioNote[];
   responses: StudioResponse[];
+  log?: StudioLogEntry[];
   material?: StudioMaterial[];
   thinking?: StudioThinking;
 }
