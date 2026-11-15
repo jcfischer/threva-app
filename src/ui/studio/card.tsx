@@ -168,7 +168,6 @@ export interface StudioCardProps {
   onOpen: () => void;
   onHide: () => void;
   onDesk?: () => void;
-  /** The names in Cortex's `studio.personas`, each of which gets a "What would X say?" button. */
   personas?: readonly string[];
 }
 

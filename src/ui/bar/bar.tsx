@@ -106,8 +106,6 @@ export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, entries 
 
 export type BarSend = (event: BarEvent) => void;
 
-// The note row runs today's proposal flow. Cortex marks a capture `automatic` once studio.capture is granted,
-// so Threva files that one at once and shows the "Kept." line instead of the card. Every other proposal shows its card.
 export async function takeNote(client: DeskClient, text: string, send: BarSend, onChange: () => void): Promise<void> {
   const typed = text.trim();
   if (!typed) return;
@@ -126,7 +124,6 @@ export async function takeNote(client: DeskClient, text: string, send: BarSend, 
   onChange();
 }
 
-// The ask row starts the conversation the way the card's ask button does.
 export async function takeAsk(client: DeskClient, text: string, send: BarSend): Promise<void> {
   const typed = text.trim();
   if (!typed) return;

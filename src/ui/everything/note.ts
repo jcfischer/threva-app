@@ -1,7 +1,6 @@
 import type { OutlineDetails, OutlineRow } from "../api/types";
 import type { I18n } from "../i18n";
 
-// Cortex refuses a note past 10,000 characters; the page shows the count before that point.
 export const NOTE_LIMIT = 10_000;
 export const NOTE_WARN = 8_000;
 export const SAVE_PAUSE = 1_200;
@@ -34,7 +33,6 @@ export function detailsOf(row: OutlineRow, date: string, note: string): OutlineD
   };
 }
 
-// The cursor place per row, kept in the browser so returning to a page resumes there.
 export interface PlaceStore {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -110,7 +108,6 @@ export class NoteSaver {
     this.#pause = options.pause ?? SAVE_PAUSE;
   }
 
-  /** The newest revision Threva knows of, from the outline it was given or from a save. */
   setRevision(revision: number): void {
     this.#revision = revision;
   }
@@ -119,30 +116,25 @@ export class NoteSaver {
     return [...this.#pending].map(([row, text]) => ({ row, text }));
   }
 
-  /** The newest revision Threva knows of. */
   get revision(): number {
     return this.#revision ?? this.#options.revision();
   }
 
-  /** True when this text still needs saving: it is neither saved nor already in flight. */
   needsSave(row: string, text: string): boolean {
     if (this.#saving.get(row) === text) return false;
     if (this.#saving.has(row)) return true;
     return this.#saved.get(row) !== text;
   }
 
-  /** True while this row has text waiting for the timer or for a save in flight. */
   holding(row: string): boolean {
     return this.#pending.has(row) || this.#saving.has(row);
   }
 
-  /** A reloaded outline is the new truth for a row the user is not editing. */
   adopt(row: string, text: string): void {
     if (this.#pending.has(row) || this.#saving.has(row)) return;
     this.#saved.set(row, text);
   }
 
-  /** The text changed: save it once typing pauses and no sooner. */
   type(row: string, text: string): void {
     if (!this.needsSave(row, text)) {
       this.#pending.delete(row);
@@ -153,7 +145,6 @@ export class NoteSaver {
     this.#restart();
   }
 
-  /** The editor lost focus or its row closed: save everything typed so far. */
   leave(row: string, text: string): void {
     if (this.needsSave(row, text)) this.#pending.set(row, text);
     else this.#pending.delete(row);

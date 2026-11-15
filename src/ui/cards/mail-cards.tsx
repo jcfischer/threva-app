@@ -25,7 +25,6 @@ function OpenInMail({ item }: { item: DeskItem }) {
   ) : null;
 }
 
-// Posts one mail action and shows the message Cortex answers with. Returns whether Cortex accepted it.
 async function postMail(run: ReturnType<typeof useAct>["run"], body: unknown, show: (message: string) => void): Promise<boolean> {
   const result = await run<{ message?: string }>("/api/desk/mail", body);
   if (result.ok && result.data.message) show(result.data.message);
@@ -110,9 +109,6 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
     const result = await run<{ message?: string }>("/api/desk/mail", requests.snooze(item.key, kind));
     if (result.ok) finish(result.data.message, t("card.mail.snoozed"));
   };
-  // Spam and Delete move the mail at once: Cortex logs the move, so the undo line offers it back. An invitation
-  // answer goes out only after a second, explicit click. Each answer keeps one request id for the card's life, also
-  // across Cancel and a new click, so Cortex can refuse a second send after a timeout that may have delivered it.
   const inviteIds = useRef<Partial<Record<InviteReply, string>>>({});
   const act = async (action: MailAction) => {
     setDone(null);
@@ -291,7 +287,6 @@ export function SweepCard({ sweep }: { sweep: MailSweep }) {
 
 const WAITING_LABEL: Record<WaitingAction, TextKey> = { "waiting.snooze": "card.waiting.snooze", "waiting.done": "card.waiting.done" };
 
-// A sent mail that still waits for an answer. It offers the waiting actions Cortex lists and shows Cortex's answer.
 export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: boolean }) {
   const { t } = useI18n();
   const card = useAct();

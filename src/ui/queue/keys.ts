@@ -2,8 +2,6 @@ import type { MailSweep, MyDayCommand, TodayTask } from "../api/types";
 import type { TextKey } from "../i18n/catalog";
 import type { Entry } from "./order";
 
-// What Enter does on the front card: a POST to a Desk endpoint, or a change to My Day, which goes through
-// the client's one My Day call so it always carries Cortex's envelope.
 export type EnterAct = { label: TextKey } & ({ path: string; body: Record<string, unknown> } | { myDay: MyDayCommand });
 
 export interface KeyMap {
@@ -15,7 +13,6 @@ export function taskDone(task: TodayTask): EnterAct {
   return { label: "card.task.done", myDay: { op: "done", id: task.task.id } };
 }
 
-// A sweep that archives says so; a sweep to Junk or Trash keeps its own wording.
 export function sweepEnter(sweep: MailSweep): EnterAct {
   return { label: sweep.target === "archive" ? "card.sweep.archive" : "card.sweep.letGo", path: "/api/desk/mail", body: { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target } };
 }

@@ -17,30 +17,14 @@
       "count": 1
     }
   },
-  "src/ui/api/capture.ts": {
-    "threva/no-comments": {
-      "count": 2
-    }
-  },
   "src/ui/api/client.ts": {
     "no-empty": {
-      "count": 1
-    },
-    "threva/no-comments": {
       "count": 1
     }
   },
   "src/ui/api/conversations.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 1
-    }
-  },
-  "src/ui/api/types.ts": {
-    "threva/no-comments": {
-      "count": 17
     }
   },
   "src/ui/app.tsx": {
@@ -49,11 +33,6 @@
     },
     "@typescript-eslint/no-empty-function": {
       "count": 1
-    }
-  },
-  "src/ui/arrivals/outcomes.ts": {
-    "threva/no-comments": {
-      "count": 21
     }
   },
   "src/ui/bar/bar.tsx": {
@@ -65,22 +44,11 @@
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 4
-    },
-    "threva/no-comments": {
-      "count": 3
-    }
-  },
-  "src/ui/bar/suggest.ts": {
-    "threva/no-comments": {
-      "count": 5
     }
   },
   "src/ui/cards/act.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 4
     }
   },
   "src/ui/cards/mail-cards.tsx": {
@@ -95,9 +63,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 3
-    },
-    "threva/no-comments": {
-      "count": 5
     }
   },
   "src/ui/cards/meeting-cards.tsx": {
@@ -111,28 +76,17 @@
       "count": 1
     }
   },
-  "src/ui/cards/parts.tsx": {
-    "threva/no-comments": {
-      "count": 5
-    }
-  },
   "src/ui/cards/queue-cards.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 2
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 3
-    },
-    "threva/no-comments": {
-      "count": 3
     }
   },
   "src/ui/day/earlier.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
-    },
-    "threva/no-comments": {
-      "count": 6
     }
   },
   "src/ui/day/footer.tsx": {
@@ -150,20 +104,12 @@
       "count": 2
     }
   },
-  "src/ui/everything/addressed.ts": {
-    "threva/no-comments": {
-      "count": 1
-    }
-  },
   "src/ui/everything/assistant.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 1
     },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 2
     }
   },
   "src/ui/everything/editor.tsx": {
@@ -178,9 +124,6 @@
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 12
     }
   },
   "src/ui/everything/lift.ts": {
@@ -197,9 +140,6 @@
     },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 4
     }
   },
   "src/ui/everything/margin.tsx": {
@@ -224,9 +164,6 @@
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 9
     }
   },
   "src/ui/everything/page.tsx": {
@@ -234,9 +171,6 @@
       "count": 1
     },
     "no-empty": {
-      "count": 1
-    },
-    "threva/no-comments": {
       "count": 1
     }
   },
@@ -249,9 +183,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 2
     }
   },
   "src/ui/everything/view.tsx": {
@@ -272,9 +203,6 @@
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
-    },
-    "threva/no-comments": {
-      "count": 3
     }
   },
   "src/ui/i18n/index.ts": {
@@ -291,9 +219,6 @@
     },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 7
-    },
-    "threva/no-comments": {
-      "count": 3
     }
   },
   "src/ui/queue/around.ts": {
@@ -309,25 +234,14 @@
       "count": 1
     }
   },
-  "src/ui/queue/keys.ts": {
-    "threva/no-comments": {
-      "count": 3
-    }
-  },
   "src/ui/queue/notifier.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 3
     }
   },
   "src/ui/queue/order.ts": {
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 5
     }
   },
   "src/ui/queue/queue-view.tsx": {
@@ -339,19 +253,11 @@
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 5
-    },
-    "threva/no-comments": {
-      "count": 3
     }
   },
   "src/ui/queue/use-desk.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
-    }
-  },
-  "src/ui/studio/act.ts": {
-    "threva/no-comments": {
-      "count": 2
     }
   },
   "src/ui/studio/card.tsx": {
@@ -360,9 +266,6 @@
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 6
-    },
-    "threva/no-comments": {
-      "count": 1
     }
   },
   "src/ui/studio/conversation.tsx": {
@@ -382,9 +285,6 @@
   "src/ui/studio/sparring.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 1
-    },
-    "threva/no-comments": {
-      "count": 4
     }
   },
   "test/agent-card.test.tsx": {
