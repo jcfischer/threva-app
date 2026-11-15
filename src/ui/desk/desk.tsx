@@ -9,6 +9,7 @@ import { useStudioAct } from "../studio/act";
 import { ago, materialCards, noteCards, openThing, type DeskSide } from "./cards";
 import { History } from "./history";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
+import { OUTCOME_LABEL, standLine, TopicMenu } from "./topic-menu";
 
 interface Open { left: string | null; right: string | null }
 
@@ -102,6 +103,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
     </section>;
   }
   const name = t("studio.assistant");
+  const stand = standLine(thread);
   const material = materialCards(thread.material ?? []);
   const notes = noteCards(thread.notes);
   const left = openThing(thread, open.left);
@@ -147,13 +149,20 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
         />)}
       </aside>
       <div className="desk-topic stack" data-desk="middle">
-        <h2 className="stq">{thread.question}</h2>
-        <p className="desk-lead">{thread.stand || t("studio.stand.none")}</p>
+        <div className="desk-head">
+          <h2 className="stq">{thread.question}</h2>
+          {thread.state !== "closed" && <TopicMenu thread={thread} busy={busy} run={run} />}
+        </div>
+        {stand !== null && <p className="desk-lead">{stand}</p>}
+        {thread.state === "closed" && (thread.outcome
+          ? <p className="desk-outcome" data-desk-outcome={thread.outcome}><span className={`pill ${thread.outcome === "dropped" ? "calm" : "ok"}`}>{t(OUTCOME_LABEL[thread.outcome])}</span>{thread.outcomeText ? <span>{thread.outcomeText}</span> : null}</p>
+          : <p className="desk-outcome faint">{t("thread.closed")}</p>)}
         {orderedThreadEntries(thread).map((entry, index) => <div key={`${entry.author}-${entry.at}-${index}`} className={`thread-entry${entry.author === "assistant" ? " thread-kept" : ""}`}>
           <span className="faint">{entry.author === "assistant" ? name : t("studio.you")}, <ThreadDate at={entry.at} />: </span>{entry.text}
         </div>)}
       </div>
       <aside className="desk-side desk-notes" aria-label={t("desk.notes")}>
+        {thread.thinkTonight === true && <p className="desk-promise" data-desk-promise="true">{t("desk.tonight.promise")}</p>}
         <span className="eyebrow">{t("desk.notes")}</span>
         {notes.length === 0 && <span className="faint">{t("desk.notes.none")}</span>}
         {notes.map((card) => <DeskCardShell

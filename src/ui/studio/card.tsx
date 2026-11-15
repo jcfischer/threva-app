@@ -1,10 +1,11 @@
 import { useState } from "react";
-import type { StudioAct, StudioMaterial, StudioNote, StudioOutcome, StudioResponse, StudioThread } from "../api/types";
+import type { StudioMaterial, StudioNote, StudioResponse, StudioThread } from "../api/types";
 import { safeHref } from "../api/safe-link";
 import { Markdown } from "../markdown";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { ago } from "../i18n/ago";
+import { CloseTopicForm } from "../desk/topic-menu";
 import { useStudioAct } from "./act";
 import { DiscussNote, TalkItThrough } from "./conversation";
 import { dayCard, type DayCardNote } from "./day-card";
@@ -27,12 +28,6 @@ const STATUS: Record<StudioNote["status"], { key: TextKey; pill: string }> = {
   kept: { key: "studio.status.kept", pill: "ok" },
   dismissed: { key: "studio.status.dismissed", pill: "calm" },
 };
-const OUTCOMES: { id: StudioOutcome; key: TextKey }[] = [
-  { id: "decided", key: "studio.outcome.decided" },
-  { id: "shipped", key: "studio.outcome.shipped" },
-  { id: "dropped", key: "studio.outcome.dropped" },
-];
-
 function When({ at }: { at: string }) {
   const { date, time } = useI18n();
   const d = new Date(at);
@@ -99,66 +94,6 @@ function MaterialRail({ material }: { material: readonly StudioMaterial[] }) {
           {m.kind !== "link" && <span className="faint"> {m.kind}</span>}
         </span>
       ))}
-    </div>
-  );
-}
-
-export interface CloseFields {
-  outcome: StudioOutcome;
-  text: string;
-  expect: string;
-  reviewOn: string;
-}
-
-/** The close act for the form, or null while it lacks what Cortex asks for: a text, and for a decision also what you expect and a review date. */
-export function closeAct(thread: string, f: CloseFields): StudioAct | null {
-  const text = f.text.trim();
-  if (!text) return null;
-  if (f.outcome !== "decided") return { act: "close", thread, outcome: f.outcome, text };
-  const expect = f.expect.trim();
-  if (!expect || !f.reviewOn) return null;
-  return { act: "close", thread, outcome: "decided", text, expect, reviewOn: f.reviewOn };
-}
-
-function CloseForm({ slug, busy, run, onCancel }: { slug: string; busy: boolean; run: Run; onCancel: () => void }) {
-  const { t } = useI18n();
-  const [outcome, setOutcome] = useState<StudioOutcome>("decided");
-  const [text, setText] = useState("");
-  const [expect, setExpect] = useState("");
-  const [reviewOn, setReviewOn] = useState("");
-  const act = closeAct(slug, { outcome, text, expect, reviewOn });
-  const send = async () => {
-    if (act && (await run(act)).ok) onCancel();
-  };
-  return (
-    <div className="stack">
-      <span className="eyebrow">{t("studio.finish")}</span>
-      <div className="row" role="radiogroup" aria-label={t("studio.outcome")}>
-        {OUTCOMES.map((o) => (
-          <label key={o.id} className="sttog">
-            <input type="radio" name={`outcome-${slug}`} checked={outcome === o.id} onChange={() => { setOutcome(o.id); }} />
-            {t(o.key)}
-          </label>
-        ))}
-      </div>
-      <textarea aria-label={t("studio.outcomeText")} placeholder={t("studio.outcomeText")} value={text} onChange={(e) => { setText(e.target.value); }} rows={3} />
-      {outcome === "decided" && (
-        <>
-          <input type="text" aria-label={t("studio.expect")} placeholder={t("studio.expect")} value={expect} onChange={(e) => { setExpect(e.target.value); }} />
-          <label className="faint">
-            {t("studio.reviewOn")}
-            <input type="date" value={reviewOn} onChange={(e) => { setReviewOn(e.target.value); }} />
-          </label>
-        </>
-      )}
-      <div className="row">
-        <button type="button" className="btn pri" disabled={busy || !act} onClick={() => { void send(); }}>
-          {t("studio.closeSend")}
-        </button>
-        <button type="button" className="btn quiet" disabled={busy} onClick={onCancel}>
-          {t("studio.cancel")}
-        </button>
-      </div>
     </div>
   );
 }
@@ -305,7 +240,7 @@ export function StudioOpen({ thread, waits, onHide, personas = [] }: StudioOpenP
           <ErrorLine error={error} />
           <TalkItThrough thread={slug} />
           {closing ? (
-            <CloseForm slug={slug} busy={busy} run={run} onCancel={() => { setClosing(false); }} />
+            <CloseTopicForm thread={thread} busy={busy} run={run} onCancel={() => { setClosing(false); }} />
           ) : (
             <div className="row" style={{ justifyContent: "space-between" }}>
               <button
