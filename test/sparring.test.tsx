@@ -222,6 +222,28 @@ describe("a click on the rail", () => {
     }, fetchImpl);
   });
 
+  test("a retry after no answer or a server error reuses the request id; after a refusal the next click gets a fresh one", async () => {
+    const ids: unknown[] = [];
+    const replies = [
+      () => { throw new TypeError("network down"); },
+      () => Response.json({ ok: false, error: "Ranger timed out." }, { status: 503 }),
+      () => Response.json({ ok: false, error: "This thread is closed." }, { status: 409 }),
+      () => Response.json({ ok: false, error: "This thread is closed." }, { status: 409 }),
+    ];
+    const fetchImpl: Fetch = async (_path, init) => {
+      const body: { requestId: unknown } = JSON.parse(init!.body as string);
+      ids.push(body.requestId);
+      return replies[ids.length - 1]();
+    };
+    await withDom(async (click) => {
+      for (const _reply of replies) await click("Red team");
+    }, fetchImpl);
+    expect(ids).toHaveLength(4);
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[2]).toBe(ids[0]);
+    expect(ids[3]).not.toBe(ids[0]);
+  });
+
   test("shows Cortex's message when the act answers an error, and leaves the buttons alone", async () => {
     const fetchImpl: Fetch = async () => Response.json({ ok: false, error: "Ranger is configured for another Studio directory." }, { status: 503 });
     await withDom(async (click, container) => {

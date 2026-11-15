@@ -4,6 +4,7 @@ import { createClient } from "../src/ui/api/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard } from "../src/ui/cards/mail-cards";
 import { MeetingSoonCard } from "../src/ui/cards/meeting-cards";
+import { Mentioned } from "../src/ui/cards/parts";
 import { ItemCard } from "../src/ui/cards/queue-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { item, NOW } from "./fixtures/desk";
@@ -33,4 +34,14 @@ test("a safe link after a bad one still renders on every card", () => {
   expect(wrap(<MeetingSoonCard item={item({ key: "m", kind: "meeting", actions: [action] })} event={{ key: "e", at: NOW, end: NOW + 1, title: "Call", kind: "meeting", url: "https://ok.example/" }} />)).toContain('href="https://ok.example/"');
   const mail = wrap(<MailCard item={item({ key: "mail", kind: "mail", detail: { summary: "", links: [{ label: "x", url: bad }, { label: "y", url: "message:%3Cid@example.org%3E" }] } })} />);
   expect(mail).toContain('href="message:%3Cid@example.org%3E"');
+});
+
+test("of two mentions that start at the same place the longer one is linked, and an unsafe mention stays plain text", () => {
+  const html = renderToStaticMarkup(
+    <Mentioned
+      text="Desk card waits on the store."
+      mentions={[{ text: "Desk", url: "https://short.example/" }, { text: "Desk card", url: "https://long.example/" }, { text: "store", url: bad }]}
+    />,
+  );
+  expect(html).toBe('<a href="https://long.example/" target="_blank" rel="noreferrer">Desk card</a> waits on the store.');
 });

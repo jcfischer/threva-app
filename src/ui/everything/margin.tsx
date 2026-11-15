@@ -44,9 +44,9 @@ interface AssistantMarginProps {
   tops: Readonly<Record<string, number | null>>;
   page: string;
   name: string;
-  onKeep(note: OpenNote): void;
-  onReplace(note: OpenNote): void;
-  onDismiss(note: OpenNote): void;
+  onKeep: (note: OpenNote) => void;
+  onReplace: (note: OpenNote) => void;
+  onDismiss: (note: OpenNote) => void;
 }
 
 /** The assistant's open notes beside the page, each at the height of its passage. The buttons follow the editor in the tab order. */

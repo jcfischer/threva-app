@@ -16,11 +16,11 @@ export function pickLocale(language: string | undefined): Locale {
 
 export interface I18n {
   readonly locale: Locale;
-  t(key: TextKey, vars?: Vars): string;
-  tn(key: PluralKey, count: number, vars?: Vars): string;
-  time(date: Date): string;
-  date(date: Date): string;
-  number(value: number): string;
+  readonly t: (key: TextKey, vars?: Vars) => string;
+  readonly tn: (key: PluralKey, count: number, vars?: Vars) => string;
+  readonly time: (date: Date) => string;
+  readonly date: (date: Date) => string;
+  readonly number: (value: number) => string;
 }
 
 export function createI18n(locale: Locale): I18n {

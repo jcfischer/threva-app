@@ -1,6 +1,3 @@
-// The subset of Cortex's Desk API responses that Threva reads. Shapes follow
-// Mission Control's JSON; Threva never imports Cortex code.
-
 export type DeskItemKind =
   | "goal" | "sensor" | "agent-failed" | "agent-blocked" | "decision" | "grilling" | "escalation"
   | "mail" | "reminder" | "meeting" | "mail-rule" | "dmarc" | "mail-waiting" | "mail-handoff" | "adapter";
@@ -19,7 +16,6 @@ export interface DeskLink {
   url: string;
 }
 
-// A substring of a card's text that Cortex links to a URL.
 export interface DeskMention {
   text: string;
   url: string;
@@ -32,7 +28,6 @@ export interface RulingChoice {
 }
 
 export interface InterruptReason {
-  // Keep unknown codes so a newer Cortex can fall back to its own why text.
   code: string;
   target?: string;
   eventKey?: string;
@@ -57,16 +52,13 @@ export interface DeskItem {
   urgency: "now" | "today" | "this-week" | "waiting";
   actions: DeskAction[];
   more?: DeskAction[];
-  // refs[0] is the item's own reference; the rest point at related work.
   detail: { summary: string; links: DeskLink[]; refs?: string[]; history?: string[]; suspicion?: string[] };
-  // Cortex node 3646; stacks without it omit the field.
   mentions?: DeskMention[];
   excerpt?: string;
   suggestion?: string;
   eventKey?: string;
   since?: number;
   interrupt?: DeskInterrupt;
-  // Cortex sets todoFingerprint on every item it can move to My Day's Inbox, and readOnly on items that take no action.
   todoFingerprint?: string;
   readOnly?: boolean;
   question?: { condition: string | null; reason: string };
@@ -92,7 +84,6 @@ export interface TodayTask {
   areaTitle: string;
 }
 
-// A task the day is done with. Cortex keeps no time for it.
 export interface TodayWin {
   taskId: string;
   title: string;
@@ -162,9 +153,7 @@ export interface OutlineRow {
     interval: number;
     weekdays?: number[];
   };
-  // Projected by Cortex; recurrence rules belong to the engine.
   recurrence?: { returnsOn: string | null; reappearsOn: string | null; finished: boolean };
-  // The row's page as Markdown, and the details `outline-edit` sends back unchanged.
   note?: string;
   focusMonth?: string;
   context?: string;
@@ -183,12 +172,10 @@ export interface MyDayOutline {
   date: string;
   revision: number;
   outline: OutlineRow;
-  // Rows Cortex owns for a Studio thread; projects open the thread's page.
   studioTasks?: { id: string; slug: string }[];
   studioProjects?: StudioProject[];
 }
 
-// Every detail of a row as `outline-edit` takes it. Threva sends the row's own values back unchanged.
 export interface OutlineDetails {
   title: string;
   weight: number;
@@ -207,13 +194,11 @@ export type OutlineCommand =
   | { op: "outline-edit"; revision: number; id: string; details: OutlineDetails; yes: boolean }
   | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };
 
-// Every change Threva makes to My Day. `todo` moves a Desk item into today's Inbox.
 export type MyDayCommand =
   | OutlineCommand
   | { op: "todo"; key: string; fingerprint: string }
   | { op: "done"; id: string };
 
-// What Cortex answers to a My Day change. `undo` is a receipt for `op: "undo"`; Cortex returns none for `todo`.
 export interface MyDayChange {
   view: MyDayOutline;
   undo?: string;
@@ -259,7 +244,6 @@ export interface StudioMaterial {
 
 export type StudioOutcome = "decided" | "shipped" | "dropped";
 
-// A Studio thread's thinking availability, as Cortex reports it per thread. The reason is Cortex's own wording.
 export type ThinkingBudget = "open" | "spent" | "off";
 
 export interface StudioThinkingRun {
@@ -291,10 +275,8 @@ export interface StudioList {
   studio: { personas?: string[]; active: StudioThread[]; parked?: StudioThread[]; closed?: StudioThread[] } | null;
 }
 
-// The sparring modes Cortex accepts: five fixed ones and one per configured persona.
 export type SparMode = "think" | "grill" | "other-side" | "red-team" | "first-principles" | `persona:${string}`;
 
-// The `POST /api/desk/studio/act` bodies Threva sends, without the request id.
 export type StudioAct =
   | { act: "respond"; thread: string; text: string }
   | { act: "keep" | "dismiss"; thread: string; note: string }

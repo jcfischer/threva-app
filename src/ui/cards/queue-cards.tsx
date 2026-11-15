@@ -7,14 +7,11 @@ import { taskDone } from "../queue/keys";
 import { useAct } from "./act";
 import { Card, ErrorLine, MakeTaskButton, Mentioned } from "./parts";
 
-// The actions POST /api/desk/action takes, labelled by action id. Cortex lists ranger.park too but never wires it
-// and the endpoint refuses it, so it gets no button until both change.
 const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
   "ranger.retry": "card.agent.action.ranger.retry",
   "ranger.approve": "card.agent.action.ranger.approve",
 };
 
-// The card always shows the detail, and the queue's own "Not now" skips it, so "detail" and "snooze" need no button here.
 export function AgentCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
   const card = useAct();

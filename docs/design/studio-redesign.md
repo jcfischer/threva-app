@@ -194,7 +194,7 @@ After Scott Jenson's Akademy 2026 talk (from 32:34): the work sits full size in 
 - One draft per topic, or several pieces to switch between.
 - What the Day card shows. Proposed: the one waiting question, answerable in place, and "Open the desk" (close to variant D).
 - Screens under about 1100 pixels, where the three zones stack.
-- Thinking overnight: where it is switched on, and how many notes a night may bring.
+- Thinking overnight: where it is switched on, and how many notes a night may bring. Decided as D15 to D20 below.
 - Q5, Q6 and Q10 above.
 
 ### Research behind D5 to D8
@@ -280,3 +280,18 @@ What exists for Q20, from a read of Cortex, Soma and ranger on 2026-11-14 (by an
 - Cortex nodes under the-metafactory/cortex#3555: #3655 (one draft per thread), #3656 (a thread starts a research or prototype job under a grant and receives its artifact; after #3653), #3657 (what a thread's type means: due dates, review dates and outcomes), #3658 (ask about a passage and get questions; after #3655).
 - Held as placeholder nodes under jcfischer/threva-app#89, each blocked by its Cortex node, so they reach the frontier when that node closes: #102 (the draft and working in; after cortex#3655), #103 (passage requests and the request list; after cortex#3658 and #3653), #104 (work requests, grants and exceptions; after cortex#3656), #105 (the due and review reasons for a Day card; after cortex#3657). #106 (overnight thinking: its limit and notes from other topics) is open and unblocked.
 - Node #90 merged (pull request #93) before its stand ruling was applied, so the desk on main still shows the stand as a lead on every topic. A ruling on #96 carries the fix.
+
+### Overnight thinking, decided 2026-11-14
+
+Grilled on jcfischer/threva-app#106. The switch itself is #96.
+
+| Code | Decision |
+|---|---|
+| D15 | **The nightly limit is the engine's.** It is Ranger's `dailyRuns` for each policy, counted per UTC day across all topics, and it stays at 3 for local and 3 for cloud. Thinking usually runs on the cloud model, so in practice a desk gets three notes a night. Threva has no rule of its own that hides notes. |
+| D16 | **The promise shows Cortex's number.** Until Cortex serves the limit and tonight's count, the promise is worded without a number. The budget resets at UTC midnight, and the principal accepted that. |
+| D17 | **Relation notes share the same budget** as other notes. |
+| D18 | **Threva shows relation notes now,** built against fixtures, so they appear once Cortex writes them. Every `relates` kind is shown: a link opens its `href`, and a goal or person relation shows its label. Keep and dismiss work as for ideas. |
+| D19 | **Only a relation to another topic can be followed.** The note names that topic by its question. Following opens the topic as a card on the left, beside the draft, showing its question, its type, its newest note and "Open its desk". A parked or closed topic says so. An unknown slug is shown as plain text. Following never opens a conversation (D8). |
+| D20 | **cortex#3421 (three alternatives on request) is not overnight thinking** and is dropped from this question. |
+
+Filed: the-metafactory/cortex#3663 (a thread's thinking says its nightly limit and tonight's count), a comment on the-metafactory/cortex#3495 with D17 to D19, build node #112 (relation notes on the desk; after #91), grilling node #113 (the number in the promise; after cortex#3663), and a ruling on #96 (the promise without a number).
