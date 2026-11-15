@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
 import { createClient } from "../src/ui/api/client";
-import type { Exchange, StudioSession } from "../src/ui/api/conversations";
 import { QueueContext } from "../src/ui/cards/act";
 import { AssistantMargin, Margin } from "../src/ui/everything/margin";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { ExchangeView, SessionView } from "../src/ui/studio/conversation";
-import { StudioOpen } from "../src/ui/studio/card";
+import { Markdown } from "../src/ui/markdown";
+import { StudioCard } from "../src/ui/studio/card";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 import { budgetThread } from "./fixtures/studio";
 
@@ -54,35 +53,10 @@ function expectFormatted(scope: Element) {
   expect(md.textContent).not.toContain("**");
 }
 
-const exchange = (text: string): Exchange => ({
-  conversation: { id: "c1", title: "Budget", activity: { lastAt: "2026-11-14T08:00:00Z", status: "idle" } },
-  using: "pi/claude-sonnet",
-  working: false,
-  entries: [
-    { id: "1", kind: "cortex.input", role: "user", text: "First line\n- **not** a list" },
-    { id: "2", kind: "message", role: "assistant", text },
-  ],
-});
-
 describe("assistant text as Markdown", () => {
-  test("a Talk it through reply renders as Markdown, while what you typed stays as written", async () => {
-    const container = await render(<ExchangeView exchange={exchange(REPLY)} />);
-    expectFormatted(container);
-    const typed = container.querySelector("p.typed")!;
-    expect(typed.textContent).toBe("First line\n- **not** a list");
-    expect(typed.querySelector("strong")).toBeNull();
-  });
-
-  test("a session turn's answer renders as Markdown", async () => {
-    const session = { turns: [{ id: "t1", text: "Which **first**?", model: "pi", answer: { reply: REPLY } }] } as unknown as StudioSession;
-    const container = await render(<SessionView session={session} />);
-    expectFormatted(container);
-    expect(container.querySelector("p.typed")?.textContent).toBe("Which **first**?");
-  });
-
   test("a Studio note renders as Markdown", async () => {
     const thread = { ...budgetThread, notes: [{ ...budgetThread.notes[0]!, text: REPLY }] };
-    const container = await render(<StudioOpen thread={thread} waits onHide={() => {}} personas={[]} />);
+    const container = await render(<StudioCard thread={thread} now={Date.parse("2026-11-14T12:00:00Z")} />);
     expectFormatted(container);
   });
 
@@ -99,7 +73,7 @@ describe("assistant text as Markdown", () => {
 
   test("line breaks, headings, quotes and code blocks keep their shape", async () => {
     const text = "# Plan\nfirst\nsecond\n\n> quoted\n> on\n\n```\nlet a = 1;\n  b\n```\n\n3. three\n4. four";
-    const container = await render(<ExchangeView exchange={exchange(text)} />);
+    const container = await render(<Markdown text={text} />);
     const md = container.querySelector(".md")!;
     expect(md.querySelector("h4")?.textContent).toBe("Plan");
     expect(md.querySelector("h1,h2,h3")).toBeNull();
@@ -111,13 +85,13 @@ describe("assistant text as Markdown", () => {
 
   test("reference-style links take their URL from the definition, which is not shown", async () => {
     const text = "See [the docs][Plan B] and [summer].\n\n[plan  b]: https://example.com/b\n[summer]: javascript:alert(1)";
-    const md = (await render(<ExchangeView exchange={exchange(text)} />)).querySelector(".md")!;
+    const md = (await render(<Markdown text={text} />)).querySelector(".md")!;
     expect([...md.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["the docs", "https://example.com/b"]]);
     expect(md.textContent).toBe("See the docs and summer.");
   });
 
   test("an underlined heading drops its underline", async () => {
-    const container = await render(<ExchangeView exchange={exchange("Plan\n----\n\nbody")} />);
+    const container = await render(<Markdown text={"Plan\n----\n\nbody"} />);
     expect(container.querySelector(".md h5")?.innerHTML).toBe("Plan");
   });
 });

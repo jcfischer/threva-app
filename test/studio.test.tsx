@@ -5,9 +5,9 @@ import { createClient, type Fetch } from "../src/ui/api/client";
 import type { StudioNote, StudioThread } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { buildQueue, EMPTY_SESSION, openStudio, skip } from "../src/ui/queue/order";
+import { buildQueue, EMPTY_SESSION } from "../src/ui/queue/order";
 import { sendStudioAct, STUDIO_ACT_PATH } from "../src/ui/studio/act";
-import { StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
+import { StudioCard } from "../src/ui/studio/card";
 import { dayCard, newestOpenNote, noteIsLong } from "../src/ui/studio/day-card";
 import { item, NOW as DESK_NOW, view } from "./fixtures/desk";
 import { mountDom, inputText, type MountedDom } from "./fixtures/dom";
@@ -24,8 +24,6 @@ function wrap(node: ReactNode, locale: "en" | "de" = "en", refresh: () => void =
 
 const card = (thread: StudioThread = budgetThread, locale: "en" | "de" = "en", now = NOW) =>
   renderToStaticMarkup(wrap(<StudioCard thread={thread} now={now} onDesk={noop} />, locale));
-const open = (thread: StudioThread = budgetThread, locale: "en" | "de" = "en", personas: readonly string[] = []) =>
-  renderToStaticMarkup(wrap(<StudioOpen thread={thread} waits onHide={noop} personas={personas} />, locale));
 
 const note = (overrides: Partial<StudioNote> = {}): StudioNote => ({ at: "2026-11-13T20:48:41Z", kind: "note", status: "open", text: "One hire waits until summer.", ...overrides });
 const withNotes = (notes: StudioNote[], type: StudioThread["type"] = "question"): StudioThread => ({ ...budgetThread, type, notes });
@@ -202,71 +200,6 @@ describe("the card in the queue", () => {
     const desk = view({ items: [item({ key: "fresh", kind: "sensor", score: 1, since: DESK_NOW })] });
     expect(buildQueue(desk, studioList([budgetThread]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["t:budget-next-year", "i:fresh"]);
     expect(buildQueue(desk, studioList([answered]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["i:fresh"]);
-  });
-
-  test("the open view is no longer reachable from the queue, and the session still holds a topic first", () => {
-    const session = openStudio(EMPTY_SESSION, "budget-next-year");
-    expect(buildQueue(view(), studioList([answered]), session, DESK_NOW)[0]).toMatchObject({ k: "t:budget-next-year", type: "thread", waits: false });
-    expect(buildQueue(view(), studioList([], [{ ...budgetThread, state: "parked" }]), session, DESK_NOW)[0]?.k).toBe("t:budget-next-year");
-    expect(skip(session, "t:budget-next-year").open).toBeNull();
-    expect(card()).not.toMatch(/<textarea/);
-    expect(card()).not.toContain("Where I stand");
-  });
-});
-
-describe("the open view", () => {
-  test("shows the stand, the notes and responses in time order, and the material in the rail", () => {
-    const html = open();
-    expect(html).toContain("Keep the team as it is and cut travel.");
-    const order = ["Ask Ada which hire matters most.", "Ada says the designer first.", "Hire one now, the second in summer.", "Ada&#x27;s draft adds two hires."];
-    const at = order.map((text) => html.indexOf(text));
-    expect(at.every((i) => i > 0)).toBe(true);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(html).toContain("Proposal for your stand");
-    expect(html).toContain("Why: Travel was a third of last year&#x27;s spend.");
-    expect(html).toContain(">kept<");
-    expect(html).toContain(">open<");
-    expect(html).toContain("Take it as my stand");
-    const rail = html.slice(html.indexOf('class="stside"'));
-    expect(rail).toContain("Ada Lovelace");
-    expect(rail).toContain('href="https://example.org/brief"');
-    expect(html.indexOf('class="stmain"')).toBeLessThan(html.indexOf('class="stside"'));
-  });
-
-  test("an open stand or idea offers keep, discuss and dismiss; a plain note or a kept one does not", () => {
-    expect(open().match(/>Dismiss</g)?.length).toBe(1);
-    const idea = { ...budgetThread, notes: budgetThread.notes.map((n) => (n.kind === "idea" ? { ...n, status: "open" as const } : n)) };
-    const html = open(idea);
-    expect(html.match(/>Dismiss</g)?.length).toBe(2);
-    expect(html.match(/>Keep</g)?.length).toBe(1);
-    expect(html).toContain("Discuss");
-  });
-
-  test("relation notes stay out (F27)", () => {
-    expect(open()).not.toContain("This relates to the March offsite.");
-    expect(timeline(budgetThread).some((e) => "note" in e && e.note.kind === "relation")).toBe(false);
-  });
-
-  test("it offers the response field and the thread acts, in German too", () => {
-    const en = open();
-    for (const label of ["Your answer to the assistant", "Think it over tonight", "Close with an outcome", ">Park<"]) expect(en).toContain(label);
-    const de = open(undefined, "de");
-    for (const label of ["Wo ich stehe", "Deine Antwort an den Assistenten", "Heute Nacht durchdenken", "Parken", "Als Standpunkt übernehmen"]) expect(de).toContain(label);
-  });
-
-  test("its rail offers sparring, with a question per persona Cortex lists and without one when it lists none", () => {
-    const html = open(budgetThread, "en", ["Grace Hopper"]);
-    const rail = html.slice(html.indexOf('class="stside"'));
-    expect(rail).toContain("Sparring");
-    for (const label of ["Think now", "Grill me", "Argue the other side", "Red team", "First principles"]) expect(rail).toContain(`>${label}<`);
-    expect(rail).toContain("What would Grace Hopper say?");
-    expect(open()).not.toContain("What would");
-  });
-
-  test("a parked thread offers to bring it back", () => {
-    const html = open({ ...budgetThread, state: "parked" });
-    expect(html).toContain("Bring back");
-    expect(html).toContain("Parked");
   });
 });
 

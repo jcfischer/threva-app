@@ -49,7 +49,7 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
   const watchInterruptions = useMemo(() => interruptionWatcher(notifier, key => {
     setView("day");
     setDesk(null);
-    setSession(current => ({ ...current, pin: `i:${key}`, open: null, skip: current.skip.filter(k => k !== `i:${key}`) }));
+    setSession(current => ({ ...current, pin: `i:${key}`, skip: current.skip.filter(k => k !== `i:${key}`) }));
   }), [notifier]);
   useEffect(() => {
     if (state.view) watchInterruptions(state.view.items);
