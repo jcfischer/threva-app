@@ -7,6 +7,7 @@ import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
 import { useStudioAct } from "../studio/act";
 import { ago, materialCards, noteCards, openThing, type DeskSide } from "./cards";
+import { History } from "./history";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
 
 interface Open { left: string | null; right: string | null }
@@ -174,6 +175,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
         />)}
       </aside>
     </div>
+    <History thread={thread} onOpenNote={(id) => { if (notes.some((card) => card.id === id)) setOpen((current) => ({ ...current, right: id })); }} />
   </section>;
 }
 

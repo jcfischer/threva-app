@@ -357,3 +357,13 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
   .desk-notes .desk-card{align-self:flex-start;width:100%;max-width:240px}
   .desk-opened{position:absolute;z-index:6;max-height:80vh;overflow:auto}
 }
+.desk-history{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px}
+.desk-history-ends{display:flex;justify-content:space-between;font-size:12px}
+.desk-history-strip{list-style:none;margin:0;padding:0 0 4px;display:flex;flex-wrap:nowrap;align-items:flex-end;gap:3px;height:34px;overflow-x:auto;overflow-y:hidden}
+.desk-history-strip li{flex:1 0 8px;min-width:8px;display:flex;align-items:flex-end}
+.desk-block{display:block;width:100%;padding:0;border:2px solid var(--accent);border-radius:2px;cursor:default}
+.desk-block-note{height:28px;background:var(--accent);cursor:pointer}
+.desk-block-response{height:20px;background:var(--panel);border-style:solid}
+.desk-block-log{height:10px;background:transparent;border-style:dotted}
+.desk-block:focus-visible{outline:2px solid var(--dim);outline-offset:1px}
+.desk-history-detail{margin:0;min-height:1.3em;font-size:12.5px;color:var(--dim)}
