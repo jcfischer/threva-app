@@ -8,7 +8,6 @@ import { noteCards, relationTarget } from "../src/ui/desk/cards";
 import { Desk } from "../src/ui/desk/desk";
 import { OpenCard } from "../src/ui/desk/open-card";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
 import { inputText, mountDom } from "./fixtures/dom";
 import { budgetThread, studioList } from "./fixtures/studio";
 
@@ -222,7 +221,7 @@ describe("following on the desk", () => {
         return Response.json({ ok: true, message: "Saved." });
       });
       expect(posts).toHaveLength(1);
-      expect(posts[0]?.path).toBe(STUDIO_ACT_PATH);
+      expect(posts[0]?.path).toBe("/api/desk/studio/act");
       expect(posts[0]?.body).toMatchObject({ act: action, thread: budgetThread.slug, note: relation.at });
       expect(posts[0]?.body.requestId).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
     });

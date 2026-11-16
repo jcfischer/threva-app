@@ -277,12 +277,6 @@
     }
   },
   "test/agent-card.test.tsx": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 1
-    },
     "threva/no-comments": {
       "count": 1
     }
@@ -297,11 +291,6 @@
       "count": 1
     }
   },
-  "test/conversation.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
   "test/earlier.test.tsx": {
     "threva/no-comments": {
       "count": 3
@@ -309,7 +298,7 @@
   },
   "test/everything-assistant.test.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 7
+      "count": 6
     }
   },
   "test/everything-editor.test.tsx": {
@@ -370,9 +359,6 @@
     }
   },
   "test/interruptions.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 2
     },
@@ -407,9 +393,6 @@
     }
   },
   "test/sparring.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 2
-    },
     "threva/no-comments": {
       "count": 1
     }

@@ -1,13 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { StudioNote, StudioThread } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION, openStudio, skip } from "../src/ui/queue/order";
-import { sendStudioAct, STUDIO_ACT_PATH } from "../src/ui/studio/act";
-import { closeAct, StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
+import { StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
 import { dayCard, newestOpenNote, noteIsLong } from "../src/ui/studio/day-card";
 import { item, NOW as DESK_NOW, view } from "./fixtures/desk";
 import { mountDom, inputText, type MountedDom } from "./fixtures/dom";
@@ -18,7 +17,7 @@ const noop = () => {};
 
 function wrap(node: ReactNode, locale: "en" | "de" = "en", refresh: () => void = noop) {
   return <I18nProvider value={createI18n(locale)}>
-    <QueueContext.Provider value={{ client: createClient(async () => new Response("{}")), refresh }}>{node}</QueueContext.Provider>
+    <QueueContext.Provider value={{ client: createMemoryClient(), refresh }}>{node}</QueueContext.Provider>
   </I18nProvider>;
 }
 
@@ -129,26 +128,21 @@ describe("the Studio card", () => {
 
 describe("the acts on the card", () => {
   let dom: MountedDom;
-  let writes: { path: string; body: Record<string, unknown> }[];
-  let reply: (body: Record<string, unknown>) => Response;
+  let client: MemoryClient;
   let refreshed: number;
+  const writes = () => client.calls.filter((call) => call.name === "studio.act").map((call) => ({ body: call.args[0] as Record<string, unknown>, requestId: call.args[1] }));
 
   beforeEach(() => {
     dom = mountDom();
-    writes = [];
+    client = createMemoryClient();
+    client.seed("studio.act", { ok: true, data: {} });
     refreshed = 0;
-    reply = () => Response.json({ ok: true });
   });
   afterEach(async () => {
     await dom.cleanup();
   });
 
   async function mount(thread: StudioThread, locale: "en" | "de" = "en") {
-    const client = createClient(async (path, init) => {
-      const body = JSON.parse(typeof init?.body === "string" ? init.body : "") as Record<string, unknown>;
-      writes.push({ path, body });
-      return reply(body);
-    });
     await act(async () => {
       dom.root.render(
         <I18nProvider value={createI18n(locale)}>
@@ -168,14 +162,14 @@ describe("the acts on the card", () => {
     await mount(budgetThread);
     await inputText(field(), " One hire waits until summer. ");
     await click("Send");
-    expect(writes.map((w) => w.path)).toEqual([STUDIO_ACT_PATH]);
-    expect(writes[0]?.body).toMatchObject({ act: "respond", thread: "budget-next-year", text: "One hire waits until summer." });
+    expect(writes()).toHaveLength(1);
+    expect(writes()[0]?.body).toMatchObject({ act: "respond", thread: "budget-next-year", text: "One hire waits until summer." });
     expect(refreshed).toBe(1);
     expect(field().value).toBe("");
   });
 
   test("a refusal shows Cortex's message on the card and keeps the typed answer", async () => {
-    reply = () => Response.json({ ok: false, error: "The Studio has uncommitted changes." }, { status: 409 });
+    client.seed("studio.act", { ok: false, message: "The Studio has uncommitted changes.", status: 409 });
     await mount(budgetThread);
     await inputText(field(), "One hire waits until summer.");
     await click("Send");
@@ -188,10 +182,10 @@ describe("the acts on the card", () => {
     const stand = withNotes([note({ kind: "stand", at: "2026-11-13T03:14:00Z", text: "Hire one now, the second in summer." })]);
     await mount(stand);
     await click("Take it as my stand");
-    expect(writes[0]?.body).toMatchObject({ act: "keep", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" });
+    expect(writes()[0]?.body).toMatchObject({ act: "keep", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" });
     expect(refreshed).toBe(1);
     await click("Dismiss");
-    expect(writes[1]?.body).toMatchObject({ act: "dismiss", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" });
+    expect(writes()[1]?.body).toMatchObject({ act: "dismiss", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" });
   });
 });
 
@@ -269,59 +263,5 @@ describe("the open view", () => {
     const html = open({ ...budgetThread, state: "parked" });
     expect(html).toContain("Bring back");
     expect(html).toContain("Parked");
-  });
-});
-
-describe("closeAct", () => {
-  const base = { text: " It merges into the Desk. ", expect: "", reviewOn: "" };
-
-  test("a decision needs what you expect and a review date", () => {
-    expect(closeAct("t", { ...base, outcome: "decided" })).toBeNull();
-    expect(closeAct("t", { ...base, outcome: "decided", expect: "I use it daily." })).toBeNull();
-    expect(closeAct("t", { ...base, outcome: "decided", expect: " I use it daily. ", reviewOn: "2026-12-15" })).toEqual({
-      act: "close",
-      thread: "t",
-      outcome: "decided",
-      text: "It merges into the Desk.",
-      expect: "I use it daily.",
-      reviewOn: "2026-12-15",
-    });
-  });
-
-  test("done or dropped needs only the text, and sends no expectation", () => {
-    expect(closeAct("t", { ...base, outcome: "dropped", expect: "ignored", reviewOn: "2026-12-15" })).toEqual({ act: "close", thread: "t", outcome: "dropped", text: "It merges into the Desk." });
-    expect(closeAct("t", { ...base, text: "  ", outcome: "shipped" })).toBeNull();
-  });
-});
-
-describe("sendStudioAct", () => {
-  test("posts the act with a request id Cortex accepts", async () => {
-    const seen: { path: string; body: unknown }[] = [];
-    const fetchStub: Fetch = async (path, init) => {
-      seen.push({ path, body: JSON.parse(typeof init?.body === "string" ? init.body : "") });
-      return Response.json({ ok: true, message: "Your answer is in." });
-    };
-    const result = await sendStudioAct(createClient(fetchStub), { act: "respond", thread: "budget-next-year", text: "One hire waits." });
-    expect(result.ok).toBe(true);
-    expect(seen[0]?.path).toBe(STUDIO_ACT_PATH);
-    const body = seen[0]?.body as Record<string, unknown>;
-    expect(body).toMatchObject({ act: "respond", thread: "budget-next-year", text: "One hire waits." });
-    expect(String(body.requestId)).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
-  });
-
-  test("sends a note act with the note's time as its identifier", async () => {
-    let body: unknown;
-    const fetchStub: Fetch = async (_path, init) => {
-      body = JSON.parse(typeof init?.body === "string" ? init.body : "");
-      return Response.json({ ok: true });
-    };
-    await sendStudioAct(createClient(fetchStub), { act: "keep", thread: "budget-next-year", note: "2026-11-13T03:14:00Z" }, "req-12345678");
-    expect(body).toEqual({ act: "keep", thread: "budget-next-year", note: "2026-11-13T03:14:00Z", requestId: "req-12345678" });
-  });
-
-  test("returns Cortex's error text", async () => {
-    const fetchStub: Fetch = async () => Response.json({ ok: false, error: "The Studio has uncommitted changes." }, { status: 409 });
-    const result = await sendStudioAct(createClient(fetchStub), { act: "park", thread: "budget-next-year" });
-    expect(result).toEqual({ ok: false, message: "The Studio has uncommitted changes.", status: 409 });
   });
 });

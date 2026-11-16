@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeDesc } from "@codemirror/state";
-import { newRequestId, type DeskClient } from "../api/client";
+import type { DeskClient } from "../api/client";
 import type { OutlineRow } from "../api/types";
+import { useDeskAct, WRITE_LANDED } from "../act/use-act";
 import { useI18n } from "../i18n";
 import { addressedText, lineRemovalRange } from "./addressed";
 import { askAssistant, lineAbove, localDate, pageAfterKeep, pageAfterReplace, type AskKind, AssistantNotes, type OpenNote } from "./assistant";
@@ -19,7 +20,7 @@ export interface NotePageProps {
   onType: (text: string) => void;
   onLeave: (text: string, at: number) => void;
   onLift?: (request: { page: string; from: number; to: number }) => Promise<LiftOutcome>;
-  client?: Pick<DeskClient, "post">;
+  client?: Pick<DeskClient, "outline">;
   notes?: AssistantNotes;
   assistantName?: string;
 }
@@ -60,26 +61,24 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
     });
   }, [store, row.id]);
   const passages = useMemo(() => [...open, ...waiting].flatMap(item => item.passage ? [{ id: item.id, text: item.passage }] : []), [open, waiting]);
+  const { act, isInFlight } = useDeskAct();
   const send = async (kind: AskKind, question: string | undefined, passage: string | null): Promise<boolean> => {
-    if (!client || !store) return false;
-    const id = newRequestId();
+    if (!client || !store || isInFlight()) return false;
     setAsked(null);
-    setWaiting(previous => [...previous, { id, passage }]);
-    try {
-      const outcome = await askAssistant({ client, row: row.id, kind, question, passage, requestId: id });
-      if (!outcome.ok) {
-        if (mounted.current) setAsked(outcome.message ?? t("error.network"));
-        return false;
+    const asked = await act({ row: row.id, kind, question: question ?? null, passage }, async requestId => {
+      setWaiting(previous => [...previous, { id: requestId, passage }]);
+      try {
+        const outcome = await askAssistant({ client, row: row.id, kind, question, passage, requestId });
+        if (!outcome.ok) return outcome;
+        const stored = store.add(row.id, { id: requestId, kind, question: question ?? "", passage, reply: outcome.reply, ...(outcome.replacement === undefined ? {} : { replacement: outcome.replacement }), at: new Date().toISOString() });
+        return stored ? { ok: true, data: outcome } : { ok: false, message: t("assist.notStored"), status: WRITE_LANDED };
+      } finally {
+        if (mounted.current) setWaiting(previous => previous.filter(item => item.id !== requestId));
       }
-      const stored = store.add(row.id, { id, kind, question: question ?? "", passage, reply: outcome.reply, ...(outcome.replacement === undefined ? {} : { replacement: outcome.replacement }), at: new Date().toISOString() });
-      if (!stored) {
-        if (mounted.current) setAsked(t("assist.notStored"));
-        return false;
-      }
-      return true;
-    } finally {
-      if (mounted.current) setWaiting(previous => previous.filter(item => item.id !== id));
-    }
+    });
+    if (asked.ok) return true;
+    if (mounted.current) setAsked(asked.message ?? t("error.network"));
+    return false;
   };
   const lineDecoration = useMemo<LineDecoration>(() => ({
     matches: line => addressedText(line, assistantName ?? null) !== null,

@@ -64,6 +64,7 @@ export const closedThread: StudioThread = {
   state: "closed",
   closed: "2026-11-14",
   outcome: "dropped",
+  outcomeText: "It merges into the Desk.",
   question: "What goes into next year's budget?",
   stand: "Keep the team as it is and cut travel.",
   notes: [

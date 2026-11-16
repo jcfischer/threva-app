@@ -6,10 +6,12 @@ import { useI18n } from "../i18n";
 import { orderedThreadEntries } from "../everything/thread-page";
 import { ThreadDate } from "../everything/margin";
 import { useStudioAct } from "../studio/act";
+import { threadType } from "../studio/close";
 import { ago, findThread, materialCards, noteCards, openThing, relationTarget, type DeskSide } from "./cards";
 import { TopicCard } from "./topic-card";
 import { History } from "./history";
 import { openPlacement, samePlacement, OpenCard, type OpenPlacement } from "./open-card";
+import { standLine, TopicMenu, TopicOutcome } from "./topic-menu";
 
 type Left = { kind: "material"; id: string } | { kind: "topic"; slug: string };
 
@@ -106,6 +108,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
     </section>;
   }
   const name = t("studio.assistant");
+  const stand = standLine(thread);
   const material = materialCards(thread.material ?? []);
   const notes = noteCards(thread.notes);
   const topic = open.left?.kind === "topic" ? findThread(studio, open.left.slug) : undefined;
@@ -160,13 +163,18 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
         />)}
       </aside>
       <div className="desk-topic stack" data-desk="middle">
-        <h2 className="stq">{thread.question}</h2>
-        <p className="desk-lead">{thread.stand || t("studio.stand.none")}</p>
+        <div className="desk-head">
+          <h2 className="stq">{thread.question}</h2>
+          {thread.state !== "closed" && <TopicMenu key={`${thread.slug}-${threadType(thread)}`} thread={thread} busy={busy} run={run} />}
+        </div>
+        {stand !== null && <p className="desk-lead">{stand}</p>}
+        {thread.state === "closed" && <TopicOutcome thread={thread} />}
         {orderedThreadEntries(thread).map((entry, index) => <div key={`${entry.author}-${entry.at}-${index}`} className={`thread-entry${entry.author === "assistant" ? " thread-kept" : ""}`}>
           <span className="faint">{entry.author === "assistant" ? name : t("studio.you")}, <ThreadDate at={entry.at} />: </span>{entry.text}
         </div>)}
       </div>
       <aside className="desk-side desk-notes" aria-label={t("desk.notes")}>
+        {thread.state !== "closed" && thread.thinkTonight === true && <p className="desk-promise" data-desk-promise="true">{t("desk.tonight.promise")}</p>}
         <span className="eyebrow">{t("desk.notes")}</span>
         {notes.length === 0 && <span className="faint">{t("desk.notes.none")}</span>}
         {notes.map((card) => <DeskCardShell

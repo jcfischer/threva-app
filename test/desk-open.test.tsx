@@ -1,19 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
+import type { Result } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { StudioNote } from "../src/ui/api/types";
 import { Desk } from "../src/ui/desk/desk";
 import { OpenCard, openPlacement, OPEN_CARD_GAP, OPEN_CARD_MAX, OPEN_CARD_MIN, type Frame } from "../src/ui/desk/open-card";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
 import { budgetThread, studioList } from "./fixtures/studio";
 import { inputText, mountDom } from "./fixtures/dom";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
 const note = budgetThread.notes[0];
 const stand = budgetThread.notes[2];
-const noFetch: Fetch = async () => new Response("{}");
 
 const box = (left: number, top: number, width: number, height = 60): Frame => ({ left, top, right: left + width, bottom: top + height, width, height });
 const desk = (width: number, height = 900): Frame => box(0, 0, width, height);
@@ -123,13 +122,15 @@ describe("an opened material card", () => {
   });
 });
 
-async function withDesk(run: (container: HTMLElement, click: (id: string) => Promise<void>, again: (element: ReactNode) => Promise<void>) => Promise<void>, fetchImpl: Fetch = noFetch) {
+async function withDesk(run: (container: HTMLElement, click: (id: string) => Promise<void>, again: (element: ReactNode) => Promise<void>) => Promise<void>, seed: (client: MemoryClient) => void = () => {}) {
+  const client = createMemoryClient();
+  seed(client);
   const { root, container, cleanup } = mountDom();
   let refreshed = 0;
   const show = async (element: ReactNode) => { await act(async () => { root.render(element); }); };
   const deskElement = (studio = studioList([budgetThread])) => (
     <I18nProvider value={createI18n("en")}>
-      <Desk client={createClient(fetchImpl)} refresh={() => { refreshed += 1; }} studio={studio} slug={budgetThread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
+      <Desk client={client} refresh={() => { refreshed += 1; }} studio={studio} slug={budgetThread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
     </I18nProvider>
   );
   const click = async (id: string) => {
@@ -143,7 +144,7 @@ async function withDesk(run: (container: HTMLElement, click: (id: string) => Pro
   } finally {
     await cleanup();
   }
-  return { refreshed: () => refreshed };
+  return { refreshed: () => refreshed, client };
 }
 
 function place(element: Element, b: Frame) {
@@ -153,7 +154,7 @@ function place(element: Element, b: Frame) {
 const opened = (container: HTMLElement, side: "left" | "right") => container.querySelector<HTMLElement>(`[data-desk-opened="${side}"]`);
 const button = (container: HTMLElement, side: "left" | "right", label: string) =>
   Array.from(opened(container, side)!.querySelectorAll("button")).find((candidate) => candidate.textContent === label)!;
-const bodyOf = (init?: RequestInit) => JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+const studioActs = (client: MemoryClient) => client.calls.filter((call) => call.name === "studio.act");
 
 describe("a click on a parked card", () => {
   test("opens the card at full size outside its column and dims the parked card in place", async () => {
@@ -223,40 +224,32 @@ describe("a click on a parked card", () => {
 
 describe("acts on an opened note", () => {
   test("Keep sends keep and closes the card, and the desk refreshes", async () => {
-    const posts: { path: string; body: Record<string, unknown> }[] = [];
     const wired = await withDesk(async (container, click) => {
       await click(stand.at);
       const keep = button(container, "right", "Take it as my stand");
       await act(async () => { keep.click(); });
       expect(opened(container, "right")).toBeNull();
-    }, async (path, init) => {
-      posts.push({ path, body: bodyOf(init) });
-      return Response.json({ ok: true, message: "Kept. Your stand changed." });
-    });
+    }, (client) => client.seed("studio.act", { ok: true, data: { message: "Kept. Your stand changed." } }));
+    const posts = studioActs(wired.client);
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.path).toBe(STUDIO_ACT_PATH);
-    expect(posts[0]?.body).toMatchObject({ act: "keep", thread: budgetThread.slug, note: stand.at });
-    expect(String(posts[0]?.body.requestId)).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(posts[0]?.args[0]).toMatchObject({ act: "keep", thread: budgetThread.slug, note: stand.at });
+    expect(String(posts[0]?.args[1])).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
     expect(wired.refreshed()).toBe(1);
   });
 
   test("Dismiss sends dismiss", async () => {
-    let body: Record<string, unknown> = {};
-    await withDesk(async (container, click) => {
+    const wired = await withDesk(async (container, click) => {
       await click(stand.at);
       const dismiss = button(container, "right", "Dismiss");
       await act(async () => { dismiss.click(); });
       expect(opened(container, "right")).toBeNull();
-    }, async (_path, init) => {
-      body = bodyOf(init);
-      return Response.json({ ok: true, message: "Dismissed." });
-    });
-    expect(body).toMatchObject({ act: "dismiss", thread: budgetThread.slug, note: stand.at });
+    }, (client) => client.seed("studio.act", { ok: true, data: { message: "Dismissed." } }));
+    expect(studioActs(wired.client)[0]?.args[0]).toMatchObject({ act: "dismiss", thread: budgetThread.slug, note: stand.at });
   });
 
   test("a finished act closes only its own card, not one opened while it was in flight", async () => {
-    let release!: (value: Response) => void;
-    const pending = new Promise<Response>((resolve) => { release = resolve; });
+    let release!: (value: Result<unknown>) => void;
+    const pending = new Promise<Result<unknown>>((resolve) => { release = resolve; });
     await withDesk(async (container, click) => {
       await click(stand.at);
       const keep = button(container, "right", "Take it as my stand");
@@ -266,28 +259,24 @@ describe("acts on an opened note", () => {
       const field = opened(container, "right")!.querySelector("input")!;
       await inputText(field, "Keep drafting.");
 
-      await act(async () => { release(Response.json({ ok: true, message: "Kept." })); await pending; });
+      await act(async () => { release({ ok: true, data: { message: "Kept." } }); await pending; });
 
       const card = opened(container, "right");
       expect(card).not.toBeNull();
       expect(card!.textContent).toContain("Ada's draft adds two hires.");
       expect((card!.querySelector("input")!).value).toBe("Keep drafting.");
-    }, async () => pending);
+    }, (client) => client.seed("studio.act", () => pending));
   });
 
   test("Enter on the answer field sends respond with what was typed", async () => {
-    let body: Record<string, unknown> = {};
     const wired = await withDesk(async (container, click) => {
       await click(note.at);
       const field = opened(container, "right")!.querySelector("input")!;
       await inputText(field, "One hire now, the second in summer.");
       await act(async () => { field.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true })); });
       expect(opened(container, "right")).toBeNull();
-    }, async (_path, init) => {
-      body = bodyOf(init);
-      return Response.json({ ok: true, message: "Answered." });
-    });
-    expect(body).toMatchObject({ act: "respond", thread: budgetThread.slug, text: "One hire now, the second in summer." });
+    }, (client) => client.seed("studio.act", { ok: true, data: { message: "Answered." } }));
+    expect(studioActs(wired.client)[0]?.args[0]).toMatchObject({ act: "respond", thread: budgetThread.slug, text: "One hire now, the second in summer." });
     expect(wired.refreshed()).toBe(1);
   });
 
@@ -302,7 +291,7 @@ describe("acts on an opened note", () => {
       expect(card).not.toBeNull();
       expect(card!.textContent).toContain(refused);
       expect((card!.querySelector("input")!).value).toBe("One hire now.");
-    }, async () => Response.json({ error: refused }, { status: 409 }));
+    }, (client) => client.seed("studio.act", { ok: false, message: refused, status: 409 }));
     expect(wired.refreshed()).toBe(0);
   });
 });
