@@ -84,13 +84,25 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
     return 2;
   }
   const { config, cortex, log } = parsed.value;
-  const configText = deps.readConfig(config);
+  let configText: string | null;
+  try {
+    configText = deps.readConfig(config);
+  } catch {
+    record(deps, log, `Cannot read the stack config at ${config}. Check its path and permissions.`);
+    return 1;
+  }
   if (configText === null) {
     record(deps, log, `Cannot read the stack config at ${config}.`);
     return 1;
   }
 
-  const validation = await deps.validate(cortex, config);
+  let validation: ValidationResult;
+  try {
+    validation = await deps.validate(cortex, config);
+  } catch {
+    record(deps, log, "Cortex config validation could not run. Check the Bun executable and --cortex directory, then run threva doctor.");
+    return 1;
+  }
   if (!validation.ok) {
     record(
       deps,
@@ -103,14 +115,20 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
   const secrets: Record<string, string> = {};
   for (const key of envKeysReferenced(configText)) {
     if (deps.env[key]) continue;
-    const found = await deps.security([
-      "find-generic-password",
-      "-s",
-      `${KEYCHAIN_SERVICE_PREFIX}${key}`,
-      "-a",
-      deps.user,
-      "-w",
-    ]);
+    let found: SecurityResult;
+    try {
+      found = await deps.security([
+        "find-generic-password",
+        "-s",
+        `${KEYCHAIN_SERVICE_PREFIX}${key}`,
+        "-a",
+        deps.user,
+        "-w",
+      ]);
+    } catch {
+      record(deps, log, `The key ${key} could not be read from the Keychain. Check macOS Keychain access, then run threva setup.`);
+      return 1;
+    }
     const value = found.stdout.replace(/\r?\n$/, "");
     if (found.status !== 0 || value === "") {
       record(deps, log, `The key ${key} is not in the Keychain. Run threva setup to add it.`);
@@ -129,8 +147,8 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
   let code: number;
   try {
     code = await deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
-  } catch (error) {
-    record(deps, log, `Cortex could not be started: ${error instanceof Error ? error.message : String(error)}`);
+  } catch {
+    record(deps, log, "Cortex could not be started. Check the Bun executable and --cortex directory.");
     return 1;
   }
   if (code !== 0) {

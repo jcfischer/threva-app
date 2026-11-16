@@ -50,7 +50,27 @@ describe("threva launch", () => {
   test("a spawn error is recorded and exits non-zero", async () => {
     const r = rig("x: 1", { exec: () => Promise.reject(new Error("no bun")) });
     expect(await launch(argv, r.deps)).toBe(1);
-    expect(r.lines.at(-1)).toContain("no bun");
+    expect(r.lines.at(-1)).toContain("could not be started");
+  });
+
+  test("runner failures are actionable without logging their secret-bearing errors", async () => {
+    for (const runner of ["security", "validate", "exec"] as const) {
+      const r = rig("apiKey: env:ANTHROPIC_API_KEY", {
+        [runner]: () => Promise.reject(new Error("synthetic-private-value")),
+      });
+      expect(await launch(argv, r.deps)).toBe(1);
+      expect(r.lines.join("\n")).not.toContain("synthetic-private-value");
+      expect(doctor(["--log", "/l"], { readLog: () => r.lines.join("\n") }).output).toContain("threva launch:");
+    }
+  });
+
+  test("an unreadable config is recorded without reflecting the filesystem error", async () => {
+    const r = rig("", { readConfig: () => { throw new Error("synthetic-private-value"); } });
+    expect(await launch(argv, r.deps)).toBe(1);
+    expect(r.execCalls).toHaveLength(0);
+    expect(r.securityCalls).toHaveLength(0);
+    expect(r.lines.join("\n")).toContain("Check its path and permissions");
+    expect(r.lines.join("\n")).not.toContain("synthetic-private-value");
   });
 
   test("a missing Keychain item records one line and does not start Cortex", async () => {

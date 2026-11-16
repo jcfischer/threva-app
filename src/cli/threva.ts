@@ -30,14 +30,11 @@ const deps: LaunchDeps = {
     const result = await runCapture(["bun", `${cortexDir}/src/cortex.ts`, "config", "validate", "--config", pointer]);
     return { ok: result.status === 0, output: `${result.stdout}${result.stderr}` };
   },
-  exec: async (command, env) => {
-    const child = Bun.spawn(command, { env, stdin: "inherit", stdout: "inherit", stderr: "inherit" });
-    for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const) {
-      process.on(signal, () => {
-        child.kill(signal);
-      });
-    }
-    return child.exited;
+  exec: (command, env) => {
+    const executable = Bun.which(command[0] ?? "", { PATH: env.PATH });
+    if (!executable || !process.execve) throw new Error("Cortex requires Bun with process.execve support on PATH.");
+    process.execve(executable, command, env);
+    throw new Error("Cortex process replacement unexpectedly returned.");
   },
   appendLog: (path, line) => {
     mkdirSync(dirname(path), { recursive: true });
