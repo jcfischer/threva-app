@@ -24,7 +24,7 @@ export function historyBlocks(thread: Pick<StudioThread, "notes" | "responses" |
       .filter((note) => note.kind !== "relation")
       .map((note): HistoryBlock => ({ kind: "note", at: note.at, text: firstSentence(note.text), noteId: note.at })),
     ...thread.responses.map((response): HistoryBlock => ({ kind: "response", at: response.at, text: firstSentence(response.text), noteId: null })),
-    ...(thread.log ?? []).map((entry): HistoryBlock => ({ kind: "log", at: entry.at, text: entry.text, noteId: null })),
+    ...(thread.log ?? []).map((entry): HistoryBlock => ({ kind: "log", at: entry.at ?? "", text: entry.text, noteId: null })),
   ];
   return blocks
     .map((block, index) => ({ block, index }))

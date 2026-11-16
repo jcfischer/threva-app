@@ -130,6 +130,8 @@ export const en = {
   "about.source": "Source on this Mac",
   "about.devBuild": "Development build: the source ships with installed builds. Repository:",
   "error.network": "Cortex is not reachable. Threva keeps what it last saw and tries again.",
+  "startup.version": "Threva speaks Desk API {built}, this Cortex speaks Desk API {found}. Update Threva or Cortex so the two share a major version.",
+  "startup.contract": "Cortex did not say which Desk API it speaks. Update Cortex or Threva, then reload.",
   "queue.label": "Cards",
   "queue.loading": "Loading your cards…",
   "queue.empty": "Nothing needs you right now.",

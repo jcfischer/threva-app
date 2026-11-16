@@ -7,6 +7,7 @@ export const DAY = "2026-11-13";
 export function item(overrides: Partial<DeskItem> & Pick<DeskItem, "key" | "kind">): DeskItem {
   return {
     source: "test",
+    area: null,
     title: `Item ${overrides.key}`,
     why: "Because.",
     score: 1,

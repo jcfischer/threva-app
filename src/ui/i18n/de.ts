@@ -132,6 +132,8 @@ export const de: Messages = {
   "about.source": "Quelltext auf diesem Mac",
   "about.devBuild": "Entwicklungsbuild: Der Quelltext liegt nur installierten Builds bei. Repository:",
   "error.network": "Cortex ist nicht erreichbar. Threva behält, was es zuletzt gesehen hat, und versucht es wieder.",
+  "startup.version": "Threva spricht Desk API {built}, dieser Cortex spricht Desk API {found}. Aktualisiere Threva oder Cortex, damit beide dieselbe Hauptversion haben.",
+  "startup.contract": "Cortex hat nicht gesagt, welche Desk API er spricht. Aktualisiere Cortex oder Threva und lade die Seite neu.",
   "queue.label": "Karten",
   "queue.loading": "Deine Karten werden geladen …",
   "queue.empty": "Nichts braucht dich gerade.",

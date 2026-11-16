@@ -2,7 +2,7 @@
 
 Read `README.md` first. These rules hold for every change.
 
-1. Threva reaches Cortex only over HTTP and WebSocket on the local Mission Control server. Never import from `@the-metafactory/cortex` or copy Cortex source into this repository.
+1. Threva reaches Cortex only over HTTP and WebSocket on the local Mission Control server. Never import Cortex's runtime from `@the-metafactory/cortex` or copy Cortex source into this repository. A types-only import of its published `desk-api` is allowed: it disappears from the build. Lint rejects a runtime import from that package.
 2. When Threva needs something the Cortex API does not return, record it as a gap and file the change against Cortex. Do not work around it with logic here.
 3. The UX reference is the clickable prototype in the private `jcfischer/threva` repository: `try/proto` and `try/page` at commit `3816c84`.
 4. Use TypeScript and Bun. `bun run check` must pass before a pull request.

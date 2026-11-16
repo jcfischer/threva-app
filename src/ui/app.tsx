@@ -10,6 +10,7 @@ import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
+import { useStartup } from "./queue/use-startup";
 import { WeekView } from "./week/view";
 import { EverythingView } from "./everything/view";
 import { Desk } from "./desk/desk";
@@ -39,9 +40,11 @@ export function Header() {
 }
 
 export function App({ client, notifier: givenNotifier }: { client?: DeskClient; notifier?: Notifier }) {
+  const { t } = useI18n();
   const api = useMemo(() => client ?? createClient(), [client]);
   const notifier = useMemo(() => givenNotifier ?? browserNotifier(), [givenNotifier]);
-  const state = useDesk(api);
+  const startup = useStartup(api);
+  const state = useDesk(api, startup);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
   const [dismissed, dismiss] = useDismissedMeetings();
   const [view, setView] = useState<View>("day");
@@ -59,6 +62,9 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
   const now = Date.now();
   const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
   const pull = (k: string) => { setSession((current) => (current.pin === k ? current : pin(current, k))); };
+  if (startup.state === "refused") {
+    return <main className="wrap"><p className="faint" role="alert">{t("startup.version", { built: startup.built, found: startup.found })}</p></main>;
+  }
   return (
     <main className={`wrap${desk ? " wide" : ""}`}>
       <div className="wrap-body" hidden={desk !== null}>

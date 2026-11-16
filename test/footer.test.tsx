@@ -7,7 +7,7 @@ import { item, NOW, view } from "./fixtures/desk";
 
 const MIN = 60_000;
 
-const sweep = (id: string): MailSweep => ({ id, kind: "newsletter", target: "archive", label: "Newsletters", title: "Newsletters", why: "Read none.", mails: [] });
+const sweep = (id: string): MailSweep => ({ id, kind: "sweep", target: "archive", label: "Newsletters", title: "Newsletters", why: "Read none.", mails: [] });
 
 const render = (desk: DeskView, opts: { locale?: Locale; open?: boolean } = {}) =>
   renderToStaticMarkup(
