@@ -9,7 +9,7 @@ import { MailCard, type MailCardProps, RuleOfferCard } from "../src/ui/cards/mai
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION } from "../src/ui/queue/order";
 import { loadDesk } from "../src/ui/queue/use-desk";
-import { item, NOW, view } from "./fixtures/desk";
+import { item, NOW, seededApp, view } from "./fixtures/desk";
 
 const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
@@ -67,9 +67,7 @@ describe("learning phase", () => {
 
   test("the poll reads the rules, and a refused read leaves none", async () => {
     const client = createMemoryClient();
-    client.seed("desk", { ok: true, data: view() });
-    client.seed("studio", { ok: true, data: { studio: null } });
-    client.seed("rules", { ok: true, data: { rules: [rule] } });
+    seededApp(client, { rules: [rule] });
     const read = await loadDesk(client, { view: null, studio: null, error: null });
     expect(read.rules).toEqual([rule]);
     client.seed("rules", { ok: false, message: "Mail rules need the move command.", status: 409 });

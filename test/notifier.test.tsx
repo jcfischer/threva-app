@@ -7,7 +7,7 @@ import { NotifyControl } from "../src/ui/day/notify-control";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { browserNotifier, interruptionWatcher, type Notifier, type NotifyPermission } from "../src/ui/queue/notifier";
 import { POLL_MS } from "../src/ui/queue/use-desk";
-import { item, view } from "./fixtures/desk";
+import { item, seededApp, view } from "./fixtures/desk";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
 const urgent = (key: string, delivery: "pending" | "held" = "pending") => item({ key, kind: "mail", title: `Mail ${key}`, why: "From a VIP.", interrupt: { delivery, reason: { code: "mail.vip", target: "ada@example.org" } } });
@@ -148,10 +148,7 @@ test("App polls, notifies, and a notification click returns to Day with that car
   const fake = fakeNotifier();
   let items: DeskItem[] = [urgent("initial")];
   const client = createMemoryClient();
-  client.seed("desk", () => ({ ok: true, data: view({ items }) }));
-  client.seed("studio", { ok: true, data: { studio: null } });
-  client.seed("rules", { ok: true, data: { rules: [] } });
-  client.seed("myDay", { ok: true, data: { date: "2026-11-14", revision: 1, outline: { id: "root", title: "Everything", ordering: "parallel", weight: 1, children: [] } } });
+  seededApp(client, { desk: () => view({ items }) });
   // Drive the actual polling callback without waiting fifteen seconds in a test.
   globalThis.setInterval = ((callback: () => void, delay: number) => {
     if (delay === POLL_MS) tick = callback;

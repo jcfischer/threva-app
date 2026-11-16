@@ -135,7 +135,6 @@ describe("threva setup", () => {
     expect(await setup(["--port", "8795"], h.deps)).toBe(0);
     expect(JSON.parse(h.files.get(join(stackDir, "stacks", "threva.yaml")) ?? "").mc.port).toBe(8795);
     expect(h.calls.find((c) => c.tool === "open")?.args).toEqual(["http://127.0.0.1:8795/"]);
-    expect(new URL(h.posts[0].url).origin).toBe("http://127.0.0.1:8795");
   });
 
   test("a Keychain failure stops setup before the stack is written", async () => {

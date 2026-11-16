@@ -8,6 +8,7 @@ import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
 import { inputText, mountDom } from "./fixtures/dom";
+import { seededApp } from "./fixtures/desk";
 import recorded from "./fixtures/my-day.json";
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
@@ -207,10 +208,7 @@ test("drag moves send the source snapshot's revision and drop index", async () =
 test("App switches above the card and keeps the outline draft across Day", async () => surface(async (container, render) => {
   const fixture = outlineFixture();
   const client = createMemoryClient();
-  client.seed("myDay", { ok: true, data: fixture });
-  client.seed("studio", { ok: true, data: { studio: null } });
-  client.seed("rules", { ok: true, data: { rules: [] } });
-  client.seed("desk", { ok: true, data: { generatedAt: Date.now(), displayName: null, today: [], items: [] } });
+  seededApp(client, { myDay: fixture });
   await render(<App client={client} />);
   expect(container.querySelector(".view-switch")!.compareDocumentPosition(container.querySelector(".cards")!) & 4).toBe(4);
   await click(container, "Everything");

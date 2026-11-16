@@ -225,7 +225,7 @@ test("both adapters expose only named calls", () => {
   }
 });
 
-test("API paths stay at the HTTP boundary", () => {
+test("UI and test API paths stay in the client and HTTP contract test", () => {
   const root = join(import.meta.dir, "..");
   const matches = ["src/ui", "test"].flatMap(dir =>
     readdirSync(join(root, dir), { recursive: true, encoding: "utf8" })
@@ -233,4 +233,11 @@ test("API paths stay at the HTTP boundary", () => {
       .map(file => join(dir, file)),
   );
   expect(matches.sort()).toEqual(["src/ui/api/client.ts", "test/client-http.test.ts"]);
+});
+
+test("no source file but the client names the My Day path", () => {
+  const src = join(import.meta.dir, "../src");
+  const matches = readdirSync(src, { recursive: true, encoding: "utf8" })
+    .filter(file => /\.tsx?$/.test(file) && readFileSync(join(src, file), "utf8").includes("/api/desk/my-day"));
+  expect(matches).toEqual(["ui/api/client.ts"]);
 });
