@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { DeskClient, Result } from "../api/client";
+import { createContext, useContext, useEffect } from "react";
+import { useDeskAct, type ActError as SharedActError } from "../act/use-act";
+import type { DeskClient } from "../api/client";
 import type { DeskItem, MyDayChange, MyDayCommand } from "../api/types";
 import { allowsCardKey, type EnterAct } from "../queue/keys";
 
@@ -18,7 +19,7 @@ export function useQueue(): QueueContextValue {
   return value;
 }
 
-export type ActError = { message: string | null } | null;
+export type ActError = SharedActError;
 
 function canMakeTask(item: DeskItem): boolean {
   return !!item.todoFingerprint && !item.readOnly;
@@ -26,30 +27,19 @@ function canMakeTask(item: DeskItem): boolean {
 
 export function useAct(enter?: EnterAct) {
   const { client, refresh, myDayDate, onTask } = useQueue();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<ActError>(null);
-  const inFlight = useRef(false);
-  async function settle<T>(request: () => Promise<Result<T>>): Promise<Result<T>> {
-    inFlight.current = true;
-    setBusy(true);
-    setError(null);
-    const result = await request();
-    inFlight.current = false;
-    setBusy(false);
-    if (result.ok) refresh();
-    else setError({ message: result.message });
-    return result;
-  }
-  const run = <T = Record<string, unknown>>(path: string, body: unknown) => settle(() => client.post<T>(path, body));
+  const { busy, error, act, isInFlight } = useDeskAct(refresh);
+  const run = <T = Record<string, unknown>>(path: string, body: unknown) => act<T>({ path, body }, () => client.post<T>(path, body));
   const changeMyDay = (command: MyDayCommand) =>
-    settle<MyDayChange>(async () => (myDayDate ? client.changeMyDay(myDayDate, command) : { ok: false, message: null, status: 0 }));
+    act<MyDayChange>({ myDay: myDayDate, command }, async () =>
+      myDayDate ? client.changeMyDay(myDayDate, command) : { ok: false, message: null, status: 0 },
+    );
   const makeTask = async (item: DeskItem) => {
-    if (!item.todoFingerprint || inFlight.current) return;
+    if (!item.todoFingerprint || isInFlight()) return;
     const result = await changeMyDay({ op: "todo", key: item.key, fingerprint: item.todoFingerprint });
     if (result.ok) onTask?.(item.title);
   };
   const perform = () => {
-    if (!enter || inFlight.current) return;
+    if (!enter || isInFlight()) return;
     return "myDay" in enter ? changeMyDay(enter.myDay) : run(enter.path, enter.body);
   };
   useEffect(() => {
