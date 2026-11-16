@@ -4,6 +4,7 @@ import { Bar } from "./bar/bar";
 import { Footer } from "./day/footer";
 import { TimelineView } from "./day/timeline-view";
 import { clockAt } from "./day/timeline";
+import { About } from "./about/about";
 import { useI18n } from "./i18n";
 import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
@@ -32,6 +33,7 @@ export function Header() {
     <header>
       <h1>{t("app.title")}</h1>
       <p className="faint">{t("app.tagline")}</p>
+      <About />
     </header>
   );
 }

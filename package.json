@@ -7,7 +7,7 @@
     "threva": "src/cli/threva.ts"
   },
   "scripts": {
-    "build": "bun build src/ui/index.html --outdir dist/ui --target browser --splitting",
+    "build": "bun scripts/build.ts",
     "check": "bun scripts/check.ts",
     "dev:stack": "bun scripts/dev-stack.ts",
     "test": "bun test test",
