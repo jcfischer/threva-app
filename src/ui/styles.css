@@ -389,3 +389,12 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .week-event{overflow-wrap:anywhere}
 .week-row{background:var(--wait-soft);color:var(--wait);border:0;border-radius:6px;padding:4px 7px;text-align:left;font:inherit;font-weight:600;cursor:pointer;overflow-wrap:anywhere}
 .week-margin{display:block;font-size:12px;font-weight:400;margin-top:3px}
+.time-margin{position:relative;display:inline-block}
+.time-popover{position:absolute;z-index:3;right:0;top:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;min-width:240px;max-width:min(340px,80vw);box-shadow:0 4px 18px #0002}
+.time-form,.time-fields{display:flex;flex-direction:column;gap:8px}
+.time-fields label{display:flex;flex-direction:column;gap:2px}
+.time-fields input,.time-fields select{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);padding:6px;border-radius:6px}
+.time-days{display:flex;flex-wrap:wrap;gap:6px;border:0;padding:0;margin:0}
+.time-days label{flex-direction:row;align-items:center;gap:4px}
+.time-section{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.time-section h3{margin:0;font-size:14px}

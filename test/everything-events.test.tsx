@@ -24,7 +24,7 @@ const click = async (container: Element, text: string) => {
 };
 
 const input = async (container: Element, value: string) => {
-  const field = container.querySelector("input")!;
+  const field = container.querySelector<HTMLInputElement>(".outline-add input")!;
   await inputText(field, value);
 };
 
@@ -121,10 +121,10 @@ test("add, menu moves, finish and reopen use each returned revision; drafts stay
   await click(container, "‹ Work");
   await input(container, "Area draft");
   await click(container, "Exercise");
-  expect(container.querySelector("input")?.value).toBe("A new task");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("A new task");
   await click(container, "Add");
   expect(commands[0]).toEqual({ op: "outline-add", parent: "project", title: "A new task", revision: 12 });
-  expect(container.querySelector("input")?.value).toBe("");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("");
   let added = container.querySelector('[data-row="new"]')!;
   await click(added, "Up");
   expect(commands[1]).toEqual({ op: "outline-move", id: "new", parent: "project", index: 6, revision: 13 });
@@ -141,7 +141,7 @@ test("add, menu moves, finish and reopen use each returned revision; drafts stay
   await click(container.querySelector('[data-row="new"]')!, "Out");
   expect(commands[5]).toMatchObject({ op: "outline-move", parent: "area:work", index: 1, revision: 17 });
   await click(container, "‹ Work");
-  expect(container.querySelector("input")?.value).toBe("Area draft");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("Area draft");
   const select = container.querySelector<HTMLSelectElement>('[data-row="new"] select')!;
   await act(async () => { select.value = "area:me"; select.dispatchEvent(new window.Event("change", { bubbles: true })); });
   expect(commands[6]).toMatchObject({ op: "outline-move", parent: "area:me", index: 0, revision: 18 });
@@ -163,7 +163,7 @@ test("Cortex refusal is shown verbatim, reloads the outline, and keeps typed tex
   expect(reads).toBe(1); expect(writes).toBe(1);
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Cortex refused this stale outline.");
   expect(container.querySelector("h2")?.textContent).toBe("Work from another window");
-  expect(container.querySelector("input")?.value).toBe("Keep this draft");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("Keep this draft");
 }));
 
 test("a row with children can be finished and reopened both in the outline and on its page", async () => surface(async (container, render) => {
@@ -214,5 +214,5 @@ test("App switches above the card and keeps the outline draft across Day", async
   await click(container, "Day");
   expect(container.querySelector(".everything")?.parentElement?.hidden).toBe(true);
   await click(container, "Everything");
-  expect(container.querySelector(".everything input")?.getAttribute("value")).toBe("Still here");
+  expect(container.querySelector(".everything .outline-add input")?.getAttribute("value")).toBe("Still here");
 }));
