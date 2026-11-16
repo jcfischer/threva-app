@@ -3,6 +3,9 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
+  "bin": {
+    "threva": "src/cli/threva.ts"
+  },
   "scripts": {
     "build": "bun build src/ui/index.html --outdir dist/ui --target browser --splitting",
     "check": "bun scripts/check.ts",
