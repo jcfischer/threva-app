@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { KEYCHAIN_SERVICE_PREFIX } from "./launch";
+import { errorMessage, isNtfyTopicUrl } from "./text";
 
 export const STACK_SLUG = "threva";
 export const MC_PORT = 8767;
@@ -10,6 +11,7 @@ export const NATS_URL = "nats://127.0.0.1:4222";
 
 const API_WAIT_ATTEMPTS = 30;
 const API_WAIT_MS = 1000;
+const FETCH_TIMEOUT_MS = 2000;
 
 export interface RunResult {
   status: number;
@@ -82,9 +84,16 @@ export function parseSetupArgs(argv: readonly string[]): Checked<SetupArgs> {
   return { ok: true, value: args };
 }
 
-export function stackPaths(home: string): { dir: string; pointer: string } {
+export interface StackPaths {
+  dir: string;
+  pointer: string;
+  finished: string;
+}
+
+/** `finished` marks a setup that reached the running service, so a re-run after a failed attempt still counts as a fresh stack. */
+export function stackPaths(home: string): StackPaths {
   const dir = join(home, ".config", "metafactory", "cortex", STACK_SLUG);
-  return { dir, pointer: join(dir, `${STACK_SLUG}.yaml`) };
+  return { dir, pointer: join(dir, `${STACK_SLUG}.yaml`), finished: join(dir, ".setup-finished") };
 }
 
 export function principalId(user: string): string {
@@ -112,15 +121,6 @@ export function isEndpointUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
     return url.protocol === "https:" || (url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname));
-  } catch {
-    return false;
-  }
-}
-
-export function isNtfyTopicUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    return url.protocol === "https:" && /^\/[A-Za-z0-9_-]+$/.test(url.pathname);
   } catch {
     return false;
   }
@@ -180,12 +180,9 @@ async function choose(deps: SetupDeps, claudeOnPath: boolean): Promise<Provider[
   ];
   deps.say("Which model should Threva use?");
   for (const [i, option] of options.entries()) deps.say(`  ${i + 1}. ${option.label}`);
-  for (;;) {
-    const answer = (await deps.ask(`Choose 1-${options.length}: `)).trim();
-    const number = Number(answer);
-    if (/^\d+$/.test(answer) && number >= 1 && number <= options.length) return options[number - 1].kind;
-    deps.say(`Type a number from 1 to ${options.length}.`);
-  }
+  const n = options.length;
+  const answer = await askUntil(deps, `Choose 1-${n}: `, (a) => /^\d+$/.test(a) && Number(a) >= 1 && Number(a) <= n, `Type a number from 1 to ${n}.`);
+  return options[Number(answer) - 1].kind;
 }
 
 async function askUntil(deps: SetupDeps, question: string, valid: (answer: string) => boolean, hint: string, secret = false): Promise<string> {
@@ -221,24 +218,22 @@ async function askPush(deps: SetupDeps): Promise<string | null> {
   return answer === "" ? null : answer;
 }
 
-const PORT_FREE = false;
-
 async function answersOn(deps: SetupDeps, port: number): Promise<boolean> {
   try {
-    await deps.fetch(uiUrl(port));
+    await deps.fetch(uiUrl(port), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     return true;
   } catch {
-    return PORT_FREE;
+    return false;
   }
 }
 
 async function waitForApi(deps: SetupDeps, port: number): Promise<boolean> {
   for (let attempt = 0; attempt < API_WAIT_ATTEMPTS; attempt++) {
     try {
-      const response = await deps.fetch(`${uiUrl(port)}api/desk/interruptions`);
+      const response = await deps.fetch(`${uiUrl(port)}api/desk/interruptions`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
       if (response.ok) return true;
     } catch (err) {
-      if (attempt === API_WAIT_ATTEMPTS - 1) deps.say(`Threva did not answer: ${err instanceof Error ? err.message : String(err)}`);
+      if (attempt === API_WAIT_ATTEMPTS - 1) deps.say(`Threva did not answer: ${errorMessage(err)}`);
     }
     await deps.sleep(API_WAIT_MS);
   }
@@ -251,16 +246,28 @@ async function switchOffRankedMail(deps: SetupDeps, port: number): Promise<boole
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ code: SWITCHED_OFF_BY_DEFAULT, on: false }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     return response.ok;
   } catch (err) {
-    deps.say(`Threva did not take the interruption setting: ${err instanceof Error ? err.message : String(err)}`);
+    deps.say(`Threva did not take the interruption setting: ${errorMessage(err)}`);
     return false;
   }
 }
 
 function firstLine(result: RunResult): string {
   return (result.stderr || result.stdout).trim().split("\n")[0] ?? "";
+}
+
+async function writeStack(deps: SetupDeps, paths: StackPaths, plan: StackPlan): Promise<Checked<null>> {
+  for (const dir of [join(paths.dir, "system"), join(paths.dir, "stacks"), plan.studioDir]) deps.mkdir(dir);
+  deps.writeFile(paths.pointer, POINTER_TEXT);
+  deps.writeFile(join(paths.dir, "system", "system.yaml"), renderSystem(plan));
+  deps.writeFile(join(paths.dir, "stacks", `${STACK_SLUG}.yaml`), renderStack(plan));
+  deps.writeFile(join(paths.dir, "assistant.md"), PERSONA_TEXT);
+  const gitInit = await deps.git(["init", "-q"], plan.studioDir);
+  if (gitInit.status !== 0) return { ok: false, error: `git init failed in ${plan.studioDir}: ${firstLine(gitInit)}` };
+  return { ok: true, value: null };
 }
 
 async function resolveInstall(args: SetupArgs, deps: SetupDeps): Promise<Checked<{ cortexDir: string; uiDir: string; prefix: string }>> {
@@ -295,13 +302,14 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   }
 
   const paths = stackPaths(deps.home);
-  const existed = deps.readFile(paths.pointer) !== null;
-  if (existed && !parsed.value.reconfigure) {
+  const written = deps.readFile(paths.pointer) !== null;
+  const finished = deps.readFile(paths.finished) !== null;
+  if (finished && !parsed.value.reconfigure) {
     deps.say(`A Threva stack already exists at ${paths.dir}. Setup changed nothing. Run threva setup --reconfigure to set it up again.`);
     return 0;
   }
   const { port } = parsed.value;
-  if (!existed && (await answersOn(deps, port))) {
+  if (!written && (await answersOn(deps, port))) {
     deps.say(`Another program already answers on port ${port}, perhaps another Cortex. Stop it, or run threva setup --port <port> with a free port.`);
     return 1;
   }
@@ -320,14 +328,9 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
 
   const studioDir = join(deps.home, ".local", "share", STACK_SLUG, "studio");
   const plan: StackPlan = { principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
-  for (const dir of [join(paths.dir, "system"), join(paths.dir, "stacks"), studioDir]) deps.mkdir(dir);
-  deps.writeFile(paths.pointer, POINTER_TEXT);
-  deps.writeFile(join(paths.dir, "system", "system.yaml"), renderSystem(plan));
-  deps.writeFile(join(paths.dir, "stacks", `${STACK_SLUG}.yaml`), renderStack(plan));
-  deps.writeFile(join(paths.dir, "assistant.md"), PERSONA_TEXT);
-  const gitInit = await deps.git(["init", "-q"], studioDir);
-  if (gitInit.status !== 0) {
-    deps.say(`git init failed in ${studioDir}: ${firstLine(gitInit)}`);
+  const stack = await writeStack(deps, paths, plan);
+  if (!stack.ok) {
+    deps.say(stack.error);
     return 1;
   }
   deps.say(`Wrote the stack to ${paths.dir}.`);
@@ -338,7 +341,7 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     return 1;
   }
 
-  const services: [string, string][] = [["start", "nats-server"], [existed ? "restart" : "start", "threva"]];
+  const services: [string, string][] = [["start", "nats-server"], [written ? "restart" : "start", "threva"]];
   for (const [verb, service] of services) {
     const started = await deps.brew(["services", verb, service]);
     if (started.status !== 0) {
@@ -351,8 +354,9 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     deps.say(`Threva did not start. Run threva doctor --log ${join(prefix, "var", "log", "threva.log")} to see why.`);
     return 1;
   }
-  if (!existed && !(await switchOffRankedMail(deps, port))) {
-    deps.say("Other mail ranked for today still interrupts you. Switch it off under Interruptions.");
+  if (!finished) {
+    if (!(await switchOffRankedMail(deps, port))) deps.say("Other mail ranked for today still interrupts you. Switch it off under Interruptions.");
+    deps.writeFile(paths.finished, `${new Date().toISOString()}\n`);
   }
 
   const url = uiUrl(port);

@@ -1,4 +1,4 @@
-import { isNtfyTopicUrl } from "./setup";
+import { errorMessage, isNtfyTopicUrl } from "./text";
 
 export interface NtfyDeps {
   stdin: () => Promise<string>;
@@ -39,7 +39,7 @@ export async function ntfy(argv: readonly string[], deps: NtfyDeps): Promise<{ c
   try {
     response = await deps.fetch(url.origin, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(message) });
   } catch (err) {
-    return { code: 1, error: `ntfy did not answer: ${err instanceof Error ? err.message : String(err)}` };
+    return { code: 1, error: `ntfy did not answer: ${errorMessage(err)}` };
   }
   if (!response.ok) return { code: 1, error: `ntfy refused the push with HTTP ${response.status}.` };
   return { code: 0 };

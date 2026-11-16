@@ -16,13 +16,14 @@ interface Harness {
   posts: { url: string; body: string }[];
 }
 
-function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean }): Harness {
+function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean; unfinished?: boolean }): Harness {
   const files = new Map<string, string>([
     [`${LIBEXEC}/cortex/src/cortex.ts`, ""],
     [`${LIBEXEC}/ui/index.html`, ""],
   ]);
   if (options.engines !== null) files.set(`${LIBEXEC}/cortex/package.json`, JSON.stringify({ engines: { bun: options.engines ?? ">=1.4.4" } }));
-  if (options.existing) files.set(stackPaths(HOME).pointer, "# old\n");
+  if (options.existing || options.unfinished) files.set(stackPaths(HOME).pointer, "# old\n");
+  if (options.existing) files.set(stackPaths(HOME).finished, "2026-11-16T00:00:00.000Z\n");
   const said: string[] = [];
   const calls: Harness["calls"] = [];
   const posts: Harness["posts"] = [];
@@ -151,6 +152,24 @@ describe("threva setup", () => {
     expect(h.files.get(stackPaths(HOME).pointer)).not.toBe("# old\n");
     expect(h.calls.filter((c) => c.tool === "brew").map((c) => c.args.join(" "))).toContain("services restart threva");
     expect(h.posts).toEqual([]);
+  });
+
+  test("a re-run after a setup that failed before the service answered finishes it as a fresh stack", async () => {
+    const h = harness({ answers: ["1", KEY, ""], unfinished: true, portTaken: true });
+    expect(await setup([], h.deps)).toBe(0);
+    expect(h.calls.filter((c) => c.tool === "brew").map((c) => c.args.join(" "))).toContain("services restart threva");
+    expect(h.posts.map((p) => p.body)).toEqual([JSON.stringify({ code: "mail.ranked", on: false })]);
+    expect(h.files.get(stackPaths(HOME).finished)).toBeDefined();
+  });
+
+  test("a setup whose service never answers leaves no finished marker", async () => {
+    const h = harness({ answers: ["1", KEY, ""] });
+    h.deps.fetch = async () => {
+      throw new TypeError("Unable to connect");
+    };
+    expect(await setup([], h.deps)).toBe(1);
+    expect(h.files.get(stackPaths(HOME).finished)).toBeUndefined();
+    expect(h.said.at(-1)).toContain("threva doctor --log");
   });
 
   test("another program on the port stops a fresh setup before it asks or writes anything", async () => {

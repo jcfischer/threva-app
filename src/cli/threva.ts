@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { doctor, launch, type LaunchDeps } from "./launch";
 import { ntfy } from "./ntfy";
 import { setup, type SetupDeps } from "./setup";
+import { errorMessage } from "./text";
 
 function readOrNull(path: string): string | null {
   return existsSync(path) ? readFileSync(path, "utf8") : null;
@@ -51,18 +52,32 @@ async function ask(question: string, options?: { secret?: boolean }): Promise<st
   stdinLines ??= console[Symbol.asyncIterator]();
   process.stdout.write(question);
   const hide = options?.secret === true && process.stdin.isTTY;
-  if (hide) Bun.spawnSync(["stty", "-echo"], { stdin: "inherit" });
+  const restoreEcho = () => {
+    Bun.spawnSync(["stty", "echo"], { stdin: "inherit" });
+  };
+  const abort = () => {
+    restoreEcho();
+    process.stdout.write("\n");
+    process.exit(INTERRUPTED);
+  };
+  if (hide) {
+    Bun.spawnSync(["stty", "-echo"], { stdin: "inherit" });
+    process.once("SIGINT", abort);
+  }
   try {
     const next = await stdinLines.next();
     if (next.done) throw new Error("Setup needs answers on standard input.");
     return next.value;
   } finally {
     if (hide) {
-      Bun.spawnSync(["stty", "echo"], { stdin: "inherit" });
+      process.off("SIGINT", abort);
+      restoreEcho();
       process.stdout.write("\n");
     }
   }
 }
+
+const INTERRUPTED = 130;
 
 const COMMAND_NOT_RUN = 127;
 
@@ -70,7 +85,7 @@ async function runOrReport(command: string[]): Promise<{ status: number; stdout:
   try {
     return await runCapture(command);
   } catch (err) {
-    return { status: COMMAND_NOT_RUN, stdout: "", stderr: `${command[0] ?? ""} could not run: ${err instanceof Error ? err.message : String(err)}` };
+    return { status: COMMAND_NOT_RUN, stdout: "", stderr: `${command[0] ?? ""} could not run: ${errorMessage(err)}` };
   }
 }
 
@@ -110,7 +125,12 @@ if (command === "launch") {
   (result.code === 0 ? process.stdout : process.stderr).write(`${result.output}\n`);
   process.exit(result.code);
 } else if (command === "setup") {
-  process.exit(await setup(rest, setupDeps()));
+  try {
+    process.exit(await setup(rest, setupDeps()));
+  } catch (err) {
+    process.stderr.write(`${errorMessage(err)}\n`);
+    process.exit(1);
+  }
 } else if (command === "ntfy") {
   const result = await ntfy(rest, { stdin: () => Bun.stdin.text(), fetch: (url, init) => fetch(url, init) });
   if (result.error) process.stderr.write(`${result.error}\n`);
