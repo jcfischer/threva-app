@@ -24,11 +24,11 @@ const GROUPS = {
 } as const;
 
 const CALLABLE_GROUPS = { myDay: ["outline", "change"], studio: ["list", "act", "session"] } as const;
-const FLAT = ["desk", "rules", "changeMyDay"] as const;
+const FLAT = ["desk", "rules", "changeMyDay", "contract"] as const;
 
 export function createMemoryClient(): MemoryClient {
   const calls: LoggedCall[] = [];
-  const answers = new Map<string, Answer>([["handshake", { ok: true, data: { version: `${DESK_API_MAJOR}.0.0` } }]]);
+  const answers = new Map<string, Answer>([["contract", { ok: true, data: { version: `${DESK_API_MAJOR}.0.0` } }]]);
   const named = (name: string) => (...args: unknown[]) => {
     calls.push({ name, args });
     const answer = answers.get(name);
@@ -42,6 +42,5 @@ export function createMemoryClient(): MemoryClient {
   for (const [group, names] of Object.entries(CALLABLE_GROUPS)) {
     client[group] = Object.assign(named(group), Object.fromEntries(names.map((name) => [name, named(`${group}.${name}`)])));
   }
-  client.handshake = named("handshake");
   return Object.assign(client as unknown as DeskClient, { calls, seed: (name: string, answer: Answer) => void answers.set(name, answer) });
 }

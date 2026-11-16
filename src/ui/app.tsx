@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient, type DeskClient } from "@desk/client";
-import { useStartup } from "@desk/startup";
 import { Bar } from "./bar/bar";
 import { Footer } from "./day/footer";
 import { TimelineView } from "./day/timeline-view";
@@ -11,6 +10,7 @@ import { QueueView } from "./queue/queue-view";
 import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
+import { useStartup } from "./queue/use-startup";
 import { WeekView } from "./week/view";
 import { EverythingView } from "./everything/view";
 import { Desk } from "./desk/desk";

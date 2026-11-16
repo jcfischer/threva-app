@@ -15,10 +15,7 @@ import type {
   RoutineView as CortexRoutineView,
   StudioThreadView,
   SweepMailView,
-  ThreadOutcome,
-  ThreadState,
   ThreadThinking,
-  ThreadType,
 } from "@the-metafactory/cortex/desk-api";
 
 export type { DeskAction, DeskItemKind, DeskMention, RulingChoice, RulingExplanation, StudioResponse } from "@the-metafactory/cortex/desk-api";
@@ -81,7 +78,7 @@ export type MailSweep =
 export type MailRule = Pick<MailRuleView, "id" | "match" | "value" | "action" | "on" | "sentence">;
 
 export interface MailRules {
-  rules: MailRuleView[];
+  rules: MailRule[];
 }
 
 export interface RoutineView {
@@ -119,23 +116,10 @@ export type StudioNote =
   Pick<AssistantNote, "at" | "kind" | "status" | "because" | "relates" | "text"> &
   Partial<Pick<AssistantNote, "trigger" | "model" | "mode" | "run">>;
 
-type Thread = StudioThreadView;
-export interface StudioThread {
-  slug: Thread["slug"];
-  question: Thread["question"];
-  stand: Thread["stand"];
-  notes: StudioNote[];
-  responses: Thread["responses"];
-  type?: ThreadType;
-  state?: ThreadState;
-  closed?: Thread["closed"];
-  outcome?: ThreadOutcome;
-  outcomeText?: Thread["outcomeText"];
-  thinkTonight?: Thread["thinkTonight"];
-  log?: Thread["log"];
-  material?: Thread["material"];
-  thinking?: ThreadThinking;
-}
+export type StudioThread = Pick<StudioThreadView, "slug" | "question" | "stand" | "responses"> &
+  Partial<Pick<StudioThreadView, "type" | "state" | "closed" | "outcome" | "outcomeText" | "thinkTonight" | "log" | "material" | "thinking">> & {
+    notes: StudioNote[];
+  };
 
 export interface StudioList {
   studio: {

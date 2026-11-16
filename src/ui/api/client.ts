@@ -52,7 +52,7 @@ const PATHS = {
   studioAct: "/api/desk/studio/act",
   studioSession: "/api/desk/studio/session",
   outlineAsk: "/api/desk/outline/ask",
-  handshake: "/api/desk/contract",
+  contract: "/api/desk/contract",
   conversations: "/api/conversations",
   conversationAsks: "/api/conversations/asks",
   conversationStarts: "/api/conversations/starts",
@@ -119,7 +119,7 @@ export interface DeskContract {
   version: string;
 }
 
-export type HandshakeCalls = () => Call<DeskContract>;
+export type ContractCalls = () => Call<DeskContract>;
 
 export interface DeskClient {
   desk(): Call<DeskView>;
@@ -132,7 +132,7 @@ export interface DeskClient {
   studio: StudioCalls;
   conversations: ConversationCalls;
   outline: OutlineCalls;
-  handshake: HandshakeCalls;
+  contract: ContractCalls;
 }
 
 export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, init)): DeskClient {
@@ -184,6 +184,6 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     outline: {
       ask: (body, requestId = dashedId()) => write(PATHS.outlineAsk, { requestId, ...body }),
     },
-    handshake: () => read<DeskContract>(PATHS.handshake),
+    contract: () => read<DeskContract>(PATHS.contract),
   };
 }

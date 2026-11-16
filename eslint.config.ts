@@ -47,6 +47,25 @@ export default defineConfig(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true, allowBoolean: true }],
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@the-metafactory/cortex",
+              message: "Import Cortex types only, through @the-metafactory/cortex/desk-api, because Threva reaches Cortex over HTTP.",
+              allowTypeImports: true,
+            },
+          ],
+          patterns: [
+            {
+              group: ["@the-metafactory/cortex/*"],
+              message: "Import Cortex types only, and only through @the-metafactory/cortex/desk-api, because Threva reaches Cortex over HTTP.",
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
     },
   },
   { files: ["test/**/*.ts", "test/**/*.tsx"], rules: testCarveOut },
