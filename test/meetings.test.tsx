@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { captureText, NOT_A_CARD } from "../src/ui/api/capture";
-import { createClient, type Fetch } from "../src/ui/api/client";
+import { createMemoryClient } from "../src/ui/api/memory-client";
 import type { DeskEvent } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { AfterMeetingCard, MeetingSoonCard } from "../src/ui/cards/meeting-cards";
@@ -16,7 +16,7 @@ const event = (key: string, at: number, end: number, extra: Partial<DeskEvent> =
 const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
-      <QueueContext.Provider value={{ client: createClient(async () => new Response("{}")), refresh: () => {} }}>{node}</QueueContext.Provider>
+      <QueueContext.Provider value={{ client: createMemoryClient(), refresh: () => {} }}>{node}</QueueContext.Provider>
     </I18nProvider>,
   );
 
@@ -49,32 +49,29 @@ describe("meetings in the queue", () => {
 });
 
 describe("captureText", () => {
-  const stub = (answers: Record<string, Response>): Fetch => async (input) => answers[input] ?? new Response("{}", { status: 404 });
-
   test("asks, then creates the proposed card", async () => {
-    const result = await captureText(
-      createClient(stub({
-        "/api/desk/ask": Response.json({ ok: true, proposal: { kind: "task", label: "Task", fields: { title: "Send minutes" } } }),
-        "/api/desk/create": Response.json({ ok: true, id: "t1", message: "Filed." }),
-      })),
-      "Send minutes",
-    );
+    const client = createMemoryClient();
+    client.seed("capture.ask", { ok: true, data: { proposal: { kind: "task", label: "Task", fields: { title: "Send minutes" } } } });
+    client.seed("capture.create", { ok: true, data: { ok: true, id: "t1", message: "Filed." } });
+    const result = await captureText(client, "Send minutes");
     expect(result).toEqual({ ok: true, data: { ok: true, id: "t1", message: "Filed." } as never });
+    expect(client.calls.map((call) => call.name)).toEqual(["capture.ask", "capture.create"]);
   });
 
   test("a conversation proposal is not created", async () => {
-    const result = await captureText(createClient(stub({ "/api/desk/ask": Response.json({ ok: true, proposal: { kind: "conversation", label: "Conversation", fields: {} } }) })), "Why?");
+    const client = createMemoryClient();
+    client.seed("capture.ask", { ok: true, data: { proposal: { kind: "conversation", label: "Conversation", fields: {} } } });
+    const result = await captureText(client, "Why?");
     expect(result).toEqual({ ok: false, message: null, status: NOT_A_CARD });
+    expect(client.calls.map((call) => call.name)).toEqual(["capture.ask"]);
   });
 
   test("Cortex's error on create comes back", async () => {
-    const result = await captureText(
-      createClient(stub({
-        "/api/desk/ask": Response.json({ ok: true, proposal: { kind: "note", label: "Note", fields: { text: "x" } } }),
-        "/api/desk/create": Response.json({ ok: false, error: "Notes are not set up on this stack." }, { status: 409 }),
-      })),
-      "x",
-    );
+    const client = createMemoryClient();
+    client.seed("capture.ask", { ok: true, data: { proposal: { kind: "note", label: "Note", fields: { text: "x" } } } });
+    client.seed("capture.create", { ok: false, message: "Notes are not set up on this stack.", status: 409 });
+    const result = await captureText(client, "x");
     expect(result).toEqual({ ok: false, message: "Notes are not set up on this stack.", status: 409 });
+    expect(client.calls.map((call) => call.name)).toEqual(["capture.ask", "capture.create"]);
   });
 });

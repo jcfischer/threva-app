@@ -1,4 +1,4 @@
-import { newRequestId, type DeskClient, type Result } from "./client";
+import type { DeskClient, Result } from "./client";
 
 export const NOT_A_CARD = 422;
 
@@ -22,11 +22,11 @@ export interface Created {
 }
 
 export function propose(client: DeskClient, text: string): Promise<Result<{ proposal: Proposal }>> {
-  return client.post<{ proposal: Proposal }>("/api/desk/ask", { text });
+  return client.capture.ask<{ proposal: Proposal }>(text);
 }
 
-export function create(client: DeskClient, proposal: Proposal, requestId: string = newRequestId()): Promise<Result<Created>> {
-  return client.post<Created>("/api/desk/create", { requestId, kind: proposal.kind, fields: proposal.fields });
+export function create(client: DeskClient, proposal: Proposal, requestId?: string): Promise<Result<Created>> {
+  return client.capture.create<Created>(proposal.kind, proposal.fields, requestId);
 }
 
 export async function captureText(client: DeskClient, text: string): Promise<Result<Created>> {

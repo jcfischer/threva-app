@@ -37,7 +37,7 @@
       "count": 1
     },
     "@typescript-eslint/no-confusing-void-expression": {
-      "count": 9
+      "count": 8
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 4
@@ -283,11 +283,6 @@
   },
   "test/arrivals.test.tsx": {
     "threva/no-comments": {
-      "count": 1
-    }
-  },
-  "test/bar-flow.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
       "count": 1
     }
   },
