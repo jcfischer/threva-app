@@ -21,7 +21,7 @@ export interface LaunchDeps {
   readConfig: (path: string) => string | null;
   security: (args: string[]) => Promise<SecurityResult>;
   validate: (cortexDir: string, pointer: string) => Promise<ValidationResult>;
-  exec: (command: string[], env: Record<string, string>) => Promise<number>;
+  exec: (command: string[], env: Record<string, string>) => void;
   appendLog: (path: string, line: string) => void;
 }
 
@@ -77,6 +77,25 @@ function record(deps: LaunchDeps, log: string, message: string): void {
   deps.appendLog(log, `${deps.now().toISOString()} ${LAUNCH_TAG}: ${oneLine(message)}`);
 }
 
+async function keychainSecrets(keys: readonly string[], deps: LaunchDeps): Promise<Parsed<Record<string, string>>> {
+  const secrets: Record<string, string> = {};
+  for (const key of keys) {
+    if (deps.env[key]) continue;
+    let found: SecurityResult;
+    try {
+      found = await deps.security(["find-generic-password", "-s", `${KEYCHAIN_SERVICE_PREFIX}${key}`, "-a", deps.user, "-w"]);
+    } catch {
+      return { ok: false, error: `The key ${key} could not be read from the Keychain. Check macOS Keychain access, then run threva setup.` };
+    }
+    const value = found.stdout.replace(/\r?\n$/, "");
+    if (found.status !== 0 || value === "") {
+      return { ok: false, error: `The key ${key} is not in the Keychain. Run threva setup to add it.` };
+    }
+    secrets[key] = value;
+  }
+  return { ok: true, value: secrets };
+}
+
 export async function launch(argv: readonly string[], deps: LaunchDeps): Promise<number> {
   const parsed = parseLaunchArgs(argv);
   if (!parsed.ok) {
@@ -112,49 +131,26 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
     return 1;
   }
 
-  const secrets: Record<string, string> = {};
-  for (const key of envKeysReferenced(configText)) {
-    if (deps.env[key]) continue;
-    let found: SecurityResult;
-    try {
-      found = await deps.security([
-        "find-generic-password",
-        "-s",
-        `${KEYCHAIN_SERVICE_PREFIX}${key}`,
-        "-a",
-        deps.user,
-        "-w",
-      ]);
-    } catch {
-      record(deps, log, `The key ${key} could not be read from the Keychain. Check macOS Keychain access, then run threva setup.`);
-      return 1;
-    }
-    const value = found.stdout.replace(/\r?\n$/, "");
-    if (found.status !== 0 || value === "") {
-      record(deps, log, `The key ${key} is not in the Keychain. Run threva setup to add it.`);
-      return 1;
-    }
-    secrets[key] = value;
+  const secrets = await keychainSecrets(envKeysReferenced(configText), deps);
+  if (!secrets.ok) {
+    record(deps, log, secrets.error);
+    return 1;
   }
 
   const childEnv: Record<string, string> = {};
   for (const [name, value] of Object.entries(deps.env)) {
     if (value !== undefined) childEnv[name] = value;
   }
-  Object.assign(childEnv, secrets);
+  Object.assign(childEnv, secrets.value);
 
   record(deps, log, OK_MARK);
-  let code: number;
   try {
-    code = await deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
+    deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
   } catch {
     record(deps, log, "Cortex could not be started. Check the Bun executable and --cortex directory.");
     return 1;
   }
-  if (code !== 0) {
-    record(deps, log, `Cortex exited with code ${code}. See the Cortex output in this log for the cause.`);
-  }
-  return code;
+  return 0;
 }
 
 export function lastLauncherError(logText: string | null): string {

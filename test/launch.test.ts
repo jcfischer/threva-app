@@ -19,7 +19,6 @@ function rig(config: string, over: Partial<LaunchDeps> = {}) {
     validate: () => Promise.resolve({ ok: true, output: "" }),
     exec: (command, env) => {
       execCalls.push({ command, env });
-      return Promise.resolve(0);
     },
     appendLog: (_path, line) => void lines.push(line),
     ...over,
@@ -39,16 +38,8 @@ describe("threva launch", () => {
     expect(r.lines.join("\n")).not.toContain("sk-secret");
   });
 
-  test("a failed Cortex start is the last recorded error for doctor", async () => {
-    const r = rig("x: 1", { exec: () => Promise.resolve(3) });
-    expect(await launch(argv, r.deps)).toBe(3);
-    expect(r.lines).toHaveLength(2);
-    const out = doctor(["--log", "/l"], { readLog: () => r.lines.join("\n") + "\n" });
-    expect(out.output).toContain("exited with code 3");
-  });
-
   test("a spawn error is recorded and exits non-zero", async () => {
-    const r = rig("x: 1", { exec: () => Promise.reject(new Error("no bun")) });
+    const r = rig("x: 1", { exec: () => { throw new Error("no bun"); } });
     expect(await launch(argv, r.deps)).toBe(1);
     expect(r.lines.at(-1)).toContain("could not be started");
   });
@@ -56,7 +47,9 @@ describe("threva launch", () => {
   test("runner failures are actionable without logging their secret-bearing errors", async () => {
     for (const runner of ["security", "validate", "exec"] as const) {
       const r = rig("apiKey: env:ANTHROPIC_API_KEY", {
-        [runner]: () => Promise.reject(new Error("synthetic-private-value")),
+        [runner]: runner === "exec"
+          ? () => { throw new Error("synthetic-private-value"); }
+          : () => Promise.reject(new Error("synthetic-private-value")),
       });
       expect(await launch(argv, r.deps)).toBe(1);
       expect(r.lines.join("\n")).not.toContain("synthetic-private-value");
