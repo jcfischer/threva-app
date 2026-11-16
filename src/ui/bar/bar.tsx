@@ -1,10 +1,15 @@
 import { useReducer } from "react";
-import { create, filesAtOnce, propose } from "../api/capture";
-import { newRequestId, type DeskClient } from "../api/client";
+import { useDeskAct } from "../act/use-act";
+import type { DeskClient, Result } from "../api/client";
+import { create, filesAtOnce, propose, type Created, type Proposal } from "../api/capture";
 import { useI18n, type I18n } from "../i18n";
 import type { Entry } from "../queue/order";
 import { barReducer, INITIAL, type BarEvent, type BarState } from "./state";
 import { actFor, suggest, type Suggestion } from "./suggest";
+
+type Act = ReturnType<typeof useDeskAct>["act"];
+
+export type BarSend = (event: BarEvent) => void;
 
 function rowLabel(t: I18n["t"], row: Suggestion): string {
   if (row.kind === "match") return row.title;
@@ -104,9 +109,16 @@ export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, entries 
   );
 }
 
-export type BarSend = (event: BarEvent) => void;
+async function capture(client: DeskClient, act: Act, proposal: Proposal): Promise<{ result: Result<Created>; requestId: string }> {
+  let requestId = "";
+  const result = await act({ capture: "create", kind: proposal.kind, fields: proposal.fields }, (id) => {
+    requestId = id;
+    return create(client, proposal, id);
+  });
+  return { result, requestId };
+}
 
-export async function takeNote(client: DeskClient, text: string, send: BarSend, onChange: () => void): Promise<void> {
+export async function takeNote(client: DeskClient, text: string, send: BarSend, act: Act): Promise<void> {
   const typed = text.trim();
   if (!typed) return;
   send({ type: "submit" });
@@ -115,20 +127,18 @@ export async function takeNote(client: DeskClient, text: string, send: BarSend, 
   const { proposal } = asked.data;
   send({ type: "proposed", proposal });
   if (!filesAtOnce(proposal)) return;
-  const requestId = newRequestId();
   send({ type: "keep" });
-  const created = await create(client, proposal, requestId);
-  if (!created.ok) return send({ type: "failed", message: created.message });
-  const id = created.data.id;
-  send({ type: "created", message: "", undo: id !== undefined ? { id: String(id), requestId } : null });
-  onChange();
+  const { result, requestId } = await capture(client, act, proposal);
+  if (!result.ok) return send({ type: "failed", message: result.message });
+  const id = result.data.id;
+  send({ type: "created", message: "", undo: id === undefined ? null : { id: String(id), requestId } });
 }
 
 export async function takeAsk(client: DeskClient, text: string, send: BarSend): Promise<void> {
   const typed = text.trim();
   if (!typed) return;
   send({ type: "ask" });
-  const started = await client.post("/api/conversations/asks", { text: typed, startId: crypto.randomUUID() });
+  const started = await client.conversations.ask(typed);
   send(started.ok ? { type: "started" } : { type: "failed", message: started.message });
 }
 
@@ -139,36 +149,36 @@ export function Bar({ client, entries = [], onPull, onChange }: {
   onChange: () => void;
 }) {
   const [state, send] = useReducer(barReducer, INITIAL);
+  const { act } = useDeskAct(onChange);
   const text = "text" in state ? state.text : "";
 
   const onSubmit = async (row?: Suggestion) => {
     if (!text.trim() || (state.phase !== "idle" && state.phase !== "error")) return;
-    const act = actFor(row);
-    if (act.kind === "ask") return takeAsk(client, text, send);
-    if (act.kind === "match") {
+    const next = actFor(row);
+    if (next.kind === "ask") return takeAsk(client, text, send);
+    if (next.kind === "match") {
       send({ type: "clear" });
-      onPull?.(act.k);
+      onPull?.(next.k);
       return;
     }
-    return takeNote(client, text, send, onChange);
+    return takeNote(client, text, send, act);
   };
 
   const onKeep = async () => {
     if (state.phase !== "proposed") return;
-    const requestId = newRequestId();
+    const proposal = state.proposal;
     send({ type: "keep" });
-    const created = await create(client, state.proposal, requestId);
-    if (!created.ok) return send({ type: "failed", message: created.message });
-    const id = created.data.id;
-    send({ type: "created", message: created.data.message ?? "", undo: state.proposal.kind === "capture" && id !== undefined ? { id: String(id), requestId } : null });
-    onChange();
+    const { result, requestId } = await capture(client, act, proposal);
+    if (!result.ok) return send({ type: "failed", message: result.message });
+    const id = result.data.id;
+    send({ type: "created", message: result.data.message ?? "", undo: proposal.kind === "capture" && id !== undefined ? { id: String(id), requestId } : null });
   };
 
   const onUndo = async () => {
     if (state.phase !== "created" || !state.undo) return;
-    const undone = await client.post("/api/desk/capture/undo", state.undo);
+    const handle = state.undo;
+    const undone = await act({ capture: "undo", ...handle }, () => client.capture.undo(handle));
     send(undone.ok ? { type: "reset" } : { type: "failed", message: undone.message });
-    onChange();
   };
 
   return <BarView state={state} send={send} onSubmit={onSubmit} onKeep={onKeep} onAsk={() => takeAsk(client, text, send)} onUndo={onUndo} entries={entries} />;

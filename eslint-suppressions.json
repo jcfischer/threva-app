@@ -286,11 +286,6 @@
       "count": 1
     }
   },
-  "test/bar-flow.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
   "test/earlier.test.tsx": {
     "threva/no-comments": {
       "count": 3
