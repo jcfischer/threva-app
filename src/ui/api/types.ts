@@ -153,6 +153,15 @@ export interface AreaShare {
   actualShare: number;
 }
 
+export interface OutlineRepeat {
+  mode?: "calendar" | "completion";
+  unit: "day" | "week" | "month";
+  interval: number;
+  weekdays?: number[];
+  count?: number;
+  until?: string;
+}
+
 export interface OutlineRow {
   id: string;
   title: string;
@@ -164,11 +173,7 @@ export interface OutlineRow {
   deferredUntil?: string;
   startDate?: string;
   dueDate?: string;
-  repeat?: {
-    unit: "day" | "week" | "month";
-    interval: number;
-    weekdays?: number[];
-  };
+  repeat?: OutlineRepeat;
   recurrence?: { returnsOn: string | null; reappearsOn: string | null; finished: boolean };
   note?: string;
   focusMonth?: string;
@@ -202,6 +207,9 @@ export interface OutlineDetails {
   context: string;
   effort: 1 | 2 | 4;
   estimateMinutes: number | null;
+  startDate?: string;
+  deferredUntil?: string;
+  repeat?: (OutlineRepeat & { mode: "calendar" | "completion" }) | null;
 }
 
 export type OutlineCommand =
