@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { DeskItem, DeskInterrupt } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
@@ -34,7 +34,7 @@ describe("Cortex interruption priority", () => {
   });
 });
 
-const noopClient = createClient(async () => Response.json({}));
+const noopClient = createMemoryClient();
 function card(items: DeskItem[], locale: "en" | "de" = "en", client = noopClient, refresh = () => {}, session = EMPTY_SESSION) {
   return <I18nProvider value={createI18n(locale)}>
     <QueueContext.Provider value={{ client, refresh }}>
@@ -87,15 +87,11 @@ describe("interruption Why now", () => {
 
 describe("interruption feedback on the rendered card", () => {
   let dom: MountedDom;
-  let writes: { path: string; body: unknown }[];
+  let client: MemoryClient;
   let refreshed: number;
-  let response: () => Response;
-  const client = createClient(async (path, init) => {
-    writes.push({ path, body: JSON.parse(String(init?.body)) });
-    return response();
-  });
+  const writes = () => client.calls.filter(c => c.name === "queue.interruptionFeedback");
   beforeEach(() => {
-    dom = mountDom(); writes = []; refreshed = 0; response = () => Response.json({ ok: true });
+    dom = mountDom(); client = createMemoryClient(); refreshed = 0; client.seed("queue.interruptionFeedback", { ok: true, data: {} });
   });
   afterEach(async () => { await dom.cleanup(); });
   const mount = (items: DeskItem[], locale: "en" | "de" = "en", session = EMPTY_SESSION) => act(async () => {
@@ -108,7 +104,7 @@ describe("interruption feedback on the rendered card", () => {
     await mount([interrupt("vip")]);
     expect(dom.container.querySelector(".card")?.textContent).toContain("Was that important enough?");
     await click(important ? "Yes" : "No");
-    expect(writes).toEqual([{ path: "/api/desk/interruptions/feedback", body: { key: "vip", code: "mail.vip", target: "ada@example.org", important } }]);
+    expect(writes()).toEqual([{ name: "queue.interruptionFeedback", args: [{ key: "vip", code: "mail.vip", target: "ada@example.org", important }] }]);
     expect(refreshed).toBe(1);
     expect(dom.container.textContent).not.toContain("Was that important enough?");
     if (!important) {
@@ -125,19 +121,19 @@ describe("interruption feedback on the rendered card", () => {
     await mount([interrupt("due", { reason: { code: "reminder.due", dueAt: "today" } }, { kind: "reminder" })], "de");
     expect(dom.container.textContent).toContain("War das wichtig genug?");
     await click("Nein");
-    expect(writes[0]?.body).toEqual({ key: "due", code: "reminder.due", important: false });
+    expect(writes()[0]?.args[0]).toEqual({ key: "due", code: "reminder.due", important: false });
     expect(dom.container.textContent).toContain("Dieser Grund wird dich nicht mehr unterbrechen.");
   });
   test("Cortex refusal stays verbatim on the card and permits retry", async () => {
-    response = () => Response.json({ error: "That address is not a VIP." }, { status: 404 });
+    client.seed("queue.interruptionFeedback", { ok: false, message: "That address is not a VIP.", status: 404 });
     await mount([interrupt("vip")]);
     await click("No");
     expect(dom.container.querySelector('.card [role="alert"]')?.textContent).toBe("That address is not a VIP.");
     expect(dom.container.textContent).toContain("Was that important enough?");
     expect(refreshed).toBe(0);
-    response = () => Response.json({ ok: true });
+    client.seed("queue.interruptionFeedback", { ok: true, data: {} });
     await click("Yes");
-    expect(writes).toHaveLength(2);
+    expect(writes()).toHaveLength(2);
     expect(dom.container.querySelector('[role="alert"]')).toBeNull();
     expect(dom.container.textContent).not.toContain("Was that important enough?");
   });
@@ -147,6 +143,6 @@ describe("interruption feedback on the rendered card", () => {
     await mount([interrupt("no", { feedback: "no" })]);
     expect(dom.container.textContent).not.toContain("Was that important enough?");
     expect(dom.container.textContent).toContain("This reason will no longer interrupt you.");
-    expect(writes).toHaveLength(0);
+    expect(writes()).toHaveLength(0);
   });
 });

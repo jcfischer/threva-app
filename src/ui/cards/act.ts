@@ -58,5 +58,5 @@ export function useAct(enter?: EnterAct) {
     return () => window.removeEventListener("keydown", onKey);
   });
   const offersTask = (item: DeskItem) => canMakeTask(item) && !!myDayDate;
-  return { busy, error, run, perform, makeTask, offersTask };
+  return { busy, error, run, act, perform, makeTask, offersTask };
 }

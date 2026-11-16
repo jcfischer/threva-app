@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { type Root } from "react-dom/client";
-import { createClient } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { DeskAction, DeskItem } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { AgentCard } from "../src/ui/cards/queue-cards";
@@ -63,11 +63,13 @@ describe("the agent card", () => {
   let root: Root;
   let container: HTMLElement;
   let cleanup: () => Promise<void>;
-  let writes: { url: string; body: Record<string, unknown> }[];
+  let client: MemoryClient;
 
   beforeEach(() => {
     ({ root, container, cleanup } = mountDom());
-    writes = [];
+    client = createMemoryClient();
+    client.seed("queue.ruling", { ok: true, data: {} });
+    client.seed("queue.action", { ok: true, data: {} });
   });
 
   afterEach(async () => {
@@ -75,10 +77,6 @@ describe("the agent card", () => {
   });
 
   async function render(desk: DeskItem, locale: "en" | "de" = "en") {
-    const client = createClient(async (url, init) => {
-      writes.push({ url: String(url), body: JSON.parse(init!.body as string) });
-      return new Response("{}");
-    });
     await act(async () => {
       root.render(
         <I18nProvider value={createI18n(locale)}>
@@ -89,6 +87,26 @@ describe("the agent card", () => {
       );
     });
   }
+
+  test("a ruling refused by Cortex shows its message and keeps the text", async () => {
+    client.seed("queue.ruling", { ok: false, message: "Ruling not accepted.", status: 409 });
+    await render(blocked());
+    await click(button("SQLiteSimple and local."));
+    await click(button("Decide and tell the agent"));
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Ruling not accepted.");
+    expect(container.querySelector("textarea")!.value).toBe("Use SQLite.");
+  });
+
+  test("a ruling that failed with no response is retried with the same request id", async () => {
+    client.seed("queue.ruling", { ok: false, message: null, status: 0 });
+    await render(blocked());
+    await click(button("SQLiteSimple and local."));
+    await click(button("Decide and tell the agent"));
+    await click(button("Decide and tell the agent"));
+    const ids = client.calls.filter((c) => c.name === "queue.ruling").map((c) => c.args[2]);
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).toBe(ids[0]);
+  });
 
   const buttons = () => [...container.querySelectorAll("button")].map((b) => b.textContent);
   const button = (text: string) => [...container.querySelectorAll("button")].find((b) => b.textContent === text)!;
@@ -112,9 +130,8 @@ describe("the agent card", () => {
     expect(container.querySelector("textarea")!.value).toBe("Use Postgres.");
     expect(choice.getAttribute("aria-pressed")).toBe("true");
     await click(button("Decide and tell the agent"));
-    expect(writes).toHaveLength(1);
-    expect(writes[0]!.url).toBe("/api/desk/ruling");
-    expect(writes[0]!.body).toMatchObject({ key: "ranger:the-metafactory/cortex#3475", text: "Use Postgres." });
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0]).toMatchObject({ name: "queue.ruling", args: ["ranger:the-metafactory/cortex#3475", "Use Postgres.", expect.any(String)] });
     expect(container.textContent).toContain("Sent. The agent picks it up.");
   });
 
@@ -133,7 +150,7 @@ describe("the agent card", () => {
     expect(container.textContent).not.toContain("Park it");
     expect(container.textContent).not.toContain("See also:");
     await click(button("Let it retry"));
-    expect(writes).toEqual([{ url: "/api/desk/action", body: { action: "ranger.retry", key: "ranger:the-metafactory/cortex#3500" } }]);
+    expect(client.calls).toEqual([{ name: "queue.action", args: ["ranger.retry", "ranger:the-metafactory/cortex#3500"] }]);
   });
 
   test("a failed card without a wired retry offers no buttons, even if park were wired", async () => {

@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
-import { useAct } from "./act";
+import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton, Mentioned } from "./parts";
 
 const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
@@ -14,7 +14,8 @@ const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
 export function AgentCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
   const card = useAct();
-  const { busy, error, run } = card;
+  const { client } = useQueue();
+  const { busy, error, act } = card;
   const plan = card.offersTask(item);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
@@ -28,7 +29,8 @@ export function AgentCard({ item }: { item: DeskItem }) {
   const refs = [...new Set(related)].filter((r) => r && r !== own);
   const body = item.kind === "agent-failed" && item.detail.summary ? item.detail.summary : (item.explanation?.sentence ?? item.question?.reason ?? item.why);
   const send = async () => {
-    const result = await run("/api/desk/ruling", (requestId: string) => ({ key: item.key, text: text.trim(), requestId }));
+    const ruling = text.trim();
+    const result = await act({ ruling: item.key, text: ruling }, (requestId) => client.queue.ruling(item.key, ruling, requestId));
     if (result.ok) setSent(true);
   };
   return (
@@ -58,7 +60,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
             </button>
           )}
           {sends.map((a) => (
-            <button key={a.id} type="button" className={a.role === "primary" ? "btn pri" : "btn"} disabled={busy} onClick={() => run("/api/desk/action", { action: a.id, key: item.key })}>
+            <button key={a.id} type="button" className={a.role === "primary" ? "btn pri" : "btn"} disabled={busy} onClick={() => act({ action: a.id, key: item.key }, () => client.queue.action(a.id, item.key))}>
               {t(a.label)}
             </button>
           ))}
