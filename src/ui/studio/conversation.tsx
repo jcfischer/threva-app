@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { lines, linkedConversation, readExchange, type Exchange, type StudioSession } from "../api/conversations";
 import { ErrorLine } from "../cards/parts";
 import { useQueue, type ActError } from "../cards/act";
+import { useDeskAct } from "../act/use-act";
 import { useI18n } from "../i18n";
 import { Markdown } from "../markdown";
 
@@ -52,10 +53,8 @@ export function TalkItThrough({ thread }: { thread: string }) {
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [text, setText] = useState("");
   const [outbox, setOutbox] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { busy, act } = useDeskAct();
   const [error, setError] = useState<ActError>(null);
-  const startId = useRef(crypto.randomUUID());
-  const input = useRef<{ text: string; id: string } | null>(null);
   const alive = useRef(true);
   const loop = useRef(0);
   useEffect(() => {
@@ -98,9 +97,7 @@ export function TalkItThrough({ thread }: { thread: string }) {
     setError(null);
     setShown(true);
     if (linked.state === "linked") return follow(linked.id);
-    setBusy(true);
-    const r = await client.conversations.start(thread, startId.current);
-    setBusy(false);
+    const r = await act({ conversation: "start", thread }, (id) => client.conversations.start(thread, id));
     if (!r.ok) {
       setShown(false);
       setError({ message: r.message });
@@ -113,17 +110,12 @@ export function TalkItThrough({ thread }: { thread: string }) {
   async function send() {
     if (linked.state !== "linked") return;
     const body = text.trim();
-    const retry = input.current?.text === body ? input.current.id : crypto.randomUUID();
-    input.current = { text: body, id: retry };
-    setBusy(true);
     setError(null);
-    const r = await client.conversations.send(linked.id, retry, body);
-    setBusy(false);
+    const r = await act({ conversation: "send", id: linked.id, text: body }, (id) => client.conversations.send(linked.id, id, body));
     if (!r.ok) {
       setError({ message: r.message });
       return;
     }
-    input.current = null;
     setText("");
     setOutbox(body);
     await follow(linked.id);
