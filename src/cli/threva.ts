@@ -1,7 +1,10 @@
 #!/usr/bin/env bun
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { doctor, launch, type LaunchDeps } from "./launch";
+import { ntfy } from "./ntfy";
+import { setup, type SetupDeps } from "./setup";
 
 function readOrNull(path: string): string | null {
   return existsSync(path) ? readFileSync(path, "utf8") : null;
@@ -42,6 +45,62 @@ const deps: LaunchDeps = {
   },
 };
 
+let stdinLines: AsyncIterator<string> | null = null;
+
+async function ask(question: string, options?: { secret?: boolean }): Promise<string> {
+  stdinLines ??= console[Symbol.asyncIterator]();
+  process.stdout.write(question);
+  const hide = options?.secret === true && process.stdin.isTTY;
+  if (hide) Bun.spawnSync(["stty", "-echo"], { stdin: "inherit" });
+  try {
+    const next = await stdinLines.next();
+    if (next.done) throw new Error("Setup needs answers on standard input.");
+    return next.value;
+  } finally {
+    if (hide) {
+      Bun.spawnSync(["stty", "echo"], { stdin: "inherit" });
+      process.stdout.write("\n");
+    }
+  }
+}
+
+const COMMAND_NOT_RUN = 127;
+
+async function runOrReport(command: string[]): Promise<{ status: number; stdout: string; stderr: string }> {
+  try {
+    return await runCapture(command);
+  } catch (err) {
+    return { status: COMMAND_NOT_RUN, stdout: "", stderr: `${command[0] ?? ""} could not run: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+function setupDeps(): SetupDeps {
+  return {
+    home: process.env.HOME ?? homedir(),
+    user: process.env.USER ?? "",
+    bunVersion: Bun.version,
+    ask,
+    say: (line) => {
+      process.stdout.write(`${line}\n`);
+    },
+    which: (command) => Bun.which(command),
+    readFile: readOrNull,
+    writeFile: (path, text) => {
+      writeFileSync(path, text, { mode: 0o600 });
+    },
+    mkdir: (path) => {
+      mkdirSync(path, { recursive: true });
+    },
+    security: (args) => runOrReport(["security", ...args]),
+    brew: (args) => runOrReport(["brew", ...args]),
+    git: (args, cwd) => runOrReport(["git", "-C", cwd, ...args]),
+    validate: (cortexDir, pointer) => runOrReport(["bun", `${cortexDir}/src/cortex.ts`, "config", "validate", "--config", pointer]),
+    open: (url) => runOrReport(["open", url]),
+    fetch: (url, init) => fetch(url, init),
+    sleep: (ms) => Bun.sleep(ms),
+  };
+}
+
 const [command, ...rest] = process.argv.slice(2);
 
 if (command === "launch") {
@@ -50,7 +109,13 @@ if (command === "launch") {
   const result = doctor(rest, { readLog: readOrNull });
   (result.code === 0 ? process.stdout : process.stderr).write(`${result.output}\n`);
   process.exit(result.code);
+} else if (command === "setup") {
+  process.exit(await setup(rest, setupDeps()));
+} else if (command === "ntfy") {
+  const result = await ntfy(rest, { stdin: () => Bun.stdin.text(), fetch: (url, init) => fetch(url, init) });
+  if (result.error) process.stderr.write(`${result.error}\n`);
+  process.exit(result.code);
 } else {
-  process.stderr.write("Usage: threva <launch|doctor> [options]\n");
+  process.stderr.write("Usage: threva <setup|launch|doctor|ntfy> [options]\n");
   process.exit(2);
 }
