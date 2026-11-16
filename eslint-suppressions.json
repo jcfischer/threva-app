@@ -301,7 +301,7 @@
   },
   "test/everything-assistant.test.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 7
+      "count": 6
     }
   },
   "test/everything-editor.test.tsx": {

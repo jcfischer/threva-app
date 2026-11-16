@@ -7,7 +7,7 @@ export type ActCall<T> = (requestId: string) => Promise<Result<T>>;
 
 const mayHaveBeenWritten = (result: Result<unknown>): boolean => !result.ok && (result.status === 0 || result.status >= 500);
 
-export function useDeskAct(refresh: () => void) {
+export function useDeskAct(refresh?: () => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ActError>(null);
   const inFlight = useRef(false);
@@ -27,7 +27,7 @@ export function useDeskAct(refresh: () => void) {
       setBusy(false);
     }
     last.current = mayHaveBeenWritten(result) ? { key, id } : null;
-    if (result.ok) refresh();
+    if (result.ok) refresh?.();
     else setError({ message: result.message });
     return result;
   }

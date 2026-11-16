@@ -90,10 +90,12 @@ export function layoutNotes(slots: readonly Slot[], gap = 8): { tops: Record<str
   return { tops, bottom: Math.max(0, floor - gap) };
 }
 
-export type AskOutcome = { ok: true; reply: string; replacement?: string } | { ok: false; message: string | null };
+export type AskOutcome =
+  | { ok: true; reply: string; replacement?: string }
+  | { ok: false; message: string | null; status: number };
 
 export interface AskRequest {
-  client: Pick<DeskClient, "post">;
+  client: Pick<DeskClient, "outline">;
   row: string;
   kind: AskKind;
   question?: string;
@@ -101,15 +103,15 @@ export interface AskRequest {
   requestId?: string;
 }
 
-/** One ask with a fresh request id; it is never sent again with the same one. */
+/** One ask to the outline. An answer Cortex sent with text that cannot be read counts as 200, because the write landed and a retry asks with a fresh request id. */
 export async function askAssistant({ client, row, kind, question, passage, requestId = newRequestId() }: AskRequest): Promise<AskOutcome> {
-  const body: Record<string, unknown> = { requestId, row, kind };
+  const body: Record<string, unknown> = { row, kind };
   if (kind === "answer") body.question = question;
   if (passage) body.passage = passage;
-  const result = await client.post<{ ok?: unknown; reply?: unknown; replacement?: unknown }>("/api/desk/outline/ask", body);
-  if (!result.ok) return { ok: false, message: result.message };
+  const result = await client.outline.ask<{ ok?: unknown; reply?: unknown; replacement?: unknown }>(body, requestId);
+  if (!result.ok) return { ok: false, message: result.message, status: result.status };
   const data = result.data;
-  if (data.ok !== true || typeof data.reply !== "string") return { ok: false, message: null };
+  if (data.ok !== true || typeof data.reply !== "string") return { ok: false, message: null, status: 200 };
   return typeof data.replacement === "string" ? { ok: true, reply: data.reply, replacement: data.replacement } : { ok: true, reply: data.reply };
 }
 
