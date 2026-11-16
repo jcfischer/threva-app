@@ -142,7 +142,7 @@ From `AGENTS.md` and the map; these hold for every option.
 - Threva talks to Cortex only over HTTP and WebSocket. Anything the API doesn't return becomes a Cortex gap, filed on `the-metafactory/cortex#3555`, not logic in Threva.
 - Every string comes from the typed catalog in English and German. Text that Cortex or the assistant writes is shown as sent, and Markdown-formatted once node 79 lands.
 - One card at a time on the Day view stays the core of the product. A topic screen must not become a dashboard.
-- The prototype in `prototype/` is the voice and layout reference. It is never edited.
+- The clickable prototype in the private `jcfischer/threva` repository (`try/proto` and `try/page` at commit `3816c84`) is the voice and layout reference.
 
 ## Known Cortex gaps this redesign will likely need
 

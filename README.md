@@ -12,7 +12,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 
 ## Layout
 
-- `prototype/` is a read-only snapshot of the clickable prototype from `jcfischer/threva` (`try/proto` and `try/page` at commit `3816c84`). It runs on made-up scenario data and is the UX reference for the port. Do not build on its code structure without a decision that says so.
+- The clickable prototype in the private `jcfischer/threva` repository (`try/proto` and `try/page` at commit `3816c84`) is the UX reference for the port. It runs on made-up scenario data. Do not build on its code structure without a decision that says so.
 - `src/` holds the app. `test/` holds its tests.
 
 ## Check
@@ -63,3 +63,7 @@ THREVA_DEV_LANES=~/threva-dev/lanes.yaml THREVA_DEV_PARSER_ROUTING=~/threva-dev/
 ```
 
 With either file, the command runs `cortex config validate` on the generated config and stops with Cortex's error if it is refused. A file that is missing or cannot be parsed stops the command before it writes anything.
+
+## Licence
+
+Threva is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). The UI's runtime dependencies are MIT; [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) lists each one with its version, licence and the licence text the package ships. `bun run check` fails when `package.json` and that file disagree; `bun run notices` regenerates it. Threva runs Cortex, also AGPL-3.0, as a separate program; Cortex's source offer belongs to the installer's bundle, not to the notices above.
