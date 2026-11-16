@@ -300,11 +300,6 @@
       "count": 1
     }
   },
-  "test/conversation.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    }
-  },
   "test/earlier.test.tsx": {
     "threva/no-comments": {
       "count": 3
@@ -410,9 +405,6 @@
     }
   },
   "test/sparring.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 2
-    },
     "threva/no-comments": {
       "count": 1
     }
