@@ -90,7 +90,7 @@ A newcomer on a clean Mac passes all steps of the issue #1 destination test with
 - [x] ISC-15: Under `src/ui`, only `src/ui/api/client.ts` calls `fetch`.
 
 ### Anti-criteria
-- [x] ISC-16: Anti: No file under `src/` imports `@the-metafactory/cortex` or a Cortex source path.
+- [x] ISC-16: Anti: No file under `src/` imports Cortex's runtime or a Cortex source path; the only imports from `@the-metafactory/cortex` are type-only, from its `desk-api` (AGENTS.md rule 1).
 - [x] ISC-17: Anti: The total count in `eslint-suppressions.json` does not exceed 218.
 - [ ] ISC-18: Anti: No tracked file outside `test/` contains a personal home path.
 
@@ -107,7 +107,7 @@ A newcomer on a clean Mac passes all steps of the issue #1 destination test with
 | 12, 13 | `gh issue list --state open --label <label> --json number,body`, then each body greps for `ISC-`. |
 | 14 | `bun run check; echo $?`. |
 | 15 | `grep -rln "fetch(" src/ui` returns only `src/ui/api/client.ts`. |
-| 16 | `grep -rn "@the-metafactory/cortex" src` prints nothing. |
+| 16 | `git grep -nE "@the-metafactory/cortex" -- src | grep -v '/desk-api"'` prints nothing, and `bun run lint` passes (`eslint/cortex-imports.ts` rejects a runtime import from that package). |
 | 17 | `jq '[.. \| numbers] \| add' eslint-suppressions.json` is at most 218. |
 | 18 | `git grep -nE "/Users/[a-z]+/" -- . ':!test' ':!bun.lock'` prints nothing. |
 
