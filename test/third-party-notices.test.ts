@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { noticeEntries, noticesProblems, renderEntry, renderNotices } from "../scripts/third-party-notices-lib";
 
 const root = resolve(import.meta.dir, "..");
@@ -66,10 +67,25 @@ describe("third-party notices", () => {
   });
 
   test("a runtime dependency added to package.json but missing from the notices is named", () => {
-    const added = [...entries, { name: "left-pad", version: "1.3.0", licence: "MIT", text: "MIT License" }];
-    const problems = noticesProblems(notices, added);
-    expect(problems.length).toBe(1);
-    expect(problems[0]).toContain("left-pad");
+    const fixture = mkdtempSync(join(tmpdir(), "threva-notices-"));
+    try {
+      writeFileSync(join(fixture, "package.json"), JSON.stringify({ dependencies: {} }));
+      const before = "# Third-party notices\n";
+      expect(noticesProblems(before, noticeEntries(fixture))).toEqual([]);
+      writeFileSync(join(fixture, "package.json"), JSON.stringify({ dependencies: { "new-runtime-package": "1.0.0" } }));
+      const installed = join(fixture, "node_modules", "new-runtime-package");
+      mkdirSync(installed, { recursive: true });
+      writeFileSync(join(installed, "package.json"), JSON.stringify({ name: "new-runtime-package", version: "1.0.0", license: "MIT" }));
+      writeFileSync(join(installed, "LICENSE"), "MIT License\nFixture copyright\n");
+      const added = noticeEntries(fixture);
+      const problems = noticesProblems(before, added);
+      expect(problems).toHaveLength(1);
+      expect(problems[0]).toContain("new-runtime-package");
+      const complete = `${before}\n## new-runtime-package 1.0.0\n\nLicense: MIT\n\n\`\`\`\nMIT License\nFixture copyright\n\`\`\`\n`;
+      expect(noticesProblems(complete, added)).toEqual([]);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 
   test("a dependency whose notices block is stale is named", () => {
