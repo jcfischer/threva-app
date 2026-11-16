@@ -124,6 +124,11 @@ export const en = {
 
   "app.title": "Threva",
   "app.tagline": "A place for the thread of your work.",
+  "about.title": "About",
+  "about.threva": "Threva release",
+  "about.cortex": "Cortex release",
+  "about.source": "Source on this Mac",
+  "about.devBuild": "Development build: the source ships with installed builds. Repository:",
   "error.network": "Cortex is not reachable. Threva keeps what it last saw and tries again.",
   "queue.label": "Cards",
   "queue.loading": "Loading your cards…",

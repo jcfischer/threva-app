@@ -126,6 +126,11 @@ export const de: Messages = {
 
   "app.title": "Threva",
   "app.tagline": "Ein Ort für die Themen deiner Arbeit.",
+  "about.title": "Info",
+  "about.threva": "Threva-Version",
+  "about.cortex": "Cortex-Version",
+  "about.source": "Quelltext auf diesem Mac",
+  "about.devBuild": "Entwicklungsbuild: Der Quelltext liegt nur installierten Builds bei. Repository:",
   "error.network": "Cortex ist nicht erreichbar. Threva behält, was es zuletzt gesehen hat, und versucht es wieder.",
   "queue.label": "Karten",
   "queue.loading": "Deine Karten werden geladen …",

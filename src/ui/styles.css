@@ -398,3 +398,9 @@ html{color-scheme:light dark}body{margin:0;font-size:14px}[hidden]{display:none!
 .time-days label{flex-direction:row;align-items:center;gap:4px}
 .time-section{display:flex;flex-direction:column;gap:6px;margin:8px 0}
 .time-section h3{margin:0;font-size:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.about{margin-left:auto;position:relative}
+.about-toggle{background:none;border:0;padding:0;color:var(--faint);font:inherit;font-size:13px;cursor:pointer}
+.about-toggle:hover,.about-toggle[aria-expanded="true"]{color:var(--fg);text-decoration:underline}
+.about-panel{flex-basis:100%;position:absolute;right:0;top:100%;z-index:10;min-width:280px;max-width:min(520px,90vw);margin-top:6px;padding:10px 14px;background:var(--bg);border:1px solid var(--faint);border-radius:8px;font-size:13px}
+.about-panel dl{margin:0}.about-panel dt{color:var(--faint)}.about-panel dd{margin:0 0 8px;overflow-wrap:anywhere;user-select:text}
