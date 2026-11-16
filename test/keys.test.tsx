@@ -27,7 +27,7 @@ describe("front card key map", () => {
 
   test("Enter completes a task and lets a sweep go with the same Desk requests as their buttons", () => {
     expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", myDay: { op: "done", id: "todo" } });
-    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", path: "/api/desk/mail", body: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
+    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", mail: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
   });
 
   test("all other cards have no Enter act; Esc skips except for after-meeting dismissal", () => {

@@ -2,7 +2,7 @@ import type { MailSweep, MyDayCommand, TodayTask } from "../api/types";
 import type { TextKey } from "../i18n/catalog";
 import type { Entry } from "./order";
 
-export type EnterAct = { label: TextKey } & ({ path: string; body: Record<string, unknown> } | { myDay: MyDayCommand });
+export type EnterAct = { label: TextKey } & ({ mail: Record<string, unknown> } | { myDay: MyDayCommand });
 
 export interface KeyMap {
   enter: EnterAct | null;
@@ -14,7 +14,7 @@ export function taskDone(task: TodayTask): EnterAct {
 }
 
 export function sweepEnter(sweep: MailSweep): EnterAct {
-  return { label: sweep.target === "archive" ? "card.sweep.archive" : "card.sweep.letGo", path: "/api/desk/mail", body: { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target } };
+  return { label: sweep.target === "archive" ? "card.sweep.archive" : "card.sweep.letGo", mail: { action: "sweep", sweep: sweep.id, keys: sweep.mails.map((m) => m.key), target: sweep.target } };
 }
 
 export function keyMap(front: Entry | undefined): KeyMap | null {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
-import { createClient } from "../src/ui/api/client";
+import type { Result } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { DeskAction, DeskItem } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard, SweepCard, UndoLine } from "../src/ui/cards/mail-cards";
@@ -15,24 +16,23 @@ const mail = (actions: DeskAction[], overrides: Partial<DeskItem> = {}): DeskIte
   item({ key: "mail:1", kind: "mail", actions, detail: { summary: "", links: [{ label: "Open", url: "message:%3Cid%3E" }] }, ...overrides });
 
 let dom: MountedDom;
-let writes: unknown[];
-let reply: (body: Record<string, unknown>) => Response;
+let client: MemoryClient;
+const ok = (data: Record<string, unknown> = {}): Result<unknown> => ({ ok: true, data: { ok: true, ...data } });
+const refused = (message: string, status: number): Result<unknown> => ({ ok: false, message, status });
+const sends = () => client.calls.filter((c) => c.name === "mail.send").map((c) => c.args[0]);
+const invites = () => client.calls.filter((c) => c.name === "mail.inviteReply").map((c) => c.args);
 
 beforeEach(() => {
   dom = mountDom();
-  writes = [];
-  reply = () => Response.json({ ok: true });
+  client = createMemoryClient();
+  client.seed("mail.send", ok());
+  client.seed("mail.inviteReply", ok());
 });
 afterEach(async () => {
   await dom.cleanup();
 });
 
 async function mount(node: ReactNode, locale: "en" | "de" = "en") {
-  const client = createClient(async (_url, init) => {
-    const body = JSON.parse(init!.body as string) as Record<string, unknown>;
-    writes.push(body);
-    return reply(body);
-  });
   await act(async () => {
     dom.root.render(
       <I18nProvider value={createI18n(locale)}>
@@ -52,7 +52,7 @@ describe("the archive outcome", () => {
     expect(buttons()).toContain("Archive");
     expect(buttons()).not.toContain("Let go");
     await click("Archive");
-    expect(writes).toEqual([{ action: "move", key: "mail:1", target: "archive" }]);
+    expect(sends()).toEqual([{ action: "move", key: "mail:1", target: "archive" }]);
 
     await mount(<MailCard item={mail([])} />, "de");
     expect(buttons()).toContain("Archivieren");
@@ -88,7 +88,7 @@ describe("the mail actions Cortex lists", () => {
     await mount(<MailCard item={it} />);
     expect(buttons()).toEqual(["Archive", "Attach", "Draft a reply", "Ask me", "Spam", "Delete"]);
     await click("Spam");
-    expect(writes).toEqual([{ action: "move", key: "mail:1", target: "junk" }]);
+    expect(sends()).toEqual([{ action: "move", key: "mail:1", target: "junk" }]);
   });
 
   test("unlisted and unwired actions are not shown", async () => {
@@ -97,12 +97,12 @@ describe("the mail actions Cortex lists", () => {
   });
 
   test("Spam and Delete move the mail to Junk and Trash and show what Cortex answers", async () => {
-    reply = (body) => Response.json({ ok: true, message: `Moved to ${String(body.target)}.`, undo: "m7" });
+    client.seed("mail.send", (body: Record<string, unknown>) => ok({ message: `Moved to ${String(body.target)}.`, undo: "m7" }));
     await mount(<MailCard item={mail(listed)} />);
     await click("Spam");
     expect(dom.container.textContent).toContain("Moved to junk.");
     await click("Delete");
-    expect(writes).toEqual([
+    expect(sends()).toEqual([
       { action: "move", key: "mail:1", target: "junk" },
       { action: "move", key: "mail:1", target: "trash" },
     ]);
@@ -110,7 +110,7 @@ describe("the mail actions Cortex lists", () => {
   });
 
   test("a refused move shows Cortex's error on the card", async () => {
-    reply = () => Response.json({ ok: false, error: "This mail is already in Junk." }, { status: 409 });
+    client.seed("mail.send", refused("This mail is already in Junk.", 409));
     await mount(<MailCard item={mail(listed)} />);
     await click("Spam");
     expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("This mail is already in Junk.");
@@ -121,28 +121,43 @@ describe("the mail actions Cortex lists", () => {
     await mount(<UndoLine done={done} now={NOW} />);
     expect(dom.container.textContent).toContain("Moved to Junk: “Budget”");
     await click("Undo");
-    expect(writes).toEqual([{ action: "undo", move: "m7" }]);
+    expect(sends()).toEqual([{ action: "undo", move: "m7" }]);
   });
 
   test("an invitation answer is sent only after a second click, once per request id", async () => {
-    reply = () => Response.json({ ok: false, error: "The reply command timed out." }, { status: 504 });
+    client.seed("mail.inviteReply", refused("The reply command timed out.", 504));
     await mount(<MailCard item={mail(listed)} />);
     await click("Accept");
-    expect(writes).toEqual([]);
+    expect(invites()).toEqual([]);
     expect(dom.container.textContent).toContain("This sends your answer to the organizer.");
     await click("Send the acceptance");
     expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("The reply command timed out.");
-    reply = () => Response.json({ ok: true, message: "Accepted. The event is in your calendar." });
+    client.seed("mail.inviteReply", ok({ message: "Accepted. The event is in your calendar." }));
     await click("Send the acceptance");
     expect(dom.container.textContent).toContain("Accepted. The event is in your calendar.");
     expect(dom.container.textContent).not.toContain("This sends your answer");
-    const [first, second] = writes as Record<string, unknown>[];
-    expect(first).toEqual({ action: "invite.reply", key: "mail:1", reply: "accept", requestId: expect.stringMatching(/^[0-9a-f-]{36}$/), commitment: null, confirmed: true });
+    const [first, second] = invites();
+    expect(first).toEqual(["mail:1", "accept", expect.stringMatching(/^[0-9a-f]{32}$/)]);
     expect(second).toEqual(first!);
   });
 
+  test("an invitation answer that failed with no response is retried with the same request id, a refused one is not", async () => {
+    client.seed("mail.inviteReply", refused("", 0));
+    await mount(<MailCard item={mail(listed)} />);
+    await click("Accept");
+    await click("Send the acceptance");
+    await click("Send the acceptance");
+    client.seed("mail.inviteReply", refused("Nope.", 409));
+    await click("Send the acceptance");
+    await click("Send the acceptance");
+    const ids = invites().map((a) => a[2]);
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[2]).toBe(ids[0]);
+    expect(ids[3]).not.toBe(ids[0]);
+  });
+
   test("clicking Accept again after a timeout and a cancel keeps the same request id", async () => {
-    reply = () => Response.json({ ok: false, error: "The reply command timed out." }, { status: 504 });
+    client.seed("mail.inviteReply", refused("The reply command timed out.", 504));
     await mount(<MailCard item={mail(listed)} />);
     await click("Accept");
     await click("Send the acceptance");
@@ -151,7 +166,7 @@ describe("the mail actions Cortex lists", () => {
     await click("Send the acceptance");
     await click("Decline");
     await click("Send the decline");
-    const [first, again, decline] = (writes as Record<string, unknown>[]).map((w) => w.requestId);
+    const [first, again, decline] = invites().map((a) => a[2]);
     expect(again).toBe(first);
     expect(decline).not.toBe(first);
   });
@@ -162,7 +177,17 @@ describe("the mail actions Cortex lists", () => {
     expect(buttons()).toContain("Absage senden");
     await click("Abbrechen");
     expect(buttons()).not.toContain("Absage senden");
-    expect(writes).toEqual([]);
+    expect(invites()).toEqual([]);
+  });
+});
+
+describe("the sweep", () => {
+  test("Enter-button sends the sweep through the named mail call, and shows a refusal", async () => {
+    client.seed("mail.send", refused("The move command is missing.", 409));
+    await mount(<SweepCard sweep={sweep({ mails: [{ key: "m1", from: "A", subject: "S" }] })} />);
+    await click("Archive all");
+    expect(sends()).toEqual([{ action: "sweep", sweep: "news", keys: ["m1"], target: "archive" }]);
+    expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("The move command is missing.");
   });
 });
 
@@ -172,14 +197,14 @@ describe("a mail waiting for an answer", () => {
   const entry = (it: DeskItem) => <EntryCard entry={{ k: `i:${it.key}`, type: "item", item: it, fresh: false }} onDismissMeeting={() => {}} />;
 
   test("offers the waiting actions Cortex lists and posts them", async () => {
-    reply = () => Response.json({ ok: true, message: "The Desk stopped waiting for an answer." });
+    client.seed("mail.send", ok({ message: "The Desk stopped waiting for an answer." }));
     const it = waiting([action("mail.draft", "Draft a nudge"), action("waiting.snooze", "Wait 2 more days"), action("waiting.done", "Done"), { ...action("open", "Open in Mail"), url: "message:%3Cid%3E" }]);
     await mount(entry(it));
     expect(buttons()).toEqual(["Wait longer", "Done"]);
     expect(dom.container.textContent).toContain("Open in Mail");
     await click("Wait longer");
     await click("Done");
-    expect(writes).toEqual([{ action: "waiting.snooze", key: "waiting:<id>" }, { action: "waiting.done", key: "waiting:<id>" }]);
+    expect(sends()).toEqual([{ action: "waiting.snooze", key: "waiting:<id>" }, { action: "waiting.done", key: "waiting:<id>" }]);
     expect(dom.container.textContent).toContain("The Desk stopped waiting for an answer.");
 
     await mount(entry(it), "de");
