@@ -1,6 +1,5 @@
 import { safeHref } from "../api/safe-link";
 import { useState } from "react";
-import { newRequestId } from "../api/client";
 import type { DeskItem, TodayTask } from "../api/types";
 import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
@@ -29,7 +28,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
   const refs = [...new Set(related)].filter((r) => r && r !== own);
   const body = item.kind === "agent-failed" && item.detail.summary ? item.detail.summary : (item.explanation?.sentence ?? item.question?.reason ?? item.why);
   const send = async () => {
-    const result = await run("/api/desk/ruling", { key: item.key, text: text.trim(), requestId: newRequestId() });
+    const result = await run("/api/desk/ruling", (requestId: string) => ({ key: item.key, text: text.trim(), requestId }));
     if (result.ok) setSent(true);
   };
   return (
