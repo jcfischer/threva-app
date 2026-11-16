@@ -202,6 +202,26 @@ describe("the assistant on a page", () => {
     expect(ids[1]).not.toBe(ids[0]);
   }));
 
+  test("an ask pressed while another is in flight is not sent again, says nothing and puts its line back", async () => surface(async (container, render) => {
+    let release: (result: Result<unknown>) => void = () => {};
+    const subject = page({ answer: () => new Promise<Result<unknown>>(resolve => { release = resolve; }) });
+    await render(subject.element("First\n/ one?\nSecond\n/ two?"));
+    const content = container.querySelector<HTMLElement>(".cm-content")!;
+    const editor = EditorView.findFromDOM(content)!;
+    await askLine(editor, content);
+    expect(subject.client.calls).toHaveLength(1);
+    expect(editor.state.doc.toString()).toBe("First\nSecond\n/ two?");
+    await act(async () => { editor.dispatch({ selection: { anchor: editor.state.doc.line(3).to } }); enter(content); });
+    await flush();
+    expect(subject.client.calls).toHaveLength(1);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(editor.state.doc.toString()).toBe("First\nSecond\n/ two?");
+    release({ ok: true, data: { ok: true, reply: "Add a date." } });
+    await flush();
+    expect(container.querySelector(".assist-note")?.textContent).toContain("Add a date.");
+    expect(new AssistantNotes(subject.storage).list("r").map(item => item.passage)).toEqual(["First"]);
+  }));
+
   test("an ask that got no response is sent again with the same request id", async () => surface(async (container, render) => {
     const subject = page({ answer: { ok: false, message: null, status: 0 } });
     await render(subject.element("The plan\n/ what?\nMore"));

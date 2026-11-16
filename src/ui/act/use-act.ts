@@ -5,6 +5,8 @@ export type ActError = { message: string | null } | null;
 
 export type ActCall<T> = (requestId: string) => Promise<Result<T>>;
 
+export const WRITE_LANDED = 200;
+
 const mayHaveBeenWritten = (result: Result<unknown>): boolean => !result.ok && (result.status === 0 || result.status >= 500);
 
 export function useDeskAct(refresh?: () => void) {

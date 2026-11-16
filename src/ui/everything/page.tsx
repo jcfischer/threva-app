@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeDesc } from "@codemirror/state";
 import type { DeskClient } from "../api/client";
 import type { OutlineRow } from "../api/types";
-import { useDeskAct } from "../act/use-act";
+import { useDeskAct, WRITE_LANDED } from "../act/use-act";
 import { useI18n } from "../i18n";
 import { addressedText, lineRemovalRange } from "./addressed";
 import { askAssistant, lineAbove, localDate, pageAfterKeep, pageAfterReplace, type AskKind, AssistantNotes, type OpenNote } from "./assistant";
@@ -61,9 +61,9 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
     });
   }, [store, row.id]);
   const passages = useMemo(() => [...open, ...waiting].flatMap(item => item.passage ? [{ id: item.id, text: item.passage }] : []), [open, waiting]);
-  const { act } = useDeskAct();
+  const { act, isInFlight } = useDeskAct();
   const send = async (kind: AskKind, question: string | undefined, passage: string | null): Promise<boolean> => {
-    if (!client || !store) return false;
+    if (!client || !store || isInFlight()) return false;
     setAsked(null);
     const asked = await act({ row: row.id, kind, question: question ?? null, passage }, async requestId => {
       setWaiting(previous => [...previous, { id: requestId, passage }]);
@@ -71,7 +71,7 @@ export function NotePage({ row, text, place, notice, clean = true, onType, onLea
         const outcome = await askAssistant({ client, row: row.id, kind, question, passage, requestId });
         if (!outcome.ok) return outcome;
         const stored = store.add(row.id, { id: requestId, kind, question: question ?? "", passage, reply: outcome.reply, ...(outcome.replacement === undefined ? {} : { replacement: outcome.replacement }), at: new Date().toISOString() });
-        return stored ? { ok: true, data: outcome } : { ok: false, message: t("assist.notStored"), status: 200 };
+        return stored ? { ok: true, data: outcome } : { ok: false, message: t("assist.notStored"), status: WRITE_LANDED };
       } finally {
         if (mounted.current) setWaiting(previous => previous.filter(item => item.id !== requestId));
       }

@@ -1,3 +1,4 @@
+import { WRITE_LANDED } from "../act/use-act";
 import { newRequestId, type DeskClient } from "../api/client";
 import type { PlaceStore } from "./note";
 
@@ -111,7 +112,7 @@ export async function askAssistant({ client, row, kind, question, passage, reque
   const result = await client.outline.ask<{ ok?: unknown; reply?: unknown; replacement?: unknown }>(body, requestId);
   if (!result.ok) return { ok: false, message: result.message, status: result.status };
   const data = result.data;
-  if (data.ok !== true || typeof data.reply !== "string") return { ok: false, message: null, status: 200 };
+  if (data.ok !== true || typeof data.reply !== "string") return { ok: false, message: null, status: WRITE_LANDED };
   return typeof data.replacement === "string" ? { ok: true, reply: data.reply, replacement: data.replacement } : { ok: true, reply: data.reply };
 }
 
