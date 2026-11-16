@@ -1,4 +1,5 @@
-import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioList } from "./types";
+import type { ConversationDetail, ConversationEntry, ConversationMeta, SessionRequest, SourceConversations, StudioSession } from "./conversations";
+import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioAct, StudioList } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
 
@@ -36,27 +37,150 @@ function jsonPost<T>(fetchImpl: Fetch, path: string, body: unknown): Promise<Res
   return call<T>(fetchImpl, path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 }
 
-const MY_DAY = "/api/desk/my-day";
+const PATHS = {
+  desk: "/api/desk",
+  action: "/api/desk/action",
+  ruling: "/api/desk/ruling",
+  interruptionFeedback: "/api/desk/interruptions/feedback",
+  mail: "/api/desk/mail",
+  mailRules: "/api/desk/mail/rules",
+  myDay: "/api/desk/my-day",
+  ask: "/api/desk/ask",
+  create: "/api/desk/create",
+  captureUndo: "/api/desk/capture/undo",
+  studio: "/api/desk/studio",
+  studioAct: "/api/desk/studio/act",
+  studioSession: "/api/desk/studio/session",
+  outlineAsk: "/api/desk/outline/ask",
+  handshake: "/api/desk/handshake",
+  conversations: "/api/conversations",
+  conversationAsks: "/api/conversations/asks",
+  conversationStarts: "/api/conversations/starts",
+} as const;
+
+const enc = encodeURIComponent;
+const dashedId = (): string => crypto.randomUUID();
+
+type Json = Record<string, unknown>;
+type Call<T> = Promise<Result<T>>;
+type MailReply = "accept" | "decline" | "tentative" | (string & {});
+
+export interface QueueCalls {
+  desk(): Call<DeskView>;
+  ruling(key: string, text: string, requestId?: string): Call<Json>;
+  action(action: string, key: string): Call<Json>;
+  interruptionFeedback(body: { key: string; code: string; target?: unknown; important: boolean }): Call<Json>;
+}
+
+export interface MailCalls {
+  rules(): Call<MailRules>;
+  rule(proposal: string, op: "approve" | "later" | "never"): Call<Json>;
+  send<T = Json>(body: Json): Call<T>;
+  inviteReply(key: string, reply: MailReply, requestId?: string): Call<{ message?: string }>;
+  studioAdd(key: string, thread: string | null, reason?: string, requestId?: string): Call<{ message?: string }>;
+}
+
+export interface MyDayCalls {
+  (): Call<MyDayOutline>;
+  outline(): Call<MyDayOutline>;
+  change(date: string, command: MyDayCommand, requestId?: string): Call<MyDayChange>;
+}
+
+export interface CaptureCalls {
+  ask<T = Json>(text: string): Call<T>;
+  create<T = Json>(kind: string, fields: Json, requestId?: string): Call<T>;
+  undo(undo: { id: string; requestId: string }): Call<Json>;
+}
+
+export interface StudioCalls {
+  (): Call<StudioList>;
+  list(): Call<StudioList>;
+  act(act: StudioAct, requestId?: string): Call<{ message?: string }>;
+  session(request: SessionRequest): Call<{ session: StudioSession }>;
+}
+
+export interface ConversationCalls {
+  ask(text: string, startId?: string): Call<Json>;
+  start(thread: string, startId?: string): Call<{ conversation: ConversationMeta }>;
+  source(thread: string): Call<SourceConversations>;
+  send(id: string, inputId: string, text: string): Call<Json>;
+  detail(id: string): Call<ConversationDetail>;
+  entries(id: string): Call<{ entries: ConversationEntry[] }>;
+}
+
+export interface OutlineCalls {
+  ask<T = Json>(body: Json, requestId?: string): Call<T>;
+}
+
+export type HandshakeCalls = () => Call<Json>;
 
 export interface DeskClient {
-  desk(): Promise<Result<DeskView>>;
-  studio(): Promise<Result<StudioList>>;
-  rules(): Promise<Result<MailRules>>;
-  myDay(): Promise<Result<MyDayOutline>>;
-  changeMyDay(date: string, command: MyDayCommand): Promise<Result<MyDayChange>>;
-  get<T = Record<string, unknown>>(path: string): Promise<Result<T>>;
-  post<T = Record<string, unknown>>(path: string, body: unknown): Promise<Result<T>>;
+  desk(): Call<DeskView>;
+  rules(): Call<MailRules>;
+  changeMyDay(date: string, command: MyDayCommand): Call<MyDayChange>;
+  get<T = Json>(path: string): Call<T>;
+  post<T = Json>(path: string, body: unknown): Call<T>;
+  queue: QueueCalls;
+  mail: MailCalls;
+  myDay: MyDayCalls;
+  capture: CaptureCalls;
+  studio: StudioCalls;
+  conversations: ConversationCalls;
+  outline: OutlineCalls;
+  handshake: HandshakeCalls;
 }
 
 export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, init)): DeskClient {
+  const read = <T,>(path: string) => call<T>(fetchImpl, path);
+  const write = <T,>(path: string, body: unknown) => jsonPost<T>(fetchImpl, path, body);
+  const outline = () => read<MyDayOutline>(PATHS.myDay);
+  const change = (date: string, command: MyDayCommand, requestId: string = dashedId()) => write<MyDayChange>(PATHS.myDay, { date, requestId, command });
+  const list = () => read<StudioList>(PATHS.studio);
+  const desk = () => read<DeskView>(PATHS.desk);
+  const rules = () => read<MailRules>(PATHS.mailRules);
   return {
-    desk: () => call<DeskView>(fetchImpl, "/api/desk"),
-    studio: () => call<StudioList>(fetchImpl, "/api/desk/studio"),
-    rules: () => call<MailRules>(fetchImpl, "/api/desk/mail/rules"),
-    myDay: () => call<MyDayOutline>(fetchImpl, MY_DAY),
-    changeMyDay: (date, command) => jsonPost<MyDayChange>(fetchImpl, MY_DAY, { date, requestId: crypto.randomUUID(), command }),
-    get: <T,>(path: string) => call<T>(fetchImpl, path),
-    post: <T,>(path: string, body: unknown) =>
-      jsonPost<T>(fetchImpl, path, body),
+    desk,
+    rules,
+    changeMyDay: (date, command) => change(date, command),
+    get: read,
+    post: write,
+    queue: {
+      desk,
+      ruling: (key, text, requestId = newRequestId()) => write(PATHS.ruling, { key, text, requestId }),
+      action: (action, key) => write(PATHS.action, { action, key }),
+      interruptionFeedback: (body) => write(PATHS.interruptionFeedback, body),
+    },
+    mail: {
+      rules,
+      rule: (proposal, op) => write(PATHS.mailRules, { op, proposal }),
+      send: (body) => write(PATHS.mail, body),
+      inviteReply: (key, reply, requestId = dashedId()) =>
+        write(PATHS.mail, { action: "invite.reply", key, reply, requestId, commitment: null, confirmed: true }),
+      studioAdd: (key, thread, reason, requestId = newRequestId()) =>
+        write(PATHS.mail, { action: "studio.add", key, requestId, thread, includeText: false, ...(reason ? { reason } : {}) }),
+    },
+    myDay: Object.assign(outline, { outline, change }),
+    capture: {
+      ask: (text) => write(PATHS.ask, { text }),
+      create: (kind, fields, requestId = newRequestId()) => write(PATHS.create, { requestId, kind, fields }),
+      undo: (undo) => write(PATHS.captureUndo, undo),
+    },
+    studio: Object.assign(list, {
+      list,
+      act: (act: StudioAct, requestId: string = newRequestId()) => write<{ message?: string }>(PATHS.studioAct, { ...act, requestId }),
+      session: (request: SessionRequest) => write<{ session: StudioSession }>(PATHS.studioSession, request),
+    }),
+    conversations: {
+      ask: (text, startId = dashedId()) => write(PATHS.conversationAsks, { text, startId }),
+      start: (thread, startId = dashedId()) => write(PATHS.conversationStarts, { startId, source: { owner: "studio-thread", id: thread } }),
+      source: (thread) => read(`${PATHS.conversations}/source?owner=studio-thread&id=${enc(thread)}`),
+      send: (id, inputId, text) => write(`${PATHS.conversations}/${enc(id)}`, { inputId, transport: "web", text, mode: "queue" }),
+      detail: (id) => read(`${PATHS.conversations}/${enc(id)}`),
+      entries: (id) => read(`${PATHS.conversations}/${enc(id)}/entries?limit=500`),
+    },
+    outline: {
+      ask: (body, requestId = dashedId()) => write(PATHS.outlineAsk, { requestId, ...body }),
+    },
+    handshake: () => read(PATHS.handshake),
   };
 }
