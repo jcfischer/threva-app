@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { EditorView } from "@codemirror/view";
-import { createClient } from "../src/ui/api/client";
+import type { Result } from "../src/ui/api/client";
+import { createMemoryClient, type Answer } from "../src/ui/api/memory-client";
 import { AssistantNotes, askAssistant, findPassage, layoutNotes, lineAbove, pageAfterKeep, pageAfterReplace, type OpenNote } from "../src/ui/everything/assistant";
 import { NotePage } from "../src/ui/everything/page";
 import { row } from "./fixtures/outline";
@@ -48,30 +49,31 @@ describe("the page seam", () => {
 });
 
 describe("asking", () => {
-  const answer = (body: unknown, status = 200) => {
-    const sent: { url: string; body: Record<string, unknown> }[] = [];
-    const client = createClient(async (url, init) => { sent.push({ url, body: JSON.parse(init!.body as string) }); return Response.json(body, { status }); });
-    return { sent, client };
+  const answering = (answer: Answer) => {
+    const client = createMemoryClient();
+    client.seed("outline.ask", answer);
+    return client;
   };
 
   test("sends a fresh request id with the line above as passage and reads the reply", async () => {
-    const { sent, client } = answer({ ok: true, reply: "Add a date." });
+    const client = answering({ ok: true, data: { ok: true, reply: "Add a date." } });
     expect(await askAssistant({ client, row: "r", kind: "answer", question: "what?", passage: "The plan" })).toEqual({ ok: true, reply: "Add a date." });
     await askAssistant({ client, row: "r", kind: "answer", question: "what?", passage: "The plan" });
-    expect(sent[0]!.url).toBe("/api/desk/outline/ask");
-    expect(sent[0]!.body).toMatchObject({ row: "r", kind: "answer", question: "what?", passage: "The plan" });
-    expect(sent[0]!.body.requestId).not.toBe(sent[1]!.body.requestId);
+    const [first, second] = client.calls;
+    expect(first).toEqual({ name: "outline.ask", args: [{ row: "r", kind: "answer", question: "what?", passage: "The plan" }, expect.any(String)] });
+    expect(second!.args[1]).toBeString();
+    expect(second!.args[1]).not.toBe(first!.args[1]);
   });
 
   test("a shorten asks with the passage only and returns the replacement", async () => {
-    const { sent, client } = answer({ ok: true, reply: "Shorter.", replacement: "Plan" });
+    const client = answering({ ok: true, data: { ok: true, reply: "Shorter.", replacement: "Plan" } });
     expect(await askAssistant({ client, row: "r", kind: "shorten", question: "ignored", passage: "The plan" })).toEqual({ ok: true, reply: "Shorter.", replacement: "Plan" });
-    expect(Object.keys(sent[0]!.body).sort()).toEqual(["kind", "passage", "requestId", "row"]);
+    expect(Object.keys(client.calls[0]!.args[0] as Record<string, unknown>).sort()).toEqual(["kind", "passage", "row"]);
   });
 
   test("a refusal gives Cortex's own message and an unreadable answer gives none", async () => {
-    expect(await askAssistant({ client: answer({ ok: false, error: "No model." }, 503).client, row: "r", kind: "answer", question: "q" })).toEqual({ ok: false, message: "No model." });
-    expect(await askAssistant({ client: answer({ ok: true }).client, row: "r", kind: "answer", question: "q" })).toEqual({ ok: false, message: null });
+    expect(await askAssistant({ client: answering({ ok: false, message: "No model.", status: 503 }), row: "r", kind: "answer", question: "q" })).toEqual({ ok: false, message: "No model.", status: 503 });
+    expect(await askAssistant({ client: answering({ ok: true, data: { ok: true } }), row: "r", kind: "answer", question: "q" })).toEqual({ ok: false, message: null, status: 200 });
   });
 });
 
@@ -113,22 +115,26 @@ async function surface(run: (container: HTMLElement, render: (element: React.Rea
   }
 }
 
-function page(options: { reply?: () => Response | Promise<Response>; storage?: ReturnType<typeof memoryStorage> }) {
-  const asks: Record<string, unknown>[] = [];
+function page(options: { answer?: Answer; storage?: ReturnType<typeof memoryStorage> } = {}) {
   const saves: string[] = [];
   const storage = options.storage ?? memoryStorage();
-  const client = createClient(async (_url, init) => { asks.push(JSON.parse(init!.body as string)); return options.reply ? options.reply() : Response.json({ ok: true, reply: "Add a date." }); });
+  const client = createMemoryClient();
+  client.seed("outline.ask", options.answer ?? { ok: true, data: { ok: true, reply: "Add a date." } });
   const element = (text: string, assistantName?: string) => <NotePage row={row("r", { title: "Write" })} text={text} place={null} notice={null} client={client} notes={new AssistantNotes(storage)} assistantName={assistantName}
     onType={() => {}} onLeave={next => saves.push(next)} />;
-  return { asks, saves, storage, element };
+  return { client, saves, storage, element };
 }
 
 const enter = (content: HTMLElement) => content.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
 const flush = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+const askLine = async (editor: EditorView, content: HTMLElement) => {
+  await act(async () => { editor.focus(); editor.dispatch({ selection: { anchor: editor.state.doc.line(2).to } }); enter(content); });
+  await flush();
+};
 
 describe("the assistant on a page", () => {
   test("Enter on an addressed line removes it, asks with the line above, keeps the cursor and shows the answer in the margin", async () => surface(async (container, render) => {
-    const subject = page({});
+    const subject = page();
     await render(subject.element("The plan\n\n/ what is missing?\nMore", "Mira"));
     const content = container.querySelector<HTMLElement>(".cm-content")!;
     const editor = EditorView.findFromDOM(content)!;
@@ -138,7 +144,7 @@ describe("the assistant on a page", () => {
     expect(editor.state.doc.toString()).toBe("The plan\n\nMore");
     expect(editor.state.selection.main.head).toBe(10);
     await flush();
-    expect(subject.asks[0]).toMatchObject({ row: "r", kind: "answer", question: "what is missing?", passage: "The plan" });
+    expect(subject.client.calls).toEqual([{ name: "outline.ask", args: [{ row: "r", kind: "answer", question: "what is missing?", passage: "The plan" }, expect.any(String)] }]);
     expect(container.querySelector(".assist-note")?.textContent).toContain("Add a date.");
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(new AssistantNotes(subject.storage).list("r")).toHaveLength(1);
@@ -147,14 +153,14 @@ describe("the assistant on a page", () => {
   }));
 
   test("an answer that arrives after the page closed is still stored for the row", async () => surface(async (container, render) => {
-    let answer: (response: Response) => void = () => {};
-    const subject = page({ reply: () => new Promise<Response>(resolve => { answer = resolve; }) });
+    let answer: (result: Result<unknown>) => void = () => {};
+    const subject = page({ answer: () => new Promise<Result<unknown>>(resolve => { answer = resolve; }) });
     await render(subject.element("The plan\n/ what?\nMore"));
     const content = container.querySelector<HTMLElement>(".cm-content")!;
     const editor = EditorView.findFromDOM(content)!;
     await act(async () => { editor.focus(); editor.dispatch({ selection: { anchor: editor.state.doc.line(2).to } }); enter(content); });
     await render(<div />);
-    answer(Response.json({ ok: true, reply: "Add a date." }));
+    answer({ ok: true, data: { ok: true, reply: "Add a date." } });
     await flush();
     expect(new AssistantNotes(subject.storage).list("r").map(item => item.reply)).toEqual(["Add a date."]);
   }));
@@ -169,7 +175,7 @@ describe("the assistant on a page", () => {
     const buttons = () => [...container.querySelectorAll<HTMLButtonElement>(".assist-note button")];
     expect(buttons().map(button => button.textContent)).toEqual(["Keep", "Dismiss", "Keep", "Dismiss"]);
     await act(async () => buttons()[3]!.click());
-    expect(subject.asks).toHaveLength(0);
+    expect(subject.client.calls).toHaveLength(0);
     expect(subject.saves).toHaveLength(0);
     expect(notes.list("r").map(item => item.id)).toEqual(["keep"]);
     await act(async () => buttons()[0]!.click());
@@ -181,16 +187,54 @@ describe("the assistant on a page", () => {
     expect(notes.list("r")).toEqual([]);
   }));
 
-  test("a refused ask shows Cortex's message below the editor and puts the line back", async () => surface(async (container, render) => {
-    const subject = page({ reply: () => Response.json({ ok: false, error: "No conversation model is configured." }, { status: 503 }) });
+  test("a refused ask shows Cortex's message below the editor, puts the line back, and the next ask uses a new request id", async () => surface(async (container, render) => {
+    const subject = page({ answer: { ok: false, message: "That row is not in the outline.", status: 404 } });
     await render(subject.element("The plan\n/ what?\nMore"));
     const content = container.querySelector<HTMLElement>(".cm-content")!;
     const editor = EditorView.findFromDOM(content)!;
-    await act(async () => { editor.focus(); editor.dispatch({ selection: { anchor: editor.state.doc.line(2).to } }); enter(content); });
-    await flush();
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe("No conversation model is configured.");
+    await askLine(editor, content);
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("That row is not in the outline.");
     expect(editor.state.doc.toString()).toBe("The plan\n/ what?\nMore");
     expect(container.querySelector(".assist-note")).toBeNull();
+    await askLine(editor, content);
+    const ids = subject.client.calls.map(call => call.args[1]);
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).not.toBe(ids[0]);
+  }));
+
+  test("an ask pressed while another is in flight is not sent again, says nothing and puts its line back", async () => surface(async (container, render) => {
+    let release: (result: Result<unknown>) => void = () => {};
+    const subject = page({ answer: () => new Promise<Result<unknown>>(resolve => { release = resolve; }) });
+    await render(subject.element("First\n/ one?\nSecond\n/ two?"));
+    const content = container.querySelector<HTMLElement>(".cm-content")!;
+    const editor = EditorView.findFromDOM(content)!;
+    await askLine(editor, content);
+    expect(subject.client.calls).toHaveLength(1);
+    expect(editor.state.doc.toString()).toBe("First\nSecond\n/ two?");
+    await act(async () => { editor.dispatch({ selection: { anchor: editor.state.doc.line(3).to } }); enter(content); });
+    await flush();
+    expect(subject.client.calls).toHaveLength(1);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(editor.state.doc.toString()).toBe("First\nSecond\n/ two?");
+    release({ ok: true, data: { ok: true, reply: "Add a date." } });
+    await flush();
+    expect(container.querySelector(".assist-note")?.textContent).toContain("Add a date.");
+    expect(new AssistantNotes(subject.storage).list("r").map(item => item.passage)).toEqual(["First"]);
+  }));
+
+  test("an ask that got no response is sent again with the same request id", async () => surface(async (container, render) => {
+    const subject = page({ answer: { ok: false, message: null, status: 0 } });
+    await render(subject.element("The plan\n/ what?\nMore"));
+    const content = container.querySelector<HTMLElement>(".cm-content")!;
+    const editor = EditorView.findFromDOM(content)!;
+    await askLine(editor, content);
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Cortex is not reachable. Threva keeps what it last saw and tries again.");
+    expect(editor.state.doc.toString()).toBe("The plan\n/ what?\nMore");
+    await askLine(editor, content);
+    const ids = subject.client.calls.map(call => call.args[1]);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBeString();
+    expect(ids[1]).toBe(ids[0]);
   }));
 
   test("a note with a replacement shows both texts and Replace is disabled when the passage is gone", async () => surface(async (container, render) => {
