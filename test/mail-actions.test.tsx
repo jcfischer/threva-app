@@ -137,7 +137,7 @@ describe("the mail actions Cortex lists", () => {
     expect(dom.container.textContent).toContain("Accepted. The event is in your calendar.");
     expect(dom.container.textContent).not.toContain("This sends your answer");
     const [first, second] = invites();
-    expect(first).toEqual(["mail:1", "accept", expect.stringMatching(/^[0-9a-f]{32}$/)]);
+    expect(first).toEqual(["mail:1", "accept", expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)]);
     expect(second).toEqual(first!);
   });
 

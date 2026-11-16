@@ -1,6 +1,6 @@
 import { safeHref } from "../api/safe-link";
 import { useState } from "react";
-import type { DeskClient } from "../api/client";
+import { asUuid, type DeskClient } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
 import {
   MAIL_ACTION_DOES, MAIL_ACTIONS, OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, WAITING_ACTIONS, wiredActions,
@@ -131,7 +131,7 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
     await sendMail(card, client, requests.move(item.key, does.move), setDone);
   };
   const sendInvite = async (ask: InviteAsk) => {
-    const result = await card.act<{ message?: string }>({ invite: item.key, reply: ask.reply }, (requestId) => client.mail.inviteReply(item.key, ask.reply, requestId));
+    const result = await card.act<{ message?: string }>({ invite: item.key, reply: ask.reply }, (requestId) => client.mail.inviteReply(item.key, ask.reply, asUuid(requestId)));
     if (result.ok) {
       if (result.data.message) setDone(result.data.message);
       setInvite(null);
