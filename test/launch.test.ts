@@ -38,6 +38,14 @@ describe("threva launch", () => {
     expect(r.lines.join("\n")).not.toContain("sk-secret");
   });
 
+  test("hands the process to Cortex: nothing supervises it, so its own exit is Cortex's to log", async () => {
+    const r = rig("claude: {}");
+    expect(await launch(argv, r.deps)).toBe(0);
+    expect(r.execCalls).toHaveLength(1);
+    expect(r.lines).toHaveLength(1);
+    expect(r.lines[0]).toMatch(/threva launch: started$/);
+  });
+
   test("a spawn error is recorded and exits non-zero", async () => {
     const r = rig("x: 1", { exec: () => { throw new Error("no bun"); } });
     expect(await launch(argv, r.deps)).toBe(1);
