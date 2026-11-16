@@ -12,7 +12,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 
 ## Layout
 
-- `prototype/` is a read-only snapshot of the clickable prototype from `jcfischer/threva` (`try/proto` and `try/page` at commit `3816c84`). It runs on made-up scenario data and is the UX reference for the port. Do not build on its code structure without a decision that says so.
+- The clickable prototype in the private `jcfischer/threva` repository (`try/proto` and `try/page` at commit `3816c84`) is the UX reference for the port. It runs on made-up scenario data. Do not build on its code structure without a decision that says so.
 - `src/` holds the app. `test/` holds its tests.
 
 ## Check

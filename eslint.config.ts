@@ -50,5 +50,5 @@ export default defineConfig(
     },
   },
   { files: ["test/**/*.ts", "test/**/*.tsx"], rules: testCarveOut },
-  { ignores: ["node_modules/", "dist/", "prototype/", "docs/", ".claude/", "eslint.config.ts"] },
+  { ignores: ["node_modules/", "dist/", "docs/", ".claude/", "eslint.config.ts"] },
 );
