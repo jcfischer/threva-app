@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { noticeEntries, noticesProblems, renderNotices } from "../scripts/third-party-notices-lib";
+import { noticeEntries, noticesProblems, renderEntry, renderNotices } from "../scripts/third-party-notices-lib";
 
 const root = resolve(import.meta.dir, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -24,8 +24,9 @@ describe("licence declaration", () => {
 
   test("README has a Licence section pointing at both files", () => {
     const readme = read("README.md");
-    const section = readme.slice(readme.indexOf("## Licence"));
-    expect(section).not.toBe("");
+    const start = readme.indexOf("## Licence");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const section = readme.slice(start);
     expect(section).toContain("AGPL-3.0-only");
     expect(section).toContain("LICENSE");
     expect(section).toContain("THIRD-PARTY-NOTICES.md");
@@ -34,8 +35,30 @@ describe("licence declaration", () => {
 
 describe("third-party notices", () => {
   test("names every runtime dependency with its version, licence and full licence text", () => {
-    expect(entries.map((entry) => entry.name)).toEqual(Object.keys(manifest.dependencies).sort((a, b) => a.localeCompare(b)));
+    const names = entries.map((entry) => entry.name);
+    for (const name of Object.keys(manifest.dependencies)) expect(names).toContain(name);
     expect(noticesProblems(notices, entries)).toEqual([]);
+  });
+
+  test("names the packages the declared dependencies pull in", () => {
+    const names = entries.map((entry) => entry.name);
+    for (const name of ["scheduler", "@lezer/common", "@lezer/lr", "style-mod", "w3c-keyname", "crelt"]) {
+      expect(names).toContain(name);
+    }
+  });
+
+  test("a transitive package dropped from the notices is named", () => {
+    const scheduler = entries.find((entry) => entry.name === "scheduler");
+    if (scheduler === undefined) throw new Error("scheduler is not listed in the notices");
+    const without = notices.replace(renderEntry(scheduler), "");
+    const problems = noticesProblems(without, entries);
+    expect(problems.length).toBe(1);
+    expect(problems[0]).toContain("scheduler");
+  });
+
+  test("a heading inside a licence text is not read as a listed package", () => {
+    const quirky = [...entries, { name: "quirky", version: "1.0.0", licence: "MIT", text: "MIT License\n\n## Redistribution is not permitted" }];
+    expect(noticesProblems(renderNotices(quirky), quirky)).toEqual([]);
   });
 
   test("matches what the generator writes", () => {

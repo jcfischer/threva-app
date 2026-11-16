@@ -66,4 +66,4 @@ With either file, the command runs `cortex config validate` on the generated con
 
 ## Licence
 
-Threva is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). The UI's runtime dependencies are MIT; [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) lists each one with its version, licence and the licence text the package ships. `bun run check` fails when `package.json` and that file disagree; `bun run notices` regenerates it. Threva runs Cortex, also AGPL-3.0, as a separate program and the bundle offers that source.
+Threva is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). The UI's runtime dependencies are MIT; [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) lists each one with its version, licence and the licence text the package ships. `bun run check` fails when `package.json` and that file disagree; `bun run notices` regenerates it. Threva runs Cortex, also AGPL-3.0, as a separate program; Cortex's source offer belongs to the installer's bundle, not to the notices above.
