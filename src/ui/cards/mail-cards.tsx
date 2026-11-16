@@ -1,6 +1,6 @@
 import { safeHref } from "../api/safe-link";
-import { useRef, useState } from "react";
-import { newRequestId } from "../api/client";
+import { useState } from "react";
+import { asUuid, type DeskClient } from "../api/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
 import {
   MAIL_ACTION_DOES, MAIL_ACTIONS, OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, WAITING_ACTIONS, wiredActions,
@@ -8,7 +8,7 @@ import {
 } from "../arrivals/outcomes";
 import { useI18n, type TextKey } from "../i18n";
 import { sweepEnter } from "../queue/keys";
-import { useAct } from "./act";
+import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton } from "./parts";
 
 function mailLink(item: DeskItem): string | undefined {
@@ -25,8 +25,12 @@ function OpenInMail({ item }: { item: DeskItem }) {
   ) : null;
 }
 
-async function postMail(run: ReturnType<typeof useAct>["run"], body: unknown, show: (message: string) => void): Promise<boolean> {
-  const result = await run<{ message?: string }>("/api/desk/mail", body);
+const noop = (): void => undefined;
+
+type Card = ReturnType<typeof useAct>;
+
+async function sendMail(card: Card, client: DeskClient, body: Record<string, unknown>, show: (message: string) => void): Promise<boolean> {
+  const result = await card.act<{ message?: string }>({ mail: body }, () => client.mail.send<{ message?: string }>(body));
   if (result.ok && result.data.message) show(result.data.message);
   return result.ok;
 }
@@ -53,7 +57,6 @@ type Panel = "attach" | "draft" | "ask" | null;
 
 interface InviteAsk {
   reply: InviteReply;
-  requestId: string;
 }
 
 export interface MailCardProps {
@@ -66,7 +69,8 @@ export interface MailCardProps {
 export function MailCard({ item, learning = false, initialPanel = null, initialProposal = null }: MailCardProps) {
   const { t } = useI18n();
   const card = useAct();
-  const { busy, error, run } = card;
+  const { client } = useQueue();
+  const { busy, error } = card;
   const [panel, setPanel] = useState<Panel>(initialPanel);
   const [proposal, setProposal] = useState<StudioProposal | null>(initialProposal);
   const [snoozing, setSnoozing] = useState(false);
@@ -82,13 +86,14 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
     setInvite(null);
     if (outcome === "archive") {
       setPanel(null);
-      await run("/api/desk/mail", requests.move(item.key, "archive"));
+      await sendMail(card, client, requests.move(item.key, "archive"), noop);
       return;
     }
     setPanel(outcome);
     if (outcome === "attach") {
       setProposal(null);
-      const result = await run<{ proposal: StudioProposal }>("/api/desk/mail", requests.propose(item.key));
+      const body = requests.propose(item.key);
+      const result = await card.act<{ proposal: StudioProposal }>({ mail: body }, () => client.mail.send<{ proposal: StudioProposal }>(body));
       if (result.ok) setProposal(result.data.proposal);
     }
   };
@@ -98,33 +103,39 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
   };
   const attach = async () => {
     if (!proposal) return;
-    const result = await run<{ message?: string }>("/api/desk/mail", requests.attach(item.key, proposal, newRequestId()));
+    const slug = proposedThread(proposal)?.slug ?? null;
+    const reason = slug ? proposal.reason.trim() : "";
+    const result = await card.act<{ message?: string }>({ attach: item.key, thread: slug, reason }, (requestId) => client.mail.studioAdd(item.key, slug, reason || undefined, requestId));
     if (result.ok) finish(result.data.message, t("card.mail.attached"));
   };
   const saveDraft = async () => {
-    const result = await run("/api/desk/mail", requests.draft(item.key, body));
+    const request = requests.draft(item.key, body);
+    const result = await card.act({ mail: request }, () => client.mail.send(request));
     if (result.ok) finish(undefined, t("card.mail.drafted"));
   };
   const snooze = async (kind: SnoozeTime) => {
-    const result = await run<{ message?: string }>("/api/desk/mail", requests.snooze(item.key, kind));
+    const request = requests.snooze(item.key, kind);
+    const result = await card.act<{ message?: string }>({ mail: request }, () => client.mail.send<{ message?: string }>(request));
     if (result.ok) finish(result.data.message, t("card.mail.snoozed"));
   };
-  const inviteIds = useRef<Partial<Record<InviteReply, string>>>({});
   const act = async (action: MailAction) => {
     setDone(null);
     setPanel(null);
     setSnoozing(false);
     const does = MAIL_ACTION_DOES[action];
     if ("invite" in does) {
-      const requestId = (inviteIds.current[does.invite] ??= crypto.randomUUID());
-      setInvite({ reply: does.invite, requestId });
+      setInvite({ reply: does.invite });
       return;
     }
     setInvite(null);
-    await postMail(run, requests.move(item.key, does.move), setDone);
+    await sendMail(card, client, requests.move(item.key, does.move), setDone);
   };
   const sendInvite = async (ask: InviteAsk) => {
-    if (await postMail(run, requests.inviteReply(item.key, ask.reply, ask.requestId), setDone)) setInvite(null);
+    const result = await card.act<{ message?: string }>({ invite: item.key, reply: ask.reply }, (requestId) => client.mail.inviteReply(item.key, ask.reply, asUuid(requestId)));
+    if (result.ok) {
+      if (result.data.message) setDone(result.data.message);
+      setInvite(null);
+    }
   };
   const thread = proposal ? proposedThread(proposal) : null;
 
@@ -234,8 +245,9 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
 export function RuleOfferCard({ item }: { item: DeskItem }) {
   const { t } = useI18n();
   const card = useAct();
-  const { busy, error, run } = card;
-  const answer = (op: "approve" | "later" | "never") => run("/api/desk/mail/rules", requests.rule(item.key, op));
+  const { client } = useQueue();
+  const { busy, error } = card;
+  const answer = (op: "approve" | "later" | "never") => card.act({ rule: item.key, op }, () => client.mail.rule(item.key, op));
   return (
     <Card eyebrow={t("card.rule.eyebrow")}>
       <span className="q">{item.title}</span>
@@ -290,11 +302,12 @@ const WAITING_LABEL: Record<WaitingAction, TextKey> = { "waiting.snooze": "card.
 export function WaitingCard({ item, fresh = false }: { item: DeskItem; fresh?: boolean }) {
   const { t } = useI18n();
   const card = useAct();
-  const { busy, error, run } = card;
+  const { client } = useQueue();
+  const { busy, error } = card;
   const [done, setDone] = useState<string | null>(null);
   const answer = async (action: WaitingAction) => {
     setDone(null);
-    await postMail(run, requests.waiting(item.key, action), setDone);
+    await sendMail(card, client, requests.waiting(item.key, action), setDone);
   };
   return (
     <Card eyebrow={t("card.mail.eyebrow")} pill={fresh ? <span className="pill think">{t("card.item.new")}</span> : undefined}>
@@ -329,7 +342,9 @@ export function latestUndoable(done: readonly DoneEntry[], now: number): DoneEnt
 
 export function UndoLine({ done, now }: { done: readonly DoneEntry[]; now: number }) {
   const { t } = useI18n();
-  const { busy, error, run } = useAct();
+  const card = useAct();
+  const { client } = useQueue();
+  const { busy, error } = card;
   const entry = latestUndoable(done, now);
   if (!entry?.action || !entry.undo) return null;
   const body = UNDO_BY[entry.action]?.(entry.undo);
@@ -337,7 +352,7 @@ export function UndoLine({ done, now }: { done: readonly DoneEntry[]; now: numbe
   return (
     <div className="toast row">
       <span>{entry.message || entry.title}</span>
-      <button type="button" className="lk" disabled={busy} onClick={() => run("/api/desk/mail", body)}>
+      <button type="button" className="lk" disabled={busy} onClick={() => void card.act({ mail: body }, () => client.mail.send(body))}>
         {t("undo")}
       </button>
       <ErrorLine error={error} />

@@ -123,7 +123,6 @@ describe("mail card", () => {
     const html = render({ item: fixtures.meeting, initialPanel: "attach", initialProposal: stray });
     expect(html).toContain("Start a new topic");
     expect(html).not.toContain("Something else?");
-    expect(requests.attach("mail:1", stray, "abcdefgh12")).toEqual({ action: "studio.add", key: "mail:1", requestId: "abcdefgh12", thread: null, includeText: false });
   });
 
   test("draft opens the reply field and says nothing is sent", () => {
@@ -144,21 +143,6 @@ describe("write requests", () => {
   test("build the bodies this slice sends, as hand-copied from desk-mail.ts and desk-mail-rules.ts (not checked against Cortex)", () => {
     expect(requests.move("mail:1", "archive")).toEqual({ action: "move", key: "mail:1", target: "archive" });
     expect(requests.propose("mail:1")).toEqual({ action: "studio.propose", key: "mail:1" });
-    expect(requests.attach("mail:1", { thread: "t", reason: " fits ", threads: [{ slug: "t", question: "T?" }] }, "abcdefgh12")).toEqual({
-      action: "studio.add",
-      key: "mail:1",
-      requestId: "abcdefgh12",
-      thread: "t",
-      includeText: false,
-      reason: "fits",
-    });
-    expect(requests.attach("mail:1", { thread: null, reason: "No thread is active.", threads: [] }, "abcdefgh12")).toEqual({
-      action: "studio.add",
-      key: "mail:1",
-      requestId: "abcdefgh12",
-      thread: null,
-      includeText: false,
-    });
     expect(requests.draft("mail:1", "Thanks")).toEqual({ action: "draft", key: "mail:1", body: "Thanks" });
     expect(requests.snooze("mail:1", "tomorrow")).toEqual({ action: "snooze", key: "mail:1", until: { kind: "tomorrow" } });
     expect(requests.rule(offer.key, "never")).toEqual({ op: "never", proposal: offer.key });

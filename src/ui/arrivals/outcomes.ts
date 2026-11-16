@@ -40,14 +40,8 @@ export function proposedThread(proposal: StudioProposal): StudioProposal["thread
 
 export const requests = {
   move: (key: string, target: MoveTarget) => ({ action: "move", key, target }),
-  inviteReply: (key: string, reply: InviteReply, requestId: string) => ({ action: "invite.reply", key, reply, requestId, commitment: null, confirmed: true }),
   waiting: (key: string, action: WaitingAction) => ({ action, key }),
   propose: (key: string) => ({ action: "studio.propose", key }),
-  attach: (key: string, proposal: StudioProposal, requestId: string) => {
-    const thread = proposedThread(proposal)?.slug ?? null;
-    const reason = thread ? proposal.reason.trim() : "";
-    return { action: "studio.add", key, requestId, thread, includeText: false, ...(reason ? { reason } : {}) };
-  },
   draft: (key: string, body: string) => ({ action: "draft", key, body }),
   snooze: (key: string, kind: SnoozeTime) => ({ action: "snooze", key, until: { kind } }),
   rule: (proposal: string, op: "approve" | "later" | "never") => ({ op, proposal }),

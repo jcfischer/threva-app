@@ -30,10 +30,6 @@ function canMakeTask(item: DeskItem): boolean {
 export function useAct(enter?: EnterAct) {
   const { client, refresh, myDayDate, onTask } = useQueue();
   const { busy, error, act, isInFlight } = useDeskAct(refresh);
-  const run = <T = Record<string, unknown>>(path: string, body: unknown) => {
-    const build = typeof body === "function" ? (body as (requestId: string) => unknown) : () => body;
-    return act<T>({ path, body: build("") }, (requestId) => client.post<T>(path, build(requestId)));
-  };
   const changeMyDay = (command: MyDayCommand) =>
     act<MyDayChange>({ myDay: myDayDate, command }, async (requestId) =>
       myDayDate ? client.myDay.change(myDayDate, command, dashed(requestId)) : { ok: false, message: null, status: 0 },
@@ -45,7 +41,7 @@ export function useAct(enter?: EnterAct) {
   };
   const perform = () => {
     if (!enter || isInFlight()) return;
-    return "myDay" in enter ? changeMyDay(enter.myDay) : run(enter.path, enter.body);
+    return "myDay" in enter ? changeMyDay(enter.myDay) : act({ mail: enter.mail }, () => client.mail.send(enter.mail));
   };
   useEffect(() => {
     if (!enter) return;
@@ -58,5 +54,5 @@ export function useAct(enter?: EnterAct) {
     return () => window.removeEventListener("keydown", onKey);
   });
   const offersTask = (item: DeskItem) => canMakeTask(item) && !!myDayDate;
-  return { busy, error, run, act, perform, makeTask, offersTask };
+  return { busy, error, act, perform, makeTask, offersTask };
 }

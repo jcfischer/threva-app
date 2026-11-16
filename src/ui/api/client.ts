@@ -61,6 +61,9 @@ const PATHS = {
 const enc = encodeURIComponent;
 const dashedId = (): string => crypto.randomUUID();
 
+export const asUuid = (id: string): string =>
+  /^[0-9a-f]{32}$/i.test(id) ? `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}` : id;
+
 type Json = Record<string, unknown>;
 type Call<T> = Promise<Result<T>>;
 type MailReply = "accept" | "decline" | "tentative" | (string & {});
