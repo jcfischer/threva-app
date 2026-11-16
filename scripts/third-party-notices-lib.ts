@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-export interface RuntimeDependency {
+interface RuntimeDependency {
   name: string;
   version: string;
 }
@@ -49,11 +49,6 @@ function declaredNames(manifest: Record<string, unknown>, field: string): string
   return Object.keys(declared).sort((a, b) => a.localeCompare(b));
 }
 
-export function dependencyNames(manifest: unknown): string[] {
-  if (!isRecord(manifest)) throw new Error("package.json does not hold a JSON object");
-  return declaredNames(manifest, "dependencies");
-}
-
 function resolveInstalled(root: string, from: string, name: string): string | undefined {
   let directory = from;
   for (;;) {
@@ -89,10 +84,6 @@ function installedRuntimePackages(root: string): InstalledPackage[] {
     for (const child of declaredNames(installed, "dependencies")) queue.push({ name: child, from: directory });
   }
   return [...packages.values()].sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
-}
-
-export function runtimePackages(root: string): RuntimeDependency[] {
-  return installedRuntimePackages(root).map(({ name, version }) => ({ name, version }));
 }
 
 export function noticeEntries(root: string): NoticesEntry[] {
