@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { filesAtOnce, type Proposal } from "../src/ui/api/capture";
+import { createClient, type DeskClient, type Fetch } from "../src/ui/api/client";
 import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import { Bar } from "../src/ui/bar/bar";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
@@ -21,31 +22,53 @@ afterEach(async () => {
   await dom.cleanup();
 });
 
-async function mount() {
+async function mountWith(desk: DeskClient) {
   await act(async () => {
     dom.root.render(
       <I18nProvider value={createI18n("en")}>
-        <Bar client={client} onChange={() => { refreshed += 1; }} />
+        <Bar client={desk} onChange={() => { refreshed += 1; }} />
       </I18nProvider>,
     );
   });
 }
 
+const mount = () => mountWith(client);
+
 const field = () => dom.container.querySelector("input")!;
+
+interface Props {
+  onChange: (e: unknown) => void;
+  onKeyDown: (e: unknown) => void;
+}
+const props = (): Props => {
+  const input = field();
+  const key = Object.keys(input).find((k) => k.startsWith("__reactProps$"))!;
+  return (input as unknown as Record<string, Props>)[key];
+};
 const type = (text: string) =>
   act(async () => {
-    const input = field();
-    const key = Object.keys(input).find((k) => k.startsWith("__reactProps$"))!;
-    (input as unknown as Record<string, { onChange: (e: unknown) => void }>)[key].onChange({ target: { value: text }, currentTarget: { value: text } });
+    props().onChange({ target: { value: text }, currentTarget: { value: text } });
   });
 const enter = async () => {
   await act(async () => {
-    const input = field();
-    const key = Object.keys(input).find((k) => k.startsWith("__reactProps$"))!;
-    (input as unknown as Record<string, { onKeyDown: (e: unknown) => void }>)[key].onKeyDown({ key: "Enter", preventDefault() {} });
+    props().onKeyDown({ key: "Enter", preventDefault() {} });
   });
 };
 const names = () => client.calls.map((call) => call.name);
+
+function wire(answer: (path: string) => Response | object) {
+  const sent: { path: string; body: Record<string, unknown> }[] = [];
+  const fetchImpl: Fetch = async (path, init) => {
+    const text = typeof init?.body === "string" ? init.body : "{}";
+    sent.push({ path, body: JSON.parse(text) as Record<string, unknown> });
+    const reply = answer(path);
+    return reply instanceof Response ? reply : Response.json(reply);
+  };
+  return { sent, client: createClient(fetchImpl) };
+}
+
+const PLAIN = /^[0-9a-f]{32}$/;
+const DASHED = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const button = (label: string) => Array.from(dom.container.querySelectorAll("button")).find((b) => b.textContent === label);
 const click = async (label: string) => {
   await act(async () => { button(label)!.click(); });
@@ -160,5 +183,29 @@ describe("starting the conversation from the ask row", () => {
     await type("is the workshop done?");
     await enter();
     expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("No conversation model is configured. Nothing was sent.");
+  });
+});
+
+describe("the ids the bar shows reach Cortex through the real client", () => {
+  test("the undo request id is the one the create sent", async () => {
+    const { sent, client: http } = wire((path) =>
+      path === "/api/desk/ask" ? { proposal: capture } : path === "/api/desk/create" ? { id: "c1", message: "Filed." } : {},
+    );
+    await mountWith(http);
+    await type("Empty places");
+    await enter();
+    await click("Undo");
+    const created = sent[1]?.body;
+    expect(created?.requestId).toMatch(PLAIN);
+    expect(sent[2]?.body).toEqual({ id: "c1", requestId: created?.requestId });
+  });
+
+  test("the ask sends a start id with the text", async () => {
+    const { sent, client: http } = wire(() => ({}));
+    await mountWith(http);
+    await type(" is the workshop done? ");
+    await enter();
+    expect(sent[0]?.body.text).toBe("is the workshop done?");
+    expect(sent[0]?.body.startId).toMatch(DASHED);
   });
 });

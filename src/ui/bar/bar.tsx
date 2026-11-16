@@ -1,13 +1,11 @@
 import { useReducer } from "react";
-import { useDeskAct } from "../act/use-act";
-import type { DeskClient, Result } from "../api/client";
+import { useDeskAct, type DeskAct } from "../act/use-act";
+import type { DeskClient } from "../api/client";
 import { create, filesAtOnce, propose, type Created, type Proposal } from "../api/capture";
 import { useI18n, type I18n } from "../i18n";
 import type { Entry } from "../queue/order";
 import { barReducer, INITIAL, type BarEvent, type BarState } from "./state";
 import { actFor, suggest, type Suggestion } from "./suggest";
-
-type Act = ReturnType<typeof useDeskAct>["act"];
 
 export type BarSend = (event: BarEvent) => void;
 
@@ -109,16 +107,23 @@ export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, entries 
   );
 }
 
-async function capture(client: DeskClient, act: Act, proposal: Proposal): Promise<{ result: Result<Created>; requestId: string }> {
+interface Outcome {
+  message: (created: Created) => string;
+  undoable: (id: Created["id"]) => boolean;
+}
+
+async function keepProposal(client: DeskClient, act: DeskAct, proposal: Proposal, send: BarSend, outcome: Outcome): Promise<void> {
   let requestId = "";
   const result = await act({ capture: "create", kind: proposal.kind, fields: proposal.fields }, (id) => {
     requestId = id;
     return create(client, proposal, id);
   });
-  return { result, requestId };
+  if (!result.ok) return send({ type: "failed", message: result.message });
+  const id = result.data.id;
+  send({ type: "created", message: outcome.message(result.data), undo: outcome.undoable(id) ? { id: String(id), requestId } : null });
 }
 
-export async function takeNote(client: DeskClient, text: string, send: BarSend, act: Act): Promise<void> {
+export async function takeNote(client: DeskClient, text: string, send: BarSend, act: DeskAct): Promise<void> {
   const typed = text.trim();
   if (!typed) return;
   send({ type: "submit" });
@@ -128,10 +133,7 @@ export async function takeNote(client: DeskClient, text: string, send: BarSend, 
   send({ type: "proposed", proposal });
   if (!filesAtOnce(proposal)) return;
   send({ type: "keep" });
-  const { result, requestId } = await capture(client, act, proposal);
-  if (!result.ok) return send({ type: "failed", message: result.message });
-  const id = result.data.id;
-  send({ type: "created", message: "", undo: id === undefined ? null : { id: String(id), requestId } });
+  await keepProposal(client, act, proposal, send, { message: () => "", undoable: (id) => id !== undefined });
 }
 
 export async function takeAsk(client: DeskClient, text: string, send: BarSend): Promise<void> {
@@ -168,10 +170,10 @@ export function Bar({ client, entries = [], onPull, onChange }: {
     if (state.phase !== "proposed") return;
     const proposal = state.proposal;
     send({ type: "keep" });
-    const { result, requestId } = await capture(client, act, proposal);
-    if (!result.ok) return send({ type: "failed", message: result.message });
-    const id = result.data.id;
-    send({ type: "created", message: result.data.message ?? "", undo: proposal.kind === "capture" && id !== undefined ? { id: String(id), requestId } : null });
+    await keepProposal(client, act, proposal, send, {
+      message: (created) => created.message ?? "",
+      undoable: (id) => proposal.kind === "capture" && id !== undefined,
+    });
   };
 
   const onUndo = async () => {
