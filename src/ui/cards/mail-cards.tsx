@@ -3,7 +3,7 @@ import { useState } from "react";
 import { asUuid, type DeskClient } from "@desk/client";
 import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "@desk/types";
 import {
-  MAIL_ACTION_DOES, MAIL_ACTIONS, OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, WAITING_ACTIONS, wiredActions,
+  MAIL_ACTION_DOES, MAIL_ACTIONS, OUTCOMES, proposedThread, requests, SNOOZE_TIMES, WAITING_ACTIONS, wiredActions,
   type InviteReply, type MailAction, type Outcome, type SnoozeTime, type WaitingAction,
 } from "../arrivals/outcomes";
 import { useI18n, type TextKey } from "../i18n";
@@ -77,7 +77,7 @@ export function MailCard({ item, learning = false, initialPanel = null, initialP
   const [body, setBody] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const [invite, setInvite] = useState<InviteAsk | null>(null);
-  const suggested = suggestedOutcome(item);
+  const suggested = item.outcome ?? null;
   const more = wiredActions(item, MAIL_ACTIONS);
 
   const choose = async (outcome: Outcome) => {

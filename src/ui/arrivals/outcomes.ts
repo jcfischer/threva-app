@@ -1,15 +1,7 @@
-import type { DeskItem, MailRule, StudioProposal } from "@desk/types";
+import type { DeskItem, StudioProposal } from "@desk/types";
 
 export const OUTCOMES = ["archive", "attach", "draft", "ask"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
-
-export function suggestedOutcome(item: DeskItem): Outcome | null {
-  const has = (id: string, primary = false) => item.actions.some((a) => a.id === id && (!primary || a.role === "primary"));
-  if (has("meeting.show")) return "attach";
-  if (has("mail.draft", true)) return "draft";
-  if (item.attention === "update" || has("mail.archive", true)) return "archive";
-  return null;
-}
 
 export type MoveTarget = "archive" | "junk" | "trash";
 export type InviteReply = "accept" | "decline";
@@ -46,10 +38,6 @@ export const requests = {
   snooze: (key: string, kind: SnoozeTime) => ({ action: "snooze", key, until: { kind } }),
   rule: (proposal: string, op: "approve" | "later" | "never") => ({ op, proposal }),
 };
-
-export function inLearningPhase(rules: readonly MailRule[] | null | undefined): boolean {
-  return !rules || rules.length === 0;
-}
 
 export function isRuleOffer(item: DeskItem): boolean {
   return item.kind === "mail-rule" && item.actions.some((a) => a.id === "mailrule.approve");
