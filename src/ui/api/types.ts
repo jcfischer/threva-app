@@ -242,6 +242,7 @@ export interface StudioNote {
   kind: StudioNoteKind;
   status: StudioNoteStatus;
   because?: string;
+  relates?: StudioMaterial;
   text: string;
 }
 

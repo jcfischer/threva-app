@@ -15,14 +15,13 @@ type Run = ReturnType<typeof useStudioAct>["run"];
 
 export type TimelineEntry = { at: string; note: StudioNote } | { at: string; response: StudioResponse };
 
-/** Notes and responses in time order. Relation notes stay out until Cortex serves relations (F27). */
 export function timeline(thread: StudioThread): TimelineEntry[] {
-  const notes = thread.notes.filter((n) => n.kind !== "relation").map((note) => ({ at: note.at, note }));
+  const notes = thread.notes.map((note) => ({ at: note.at, note }));
   const responses = thread.responses.map((response) => ({ at: response.at, response }));
   return [...notes, ...responses].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
-const KIND: Record<Exclude<StudioNote["kind"], "relation">, TextKey> = { note: "studio.kind.note", stand: "studio.kind.stand", idea: "studio.kind.idea" };
+const KIND: Record<StudioNote["kind"], TextKey> = { note: "studio.kind.note", stand: "studio.kind.stand", idea: "studio.kind.idea", relation: "studio.kind.relation" };
 const STATUS: Record<StudioNote["status"], { key: TextKey; pill: string }> = {
   open: { key: "studio.status.open", pill: "think" },
   kept: { key: "studio.status.kept", pill: "ok" },
@@ -36,13 +35,12 @@ function When({ at }: { at: string }) {
 
 function NoteView({ note, slug, busy, run }: { note: StudioNote; slug: string; busy: boolean; run: Run }) {
   const { t } = useI18n();
-  const kind = note.kind === "relation" ? "note" : note.kind;
   const status = STATUS[note.status];
   return (
     <div className={`stnote${note.kind === "stand" ? " stand" : ""}${note.status === "dismissed" ? " gone" : ""}`}>
       <span className="row" style={{ justifyContent: "space-between" }}>
         <span className="eyebrow">
-          {t(KIND[kind])} · {t("studio.assistant")} · <When at={note.at} />
+          {t(KIND[note.kind])} · {t("studio.assistant")} · <When at={note.at} />
           {note.trigger ? ` · ${note.trigger}` : ""}
         </span>
         <span className={`pill ${status.pill}`}>{t(status.key)}</span>

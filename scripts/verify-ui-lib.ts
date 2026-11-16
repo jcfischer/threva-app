@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { DeskView } from "../src/ui/api/types";
+import type { DeskView, StudioList } from "../src/ui/api/types";
 import type { Page } from "playwright-core";
 
 export type Shot = (label: string, options?: { fullPage: boolean }) => Promise<void>;
@@ -98,6 +98,47 @@ export const journeys = {
     await page.locator('[data-desk-opened="left"]').getByText("Ada Lovelace", { exact: true }).waitFor();
     await shot("material-wide");
     await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
+  },
+  relations: async (page, shot) => {
+    const response = await page.request.get(new URL("/api/desk/studio", page.url()).href);
+    if (!response.ok()) throw new Error(`Studio refused: ${await response.text()}`);
+    const data = await response.json() as StudioList;
+    const source = data.studio?.active.find(topic => topic.slug === "budget-next-year");
+    const relation = source?.notes.find(note => note.kind === "relation" && note.status !== "dismissed" && note.relates?.kind === "thread" && note.relates.label === "offsite-in-march");
+    if (!relation) throw new Error("Cortex did not serve the sample relation with relates. Use a fresh dev stack, or add the relation to its budget topic file.");
+    await page.reload({ waitUntil: "networkidle" });
+    await showsThreva(page);
+    await switchView(page, "Everything");
+    await loaded(page, "Loading your outline…");
+    await page.getByRole("button", { name: "Work", exact: true }).click();
+    await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const notes = page.getByRole("complementary", { name: "The assistant's notes", exact: true });
+    await notes.locator("button[data-desk-card]").filter({ hasText: "Relation" }).filter({ hasText: relation.text }).click();
+    const right = page.locator('[data-desk-opened="right"]');
+    await right.getByRole("button", { name: "Follow", exact: true }).click();
+    const left = page.locator('[data-desk-opened="left"]');
+    await left.getByText("What is the March offsite for?", { exact: true }).waitFor();
+    await left.getByText("Grace asks which of the two weeks works.", { exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('[data-desk-opened="left"]')?.getAttribute("data-placed") === "true");
+    const checkLayout = async () => {
+      const a = await left.boundingBox();
+      const b = await right.boundingBox();
+      const middle = await page.locator('[data-desk="middle"]').boundingBox();
+      if (!a || !b || !middle) throw new Error("The followed topic or its relation has no rendered box.");
+      if (a.x + a.width > middle.x + 2 || b.x < middle.x + middle.width - 2) throw new Error("An opened relation card covers the draft.");
+    };
+    await checkLayout();
+    await shot("followed-topic-wide");
+    await page.setViewportSize({ width: 650, height: 900 });
+    await left.getByRole("button", { name: "Open its desk", exact: true }).scrollIntoViewIfNeeded();
+    await shot("followed-topic-narrow");
+    await left.getByRole("button", { name: "Open its desk", exact: true }).click();
+    await page.getByRole("heading", { name: "What is the March offsite for?", exact: true }).waitFor();
+    await left.waitFor({ state: "detached" });
+    await right.waitFor({ state: "detached" });
+    await shot("related-desk");
   },
   week: async (page, shot) => {
     await showsThreva(page);
