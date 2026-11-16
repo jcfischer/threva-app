@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
-import type { DeskAction, DeskItem } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { DeskAction, DeskItem } from "@desk/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard, SweepCard, UndoLine } from "../src/ui/cards/mail-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

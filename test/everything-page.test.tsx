@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { NoteSaver, detailsOf, keepPlace, keptPlace, pageLine, wordCount, type NoteNotice, type SaveTimer } from "../src/ui/everything/note";

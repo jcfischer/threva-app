@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createClient, type DeskClient } from "./api/client";
+import { createClient, type DeskClient } from "@desk/client";
 import { Bar } from "./bar/bar";
 import { Footer } from "./day/footer";
 import { TimelineView } from "./day/timeline-view";

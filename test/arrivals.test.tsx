@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
-import type { DeskAction, DeskItem, MailRule } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { DeskAction, DeskItem, MailRule } from "@desk/types";
 import { inLearningPhase, isRuleOffer, requests, suggestedOutcome } from "../src/ui/arrivals/outcomes";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard, type MailCardProps, RuleOfferCard } from "../src/ui/cards/mail-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION } from "../src/ui/queue/order";
 import { loadDesk } from "../src/ui/queue/use-desk";
-import { item, NOW, view } from "./fixtures/desk";
+import { item, NOW, seededApp, view } from "./fixtures/desk";
 
 const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
@@ -65,10 +66,12 @@ describe("learning phase", () => {
   });
 
   test("the poll reads the rules, and a refused read leaves none", async () => {
-    const answer = (rules: Response) => async (input: string) => (input === "/api/desk/mail/rules" ? rules : Response.json(input === "/api/desk" ? view() : { studio: null }));
-    const read = await loadDesk(createClient(answer(Response.json({ ok: true, rules: [rule] }))), { view: null, studio: null, error: null });
+    const client = createMemoryClient();
+    seededApp(client, { rules: [rule] });
+    const read = await loadDesk(client, { view: null, studio: null, error: null });
     expect(read.rules).toEqual([rule]);
-    const refused = await loadDesk(createClient(answer(Response.json({ ok: false, error: "Mail rules need the move command." }, { status: 409 }))), read);
+    client.seed("rules", { ok: false, message: "Mail rules need the move command.", status: 409 });
+    const refused = await loadDesk(client, read);
     expect(read.rules).toEqual([rule]);
     expect(refused.rules).toBeNull();
     expect(inLearningPhase(refused.rules)).toBe(true);

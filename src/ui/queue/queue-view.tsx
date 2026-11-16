@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { DeskClient } from "../api/client";
+import type { DeskClient } from "@desk/client";
 import { QueueContext, useQueue } from "../cards/act";
 import { InterruptionFeedback } from "../cards/interruption";
 import { CardFooterContext } from "../cards/parts";

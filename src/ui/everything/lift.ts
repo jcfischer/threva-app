@@ -1,5 +1,5 @@
-import type { DeskClient } from "../api/client";
-import type { MyDayOutline, OutlineRow } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { MyDayOutline, OutlineRow } from "@desk/types";
 import { detailsOf } from "./note";
 
 export const TITLE_LIMIT = 300;

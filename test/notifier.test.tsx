@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { App } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
-import type { DeskItem } from "../src/ui/api/types";
+import { createMemoryClient } from "@desk/memory-client";
+import type { DeskItem } from "@desk/types";
 import { NotifyControl } from "../src/ui/day/notify-control";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { browserNotifier, interruptionWatcher, type Notifier, type NotifyPermission } from "../src/ui/queue/notifier";
 import { POLL_MS } from "../src/ui/queue/use-desk";
-import { item, view } from "./fixtures/desk";
+import { item, seededApp, view } from "./fixtures/desk";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
 const urgent = (key: string, delivery: "pending" | "held" = "pending") => item({ key, kind: "mail", title: `Mail ${key}`, why: "From a VIP.", interrupt: { delivery, reason: { code: "mail.vip", target: "ada@example.org" } } });
@@ -147,7 +147,8 @@ test("App polls, notifies, and a notification click returns to Day with that car
   let tick: (() => void) | undefined;
   const fake = fakeNotifier();
   let items: DeskItem[] = [urgent("initial")];
-  const client = createClient(async path => Response.json(path === "/api/desk" ? view({ items }) : path === "/api/desk/studio" ? { studio: null } : path === "/api/desk/mail/rules" ? { rules: [] } : { date: "2026-11-14", revision: 1, outline: { id: "root", title: "Everything", ordering: "parallel", weight: 1, children: [] } }));
+  const client = createMemoryClient();
+  seededApp(client, { desk: () => view({ items }) });
   // Drive the actual polling callback without waiting fifteen seconds in a test.
   globalThis.setInterval = ((callback: () => void, delay: number) => {
     if (delay === POLL_MS) tick = callback;

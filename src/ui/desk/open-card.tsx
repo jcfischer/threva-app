@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { Result } from "../api/client";
-import type { StudioAct } from "../api/types";
-import { safeHref } from "../api/safe-link";
+import type { Result } from "@desk/client";
+import type { StudioAct } from "@desk/types";
+import { safeHref } from "@desk/safe-link";
 import { ErrorLine } from "../cards/parts";
 import type { ActError } from "../cards/act";
 import { useI18n } from "../i18n";

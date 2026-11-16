@@ -1,4 +1,4 @@
-import type { OutlineDetails, OutlineRepeat, OutlineRow } from "../api/types";
+import type { OutlineDetails, OutlineRepeat, OutlineRow } from "@desk/types";
 import { detailsOf } from "./note";
 
 export type RepeatMode = "calendar" | "completion";

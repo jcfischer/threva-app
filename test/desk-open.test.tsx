@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
-import type { StudioNote } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { StudioNote } from "@desk/types";
 import { Desk } from "../src/ui/desk/desk";
 import { OpenCard, openPlacement, OPEN_CARD_GAP, OPEN_CARD_MAX, OPEN_CARD_MIN, type Frame } from "../src/ui/desk/open-card";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

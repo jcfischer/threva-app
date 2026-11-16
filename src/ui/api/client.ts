@@ -121,8 +121,6 @@ export interface DeskClient {
   desk(): Call<DeskView>;
   rules(): Call<MailRules>;
   changeMyDay(date: string, command: MyDayCommand): Call<MyDayChange>;
-  get<T = Json>(path: string): Call<T>;
-  post<T = Json>(path: string, body: unknown): Call<T>;
   queue: QueueCalls;
   mail: MailCalls;
   myDay: MyDayCalls;
@@ -145,8 +143,6 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     desk,
     rules,
     changeMyDay: (date, command) => change(date, command),
-    get: read,
-    post: write,
     queue: {
       desk,
       ruling: (key, text, requestId = newRequestId()) => write(PATHS.ruling, { key, text, requestId }),

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { DeskEvent, TodayTask } from "../src/ui/api/types";
+import type { DeskEvent, TodayTask } from "@desk/types";
 import { buildTimeline, type Clock } from "../src/ui/day/timeline";
 import { TimelineView } from "../src/ui/day/timeline-view";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";

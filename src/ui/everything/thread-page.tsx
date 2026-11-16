@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import type { DeskClient } from "../api/client";
-import type { StudioList, StudioProject, StudioThread } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { StudioList, StudioProject, StudioThread } from "@desk/types";
 import { QueueContext } from "../cards/act";
 import { ErrorLine } from "../cards/parts";
 import { useI18n } from "../i18n";

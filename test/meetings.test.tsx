@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { captureText, NOT_A_CARD } from "../src/ui/api/capture";
-import { createMemoryClient } from "../src/ui/api/memory-client";
-import type { DeskEvent } from "../src/ui/api/types";
+import { captureText, NOT_A_CARD } from "@desk/capture";
+import { createMemoryClient } from "@desk/memory-client";
+import type { DeskEvent } from "@desk/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { AfterMeetingCard, MeetingSoonCard } from "../src/ui/cards/meeting-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

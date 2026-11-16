@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { OutlineCommand, OutlineRow } from "../src/ui/api/types";
+import type { OutlineCommand, OutlineRow } from "@desk/types";
 import { liftSelection, liftTitle, withoutSelection } from "../src/ui/everything/lift";
 
 describe("liftTitle", () => {

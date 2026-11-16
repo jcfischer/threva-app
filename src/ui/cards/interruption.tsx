@@ -1,4 +1,4 @@
-import type { DeskItem } from "../api/types";
+import type { DeskItem } from "@desk/types";
 import { useI18n } from "../i18n";
 import { isInterrupting } from "../queue/order";
 import { useDeskAct } from "../act/use-act";

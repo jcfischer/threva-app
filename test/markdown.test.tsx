@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
-import { createMemoryClient } from "../src/ui/api/memory-client";
-import type { Exchange, StudioSession } from "../src/ui/api/conversations";
+import { createMemoryClient } from "@desk/memory-client";
+import type { Exchange, StudioSession } from "@desk/conversations";
 import { QueueContext } from "../src/ui/cards/act";
 import { AssistantMargin, Margin } from "../src/ui/everything/margin";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

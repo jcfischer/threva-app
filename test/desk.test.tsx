@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { deskCards, firstSentence, noteCards } from "../src/ui/desk/cards";
 import { Desk } from "../src/ui/desk/desk";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { StudioCard } from "../src/ui/studio/card";
-import type { StudioNote, StudioThread } from "../src/ui/api/types";
+import type { StudioNote, StudioThread } from "@desk/types";
 import { budgetThread, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");

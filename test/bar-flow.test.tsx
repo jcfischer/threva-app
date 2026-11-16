@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
-import { filesAtOnce, type Proposal } from "../src/ui/api/capture";
-import { createClient, type DeskClient, type Fetch } from "../src/ui/api/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
+import { filesAtOnce, type Proposal } from "@desk/capture";
+import { createClient, type DeskClient, type Fetch } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
 import { Bar } from "../src/ui/bar/bar";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { mountDom, type MountedDom } from "./fixtures/dom";
@@ -56,12 +56,12 @@ const enter = async () => {
 };
 const names = () => client.calls.map((call) => call.name);
 
-function wire(answer: (path: string) => Response | object) {
+function wire(answer: (index: number) => Response | object) {
   const sent: { path: string; body: Record<string, unknown> }[] = [];
   const fetchImpl: Fetch = async (path, init) => {
     const text = typeof init?.body === "string" ? init.body : "{}";
     sent.push({ path, body: JSON.parse(text) as Record<string, unknown> });
-    const reply = answer(path);
+    const reply = answer(sent.length - 1);
     return reply instanceof Response ? reply : Response.json(reply);
   };
   return { sent, client: createClient(fetchImpl) };
@@ -188,8 +188,8 @@ describe("starting the conversation from the ask row", () => {
 
 describe("the ids the bar shows reach Cortex through the real client", () => {
   test("the undo request id is the one the create sent", async () => {
-    const { sent, client: http } = wire((path) =>
-      path === "/api/desk/ask" ? { proposal: capture } : path === "/api/desk/create" ? { id: "c1", message: "Filed." } : {},
+    const { sent, client: http } = wire((index) =>
+      index === 0 ? { proposal: capture } : index === 1 ? { id: "c1", message: "Filed." } : {},
     );
     await mountWith(http);
     await type("Empty places");

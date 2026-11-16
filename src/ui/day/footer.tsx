@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DeskView } from "../api/types";
+import type { DeskView } from "@desk/types";
 import { useI18n } from "../i18n";
 import { inboxCard } from "../queue/around";
 import { isMailItem, type Entry } from "../queue/order";

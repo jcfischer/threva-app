@@ -1,4 +1,4 @@
-import type { DeskItem } from "../api/types";
+import type { DeskItem } from "@desk/types";
 import { isInterrupting } from "./order";
 
 export type NotifyPermission = NotificationPermission | "unavailable";

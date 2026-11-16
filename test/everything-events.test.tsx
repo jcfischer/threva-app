@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test";
 import { act } from "react";
-import { createClient } from "../src/ui/api/client";
-import type { MyDayOutline, OutlineCommand } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { MyDayOutline, OutlineCommand } from "@desk/types";
 import { App } from "../src/ui/app";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
 import { inputText, mountDom } from "./fixtures/dom";
+import { seededApp } from "./fixtures/desk";
 import recorded from "./fixtures/my-day.json";
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
@@ -205,7 +207,8 @@ test("drag moves send the source snapshot's revision and drop index", async () =
 
 test("App switches above the card and keeps the outline draft across Day", async () => surface(async (container, render) => {
   const fixture = outlineFixture();
-  const client = createClient(async url => Response.json(url === "/api/desk/my-day" ? fixture : url === "/api/desk/studio" ? { studio: null } : url === "/api/desk/mail/rules" ? { rules: [] } : { generatedAt: Date.now(), displayName: null, today: [], items: [] }));
+  const client = createMemoryClient();
+  seededApp(client, { myDay: fixture });
   await render(<App client={client} />);
   expect(container.querySelector(".view-switch")!.compareDocumentPosition(container.querySelector(".cards")!) & 4).toBe(4);
   await click(container, "Everything");

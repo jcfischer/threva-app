@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { safeHref } from "../src/ui/api/safe-link";
+import { safeHref } from "@desk/safe-link";
 
 test("allows web and Apple Mail links", () => {
   expect(safeHref("https://example.org/brief")).toBe("https://example.org/brief");

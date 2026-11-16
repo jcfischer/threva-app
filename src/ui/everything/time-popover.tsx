@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { OutlineRow } from "../api/types";
+import type { OutlineRow } from "@desk/types";
 import { useI18n } from "../i18n";
 import { draftOf, isChanged, NEW_REPEAT, type RepeatDraft, type RepeatMode, type RepeatUnit, type TimeDraft } from "./time-edit";
 

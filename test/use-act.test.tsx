@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { useDeskAct } from "../src/ui/act/use-act";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
-import type { StudioAct } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { StudioAct } from "@desk/types";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
 let dom: MountedDom;

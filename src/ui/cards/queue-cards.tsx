@@ -1,6 +1,6 @@
-import { safeHref } from "../api/safe-link";
+import { safeHref } from "@desk/safe-link";
 import { useState } from "react";
-import type { DeskItem, TodayTask } from "../api/types";
+import type { DeskItem, TodayTask } from "@desk/types";
 import { useI18n, type TextKey } from "../i18n";
 import { taskDone } from "../queue/keys";
 import { useAct, useQueue } from "./act";

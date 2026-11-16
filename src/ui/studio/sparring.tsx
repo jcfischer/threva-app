@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { SparMode, StudioThread } from "../api/types";
+import type { SparMode, StudioThread } from "@desk/types";
 import { ErrorLine } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "./act";
 
-export type { SparMode } from "../api/types";
+export type { SparMode } from "@desk/types";
 
 export interface SparRequest {
   mode: SparMode;

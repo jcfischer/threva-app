@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { safeHref } from "../api/safe-link";
-import type { DeskItem, DeskMention } from "../api/types";
+import { safeHref } from "@desk/safe-link";
+import type { DeskItem, DeskMention } from "@desk/types";
 import { useI18n } from "../i18n";
 import type { ActError, useAct } from "./act";
 

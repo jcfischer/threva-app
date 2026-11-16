@@ -1,4 +1,4 @@
-import type { StudioThread } from "../api/types";
+import type { StudioThread } from "@desk/types";
 import { useI18n } from "../i18n";
 import { threadType } from "../studio/close";
 import { ago, noteCards } from "./cards";

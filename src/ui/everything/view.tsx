@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
-import type { DeskClient } from "../api/client";
-import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "@desk/types";
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
 import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";

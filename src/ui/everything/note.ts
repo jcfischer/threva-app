@@ -1,4 +1,4 @@
-import type { OutlineDetails, OutlineRow } from "../api/types";
+import type { OutlineDetails, OutlineRow } from "@desk/types";
 import type { I18n } from "../i18n";
 
 export const NOTE_LIMIT = 10_000;

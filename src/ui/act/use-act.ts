@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { newRequestId, type Result } from "../api/client";
+import { newRequestId, type Result } from "@desk/client";
 
 export type ActError = { message: string | null } | null;
 

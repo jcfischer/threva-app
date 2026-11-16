@@ -1,6 +1,6 @@
 import { useDeskAct } from "../act/use-act";
 import { useQueue } from "../cards/act";
-import type { StudioAct } from "../api/types";
+import type { StudioAct } from "@desk/types";
 
 export function useStudioAct() {
   const { client, refresh } = useQueue();

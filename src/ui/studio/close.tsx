@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Result } from "../api/client";
-import type { StudioAct, StudioOutcome, StudioThread, StudioThreadType } from "../api/types";
+import type { Result } from "@desk/client";
+import type { StudioAct, StudioOutcome, StudioThread, StudioThreadType } from "@desk/types";
 import type { ActError } from "../cards/act";
 import { ErrorLine } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";

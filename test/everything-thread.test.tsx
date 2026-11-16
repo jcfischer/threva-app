@@ -2,8 +2,9 @@ import { expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EditorView } from "@codemirror/view";
-import { createClient } from "../src/ui/api/client";
-import type { MyDayOutline, StudioAct, StudioProject, StudioThread } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { MyDayOutline, StudioAct, StudioProject, StudioThread } from "@desk/types";
 import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
@@ -98,20 +99,19 @@ function studioClient() {
   const acts: StudioAct[] = [];
   let refusal: string | null = null;
   let unavailable = false;
-  const client = createClient(async (url, init) => {
-    if (url === "/api/desk/my-day") return Response.json(outline);
-    if (!init) return unavailable ? Response.json({ error: "Broken Studio" }, { status: 503 }) : Response.json(studioList([thread]));
-    expect(url).toBe("/api/desk/studio/act");
-    const { requestId, ...body } = JSON.parse(init.body as string);
+  const client = createMemoryClient();
+  client.seed("myDay", () => ({ ok: true, data: structuredClone(outline) }));
+  client.seed("studio", () => unavailable ? { ok: false, message: "Broken Studio", status: 503 } : { ok: true, data: structuredClone(studioList([thread])) });
+  client.seed("studio.act", (body: StudioAct, requestId: string) => {
     expect(requestId).toMatch(/^[a-f0-9]+$/);
     acts.push(body);
-    if (refusal) return Response.json({ error: refusal }, { status: 409 });
+    if (refusal) return { ok: false, message: refusal, status: 409 };
     if (body.act === "keep" || body.act === "dismiss") {
       thread.notes.find(note => note.at === body.note)!.status = body.act === "keep" ? "kept" : "dismissed";
       outline.studioProjects![0]!.openNotes!--;
     }
     if (body.act === "respond") thread.responses.push({ at: "2026-11-14T11:00:00Z", text: body.text });
-    return Response.json({ ok: true, studio: studioList([thread]) });
+    return { ok: true, data: { ok: true, studio: studioList([thread]) } };
   });
   return { client, acts, refuse: (message: string | null) => { refusal = message; }, breakStudio: () => { unavailable = true; } };
 }

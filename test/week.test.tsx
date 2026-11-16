@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { DeskEvent } from "../src/ui/api/types";
+import type { DeskEvent } from "@desk/types";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { dateInZone, weekColumns } from "../src/ui/week/columns";
 import { WeekGrid } from "../src/ui/week/view";

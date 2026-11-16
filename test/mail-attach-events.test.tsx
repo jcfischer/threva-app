@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { act } from "react";
-import { createMemoryClient } from "../src/ui/api/memory-client";
+import { createMemoryClient } from "@desk/memory-client";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard } from "../src/ui/cards/mail-cards";
 import { item } from "./fixtures/desk";

@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { createClient, type DeskClient } from "../src/ui/api/client";
-import { createMemoryClient } from "../src/ui/api/memory-client";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { createClient, type DeskClient } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import { cortexUrl } from "../src/cortex-origin";
+import { setup } from "../src/cli/setup";
+import { harness, KEY } from "./fixtures/setup";
+import { DATE, outlineFixture } from "./fixtures/outline";
 
 interface Sent {
   url: string;
@@ -170,4 +176,68 @@ describe("memory adapter", () => {
     memory.seed("conversations.detail", (id: string) => ({ ok: false, message: id, status: 404 }));
     expect(await memory.conversations.detail("c9")).toEqual({ ok: false, message: "c9", status: 404 });
   });
+});
+
+test("builds a URL on the local Mission Control origin", () => {
+  expect(cortexUrl("/api/desk")).toBe("http://127.0.0.1:8767/api/desk");
+});
+
+const fixture = outlineFixture();
+
+test("write client sends UUID, date, revision and the command over HTTP, and preserves Cortex refusals", async () => {
+  const calls: { url: string; init?: RequestInit }[] = [];
+  const client = createClient(async (url, init) => {
+    calls.push({ url, init });
+    return init ? Response.json({ error: "The outline changed. Your draft is kept." }, { status: 409 }) : Response.json(fixture);
+  });
+  expect(await client.myDay()).toEqual({ ok: true, data: fixture });
+  for (const command of [
+    { op: "outline-add", revision: 12, parent: "project", title: "New" } as const,
+    { op: "outline-move", revision: 12, id: "plain", parent: "area:me", index: 0 } as const,
+    { op: "outline-complete", revision: 12, id: "due", confirm: true } as const,
+    { op: "outline-reopen", revision: 12, id: "done", confirm: true } as const,
+  ]) {
+    expect(await client.changeMyDay(DATE, command)).toEqual({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
+    const call = calls.at(-1)!;
+    expect(call.url).toBe("/api/desk/my-day");
+    expect(call.init?.method).toBe("POST");
+    const body = JSON.parse(call.init!.body as string);
+    expect(body).toMatchObject({ date: DATE, command });
+    expect(body.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  }
+});
+
+for (const port of [8767, 8795]) {
+  test(`setup disables ranked mail over HTTP on port ${port}`, async () => {
+    const h = harness({ answers: ["1", KEY, ""] });
+    expect(await setup(["--port", String(port)], h.deps)).toBe(0);
+    expect(h.posts).toEqual([{ url: `http://127.0.0.1:${port}/api/desk/interruptions`, body: JSON.stringify({ code: "mail.ranked", on: false }) }]);
+  });
+}
+
+test("both adapters expose only named calls", () => {
+  const deskHasOnlyNamedCalls: Extract<keyof DeskClient, "get" | "post"> extends never ? true : false = true;
+  const memoryHasOnlyNamedCalls: Extract<keyof MemoryClient, "get" | "post"> extends never ? true : false = true;
+  expect(deskHasOnlyNamedCalls && memoryHasOnlyNamedCalls).toBe(true);
+  for (const client of [createClient(), createMemoryClient()]) {
+    expect("get" in client).toBe(false);
+    expect("post" in client).toBe(false);
+  }
+});
+
+test("UI and test API paths stay in the client and HTTP contract test", () => {
+  const root = join(import.meta.dir, "..");
+  const matches = ["src/ui", "test"].flatMap(dir =>
+    readdirSync(join(root, dir), { recursive: true, encoding: "utf8" })
+      .filter(file => /\.tsx?$/.test(file) && readFileSync(join(root, dir, file), "utf8").includes("/api/"))
+      .map(file => join(dir, file)),
+  );
+  expect(matches.sort()).toEqual(["src/ui/api/client.ts", "test/client-http.test.ts"]);
+});
+
+test("no source file but the client names the My Day path", () => {
+  const src = join(import.meta.dir, "../src");
+  const matches = readdirSync(src, { recursive: true, encoding: "utf8" })
+    .filter(file => /\.tsx?$/.test(file) && readFileSync(join(src, file), "utf8").includes("/api/desk/my-day"));
+  expect(matches).toEqual(["ui/api/client.ts"]);
 });

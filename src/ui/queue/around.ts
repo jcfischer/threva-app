@@ -1,4 +1,4 @@
-import type { InterruptReason } from "../api/types";
+import type { InterruptReason } from "@desk/types";
 import type { TextKey } from "../i18n";
 import type { Entry } from "./order";
 

@@ -1,4 +1,4 @@
-import type { Proposal } from "../api/capture";
+import type { Proposal } from "@desk/capture";
 
 export type BarState =
   | { phase: "idle"; text: string; active: number }

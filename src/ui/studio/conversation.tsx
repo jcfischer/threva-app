@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { lines, linkedConversation, readExchange, type Exchange, type StudioSession } from "../api/conversations";
+import { lines, linkedConversation, readExchange, type Exchange, type StudioSession } from "@desk/conversations";
 import { ErrorLine } from "../cards/parts";
 import { useQueue, type ActError } from "../cards/act";
 import { useDeskAct } from "../act/use-act";
