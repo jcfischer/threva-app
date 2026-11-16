@@ -33,12 +33,14 @@ describe("useAct", () => {
     expect(ids[1]).toBe(ids[0]);
   });
 
-  test("puts the retained request id in a posted body", async () => {
-    client.seed("post", { ok: false, message: "no", status: 0 });
-    const send = async () => { await hook.run("/api/desk/ruling", (requestId: string) => ({ key: "k", requestId })); };
+  test("sends the retained request id to the ruling call on retry", async () => {
+    client.seed("queue.ruling", { ok: false, message: "no", status: 0 });
+    const send = async () => { await hook.act({ ruling: "k" }, (requestId) => client.queue.ruling("k", "text", requestId)); };
     await act(send);
     await act(send);
-    const bodies = client.calls.filter((c) => c.name === "post").map((c) => c.args[1] as { requestId: string });
-    expect(bodies[1]?.requestId).toBe(bodies[0]?.requestId);
+    const ids = client.calls.filter((c) => c.name === "queue.ruling").map((c) => c.args[2]);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBeString();
+    expect(ids[1]).toBe(ids[0]);
   });
 });

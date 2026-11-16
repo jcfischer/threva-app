@@ -280,12 +280,6 @@
     }
   },
   "test/agent-card.test.tsx": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 1
-    },
     "threva/no-comments": {
       "count": 1
     }
@@ -368,9 +362,6 @@
     }
   },
   "test/interruptions.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 2
     },
