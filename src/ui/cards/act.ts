@@ -19,6 +19,8 @@ export function useQueue(): QueueContextValue {
   return value;
 }
 
+const dashed = (id: string): string => id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
+
 export type ActError = SharedActError;
 
 function canMakeTask(item: DeskItem): boolean {
@@ -28,10 +30,13 @@ function canMakeTask(item: DeskItem): boolean {
 export function useAct(enter?: EnterAct) {
   const { client, refresh, myDayDate, onTask } = useQueue();
   const { busy, error, act, isInFlight } = useDeskAct(refresh);
-  const run = <T = Record<string, unknown>>(path: string, body: unknown) => act<T>({ path, body }, () => client.post<T>(path, body));
+  const run = <T = Record<string, unknown>>(path: string, body: unknown) => {
+    const build = typeof body === "function" ? (body as (requestId: string) => unknown) : () => body;
+    return act<T>({ path, body: build("") }, (requestId) => client.post<T>(path, build(requestId)));
+  };
   const changeMyDay = (command: MyDayCommand) =>
-    act<MyDayChange>({ myDay: myDayDate, command }, async () =>
-      myDayDate ? client.changeMyDay(myDayDate, command) : { ok: false, message: null, status: 0 },
+    act<MyDayChange>({ myDay: myDayDate, command }, async (requestId) =>
+      myDayDate ? client.myDay.change(myDayDate, command, dashed(requestId)) : { ok: false, message: null, status: 0 },
     );
   const makeTask = async (item: DeskItem) => {
     if (!item.todoFingerprint || isInFlight()) return;
