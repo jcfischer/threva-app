@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
 import type { DeskItem } from "../api/types";
 import { useI18n } from "../i18n";
 import { isInterrupting } from "../queue/order";
+import { useDeskAct } from "../act/use-act";
 import { useQueue } from "./act";
 import { ErrorLine } from "./parts";
 
@@ -12,28 +12,17 @@ export function InterruptionFeedback({ item, answer, onAnswer }: {
 }) {
   const { t } = useI18n();
   const { client, refresh } = useQueue();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ message: string | null } | null>(null);
-  const inFlight = useRef(false);
+  const { busy, error, act, isInFlight } = useDeskAct(refresh);
   const feedback = answer ?? item.interrupt?.feedback;
   if (feedback === "no") return <p className="sub" role="status">{t("interrupt.stopped")}</p>;
   if (feedback || !isInterrupting(item)) return null;
 
   async function send(important: boolean) {
     const reason = item.interrupt?.reason;
-    if (!reason || inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setError(null);
-    const result = await client.post("/api/desk/interruptions/feedback", {
-      key: item.key, code: reason.code, ...(reason.target !== undefined ? { target: reason.target } : {}), important,
-    });
-    inFlight.current = false;
-    setBusy(false);
-    if (result.ok) {
-      onAnswer(important ? "yes" : "no");
-      refresh();
-    } else setError({ message: result.message });
+    if (!reason || isInFlight()) return;
+    const body = { key: item.key, code: reason.code, ...(reason.target !== undefined ? { target: reason.target } : {}), important };
+    const result = await act({ interruption: body }, () => client.queue.interruptionFeedback(body));
+    if (result.ok) onAnswer(important ? "yes" : "no");
   }
 
   return <div className="interrupt-feedback">

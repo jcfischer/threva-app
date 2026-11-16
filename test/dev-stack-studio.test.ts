@@ -85,6 +85,16 @@ describe("renderStudioThreads", () => {
     const answered = threads[1]?.thread;
     expect(answered?.responses[0]?.re).toBe(answered?.notes[0]?.at);
   });
+
+  test("the budget topic proposes a relation to the other sample topic on disk", () => {
+    const source = threads[0];
+    const target = threads[1];
+    const notes = entries(source?.parsed.sections.get("ivy's notes") ?? "", NOTE_META);
+    const relation = notes.find((note) => note.meta.kind === "relation");
+    expect(relation?.meta.relates).toBe(`thread: ${target?.thread.slug}`);
+    expect(relation?.text).toBe("The offsite and the budget share a decision.");
+    expect(Date.parse(relation?.at ?? "")).toBeLessThan(Date.parse(source?.thread.notes[0]?.at ?? ""));
+  });
 });
 
 describe("seedStudio", () => {

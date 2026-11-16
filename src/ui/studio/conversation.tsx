@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { lines, linkedConversation, readExchange, sendInput, sessionCall, startConversation, type Exchange, type StudioSession } from "../api/conversations";
+import { lines, linkedConversation, readExchange, type Exchange, type StudioSession } from "../api/conversations";
 import { ErrorLine } from "../cards/parts";
 import { useQueue, type ActError } from "../cards/act";
 import { useI18n } from "../i18n";
@@ -99,7 +99,7 @@ export function TalkItThrough({ thread }: { thread: string }) {
     setShown(true);
     if (linked.state === "linked") return follow(linked.id);
     setBusy(true);
-    const r = await startConversation(client, thread, startId.current);
+    const r = await client.conversations.start(thread, startId.current);
     setBusy(false);
     if (!r.ok) {
       setShown(false);
@@ -117,7 +117,7 @@ export function TalkItThrough({ thread }: { thread: string }) {
     input.current = { text: body, id: retry };
     setBusy(true);
     setError(null);
-    const r = await sendInput(client, linked.id, retry, body);
+    const r = await client.conversations.send(linked.id, retry, body);
     setBusy(false);
     if (!r.ok) {
       setError({ message: r.message });
@@ -195,7 +195,7 @@ export function DiscussNote({ thread, note }: { thread: string; note: string }) 
   async function begin() {
     setBusy(true);
     setError(null);
-    const r = await sessionCall(client, { action: "start", id: id.current, thread, scope: { kind: "ghost", note } });
+    const r = await client.studio.session({ action: "start", id: id.current, thread, scope: { kind: "ghost", note } });
     setBusy(false);
     if (!r.ok) return setError({ message: r.message });
     setSession(r.data.session);
@@ -208,7 +208,7 @@ export function DiscussNote({ thread, note }: { thread: string; note: string }) 
     turn.current = { text: body, id: retry };
     setBusy(true);
     setError(null);
-    const r = await sessionCall(client, { action: "say", id: id.current, turn: retry, text: body });
+    const r = await client.studio.session({ action: "say", id: id.current, turn: retry, text: body });
     setBusy(false);
     if (r.ok) {
       turn.current = null;
@@ -221,7 +221,7 @@ export function DiscussNote({ thread, note }: { thread: string; note: string }) 
 
   async function leave() {
     setBusy(true);
-    const r = await sessionCall(client, { action: "end", id: id.current, outcome: { kind: "leave" } });
+    const r = await client.studio.session({ action: "end", id: id.current, outcome: { kind: "leave" } });
     setBusy(false);
     if (!r.ok) return setError({ message: r.message });
     id.current = crypto.randomUUID();

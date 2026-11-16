@@ -1,6 +1,7 @@
 {
   "name": "threva-app",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "bin": {
     "threva": "src/cli/threva.ts"
@@ -12,6 +13,7 @@
     "test": "bun test test",
     "lint": "bun eslint/suppressions-guard.ts && bun --bun eslint .",
     "lint:fix": "bun --bun eslint --fix .",
+    "notices": "bun scripts/third-party-notices.ts",
     "verify:ui": "bun scripts/verify-ui.ts",
     "explore:ui": "bun scripts/explore-ui.ts",
     "probe:ui": "bun scripts/probe-ui.ts"

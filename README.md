@@ -12,7 +12,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 
 ## Layout
 
-- `prototype/` is a read-only snapshot of the clickable prototype from `jcfischer/threva` (`try/proto` and `try/page` at commit `3816c84`). It runs on made-up scenario data and is the UX reference for the port. Do not build on its code structure without a decision that says so.
+- The clickable prototype in the private `jcfischer/threva` repository (`try/proto` and `try/page` at commit `3816c84`) is the UX reference for the port. It runs on made-up scenario data. Do not build on its code structure without a decision that says so.
 - `src/` holds the app. `test/` holds its tests.
 
 ## Check
@@ -42,6 +42,8 @@ The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/t
 
 To prove a UI change in a real browser, start a second stack with its own `THREVA_DEV_DIR` and `THREVA_DEV_PORT`, then run `bun run verify:ui` (scripted journeys with screenshots) and `bun run explore:ui` (Bombadil property exploration). `.claude/skills/verify-threva` has the steps.
 
+The sample budget topic includes a relation note to the offsite topic. The `relations` journey requires Cortex to serve that note's `relates` field from disk. For a dev stack seeded before this sample was added, use a fresh `THREVA_DEV_DIR` for verification.
+
 ### Conversations and the parser
 
 Without more configuration, the dev stack has no model: the bar falls back to Cortex's built-in rules, and a conversation refuses its first turn. Two files, kept outside this repository, add the models you already use:
@@ -63,3 +65,7 @@ THREVA_DEV_LANES=~/threva-dev/lanes.yaml THREVA_DEV_PARSER_ROUTING=~/threva-dev/
 ```
 
 With either file, the command runs `cortex config validate` on the generated config and stops with Cortex's error if it is refused. A file that is missing or cannot be parsed stops the command before it writes anything.
+
+## Licence
+
+Threva is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). The UI's runtime dependencies are MIT; [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) lists each one with its version, licence and the licence text the package ships. `bun run check` fails when `package.json` and that file disagree; `bun run notices` regenerates it. Threva runs Cortex, also AGPL-3.0, as a separate program; Cortex's source offer belongs to the installer's bundle, not to the notices above.

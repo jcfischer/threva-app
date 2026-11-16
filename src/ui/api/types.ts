@@ -1,6 +1,19 @@
 export type DeskItemKind =
   | "goal" | "sensor" | "agent-failed" | "agent-blocked" | "decision" | "grilling" | "escalation"
-  | "mail" | "reminder" | "meeting" | "mail-rule" | "dmarc" | "mail-waiting" | "mail-handoff" | "adapter";
+  | "mail" | "mail-junk" | "reminder" | "meeting" | "mail-rule" | "dmarc" | "mail-waiting" | "mail-handoff" | "task-handoff" | "adapter";
+
+export type HandoffState = "working" | "ready" | "failed" | "approved" | "discarded";
+
+export interface HandoffView {
+  id: string;
+  state: HandoffState;
+  line: string;
+  since: number;
+  findings?: string[];
+  draft?: string;
+  result?: string;
+  brief?: string;
+}
 
 export interface DeskAction {
   id: string;
@@ -66,6 +79,7 @@ export interface DeskItem {
   reply?: { to: string; subject: string };
   suspicious?: boolean;
   attention?: "action" | "update";
+  handoff?: HandoffView;
 }
 
 export interface DeskEvent {
@@ -228,6 +242,7 @@ export interface StudioNote {
   kind: StudioNoteKind;
   status: StudioNoteStatus;
   because?: string;
+  relates?: StudioMaterial;
   text: string;
 }
 
