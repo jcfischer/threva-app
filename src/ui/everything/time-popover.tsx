@@ -44,7 +44,16 @@ const valid = (draft: TimeDraft) => !draft.repeat || (Number.isInteger(draft.rep
 
 export function TimeForm({ row, onSave, onDone, onCancel }: { row: OutlineRow; onSave: SaveTime; onDone?: () => void; onCancel?: () => void }) {
   const { t } = useI18n();
-  const [draft, setDraft] = useState(() => draftOf(row));
+  const [edits, setEdits] = useState<Partial<TimeDraft>>({});
+  const draft: TimeDraft = { ...draftOf(row), ...edits };
+  const setDraft = (next: TimeDraft) => {
+    const base = draftOf(row);
+    const kept: Partial<TimeDraft> = {};
+    if (next.start !== base.start) kept.start = next.start;
+    if (next.away !== base.away) kept.away = next.away;
+    if (isChanged(row, { ...base, repeat: next.repeat })) kept.repeat = next.repeat;
+    setEdits(kept);
+  };
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const alive = useRef(true);

@@ -5,7 +5,7 @@ import { createClient } from "../src/ui/api/client";
 import type { OutlineCommand } from "../src/ui/api/types";
 import { pathTo } from "../src/ui/everything/moves";
 import { draftOf, timeDetails, type TimeDraft } from "../src/ui/everything/time-edit";
-import { TimeMargin } from "../src/ui/everything/time-popover";
+import { TimeForm, TimeMargin } from "../src/ui/everything/time-popover";
 import { EverythingView } from "../src/ui/everything/view";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
@@ -116,6 +116,19 @@ describe("the popover", () => {
       expect(find(container, ".time-popover [role=alert]")!.textContent).toBe("The outline changed. Reload and try again.");
       expect(margin().textContent).toBe("Set a time");
     } finally { await cleanup(); }
+  });
+
+  test("a refreshed row keeps the user's edit and takes the other fields from Cortex", async () => {
+    const dom = mountDom();
+    const view = (r: ReturnType<typeof row>) => <I18nProvider value={createI18n("en")}><TimeForm row={r} onSave={async () => null} /></I18nProvider>;
+    try {
+      await act(async () => dom.root.render(view(row("plain"))));
+      await inputText(find(dom.container, "input")!.parentElement!.parentElement!.querySelectorAll("input")[1], "2026-11-16");
+      await act(async () => dom.root.render(view(row("plain", { startDate: "2026-11-20" }))));
+      const inputs = dom.container.querySelectorAll("input");
+      expect(inputs[0].value).toBe("2026-11-20");
+      expect(inputs[1].value).toBe("2026-11-16");
+    } finally { await dom.cleanup(); }
   });
 
   test("the row's page has the same fields", async () => {
