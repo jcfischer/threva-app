@@ -42,7 +42,7 @@ const reads: Case[] = [
   ["conversations.source", (c) => c.conversations.source("a b"), "GET", "/api/conversations/source?owner=studio-thread&id=a%20b", undefined],
   ["conversations.detail", (c) => c.conversations.detail("c/1"), "GET", "/api/conversations/c%2F1", undefined],
   ["conversations.entries", (c) => c.conversations.entries("c1"), "GET", "/api/conversations/c1/entries?limit=500", undefined],
-  ["handshake", (c) => c.handshake(), "GET", "/api/desk/handshake", undefined],
+  ["handshake", (c) => c.handshake(), "GET", "/api/desk/contract", undefined],
 ];
 
 const writes: Case[] = [

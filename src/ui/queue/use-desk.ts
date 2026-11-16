@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeskClient } from "@desk/client";
+import type { Startup } from "@desk/startup";
 import type { DeskView, MailRule, StudioList } from "@desk/types";
 
 export const POLL_MS = 15_000;
@@ -22,20 +23,24 @@ export async function loadDesk(client: DeskClient, previous: DeskState): Promise
   };
 }
 
-export function useDesk(client: DeskClient): DeskState & { refresh: () => void } {
+export function useDesk(client: DeskClient, startup: Startup = { state: "ready" }): DeskState & { refresh: () => void } {
   const [state, setState] = useState<DeskState>({ view: null, studio: null, rules: null, error: null });
   const latest = useRef(state);
   latest.current = state;
+  const ready = startup.state === "ready";
 
   const refresh = useCallback(() => {
+    if (!ready) return;
     void loadDesk(client, latest.current).then(setState);
-  }, [client]);
+  }, [client, ready]);
 
   useEffect(() => {
+    if (!ready) return;
     refresh();
     const timer = setInterval(refresh, POLL_MS);
     return () => clearInterval(timer);
-  }, [refresh]);
+  }, [refresh, ready]);
 
-  return { ...state, refresh };
+  const error = startup.state === "failed" ? { message: startup.message } : state.error;
+  return { ...state, error, refresh };
 }

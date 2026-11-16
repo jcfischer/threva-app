@@ -1,4 +1,5 @@
 import type { DeskClient, Result } from "./client";
+import { DESK_API_MAJOR } from "./desk-version";
 
 export interface LoggedCall {
   name: string;
@@ -27,7 +28,7 @@ const FLAT = ["desk", "rules", "changeMyDay"] as const;
 
 export function createMemoryClient(): MemoryClient {
   const calls: LoggedCall[] = [];
-  const answers = new Map<string, Answer>();
+  const answers = new Map<string, Answer>([["handshake", { ok: true, data: { version: `${DESK_API_MAJOR}.0.0` } }]]);
   const named = (name: string) => (...args: unknown[]) => {
     calls.push({ name, args });
     const answer = answers.get(name);

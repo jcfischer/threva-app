@@ -1,227 +1,113 @@
-export type DeskItemKind =
-  | "goal" | "sensor" | "agent-failed" | "agent-blocked" | "decision" | "grilling" | "escalation"
-  | "mail" | "mail-junk" | "reminder" | "meeting" | "mail-rule" | "dmarc" | "mail-waiting" | "mail-handoff" | "task-handoff" | "adapter";
+import type {
+  AreaReview,
+  AssistantNote,
+  DeskAutonomy,
+  DeskEvent as CortexDeskEvent,
+  DeskInterrupt as CortexDeskInterrupt,
+  DeskInterruptReason,
+  DeskItem as CortexDeskItem,
+  DeskLink as CortexDeskLink,
+  DeskView as CortexDeskView,
+  MailRuleView,
+  MailSweepView,
+  MyDayView,
+  OutlineNode,
+  RoutineView as CortexRoutineView,
+  StudioThreadView,
+  SweepMailView,
+  ThreadOutcome,
+  ThreadState,
+  ThreadThinking,
+  ThreadType,
+} from "@the-metafactory/cortex/desk-api";
 
-export type HandoffState = "working" | "ready" | "failed" | "approved" | "discarded";
+export type { DeskAction, DeskItemKind, DeskMention, RulingChoice, RulingExplanation, StudioResponse } from "@the-metafactory/cortex/desk-api";
+export type {
+  LogEntry as StudioLogEntry,
+  MaterialLink as StudioMaterial,
+  MyDayOutlineNode as OutlineRow,
+  NoteKind as StudioNoteKind,
+  NoteStatus as StudioNoteStatus,
+  Recurrence as OutlineRepeat,
+  StudioProjectLink as StudioProject,
+  ThreadOutcome as StudioOutcome,
+  ThreadThinking as StudioThinking,
+  ThreadType as StudioThreadType,
+} from "@the-metafactory/cortex/desk-api";
 
-export interface HandoffView {
-  id: string;
-  state: HandoffState;
-  line: string;
-  since: number;
-  findings?: string[];
-  draft?: string;
-  result?: string;
-  brief?: string;
-}
+export type { MyDayCommand, OutlineCommand, OutlineDetails, SparMode, StudioAct } from "./requests";
 
-export interface DeskAction {
-  id: string;
-  label: string;
-  role: "primary" | "secondary";
-  wired: boolean;
-  url?: string;
-  target?: string;
-}
+export type DeskLink = Pick<CortexDeskLink, "label" | "url">;
 
-export interface DeskLink {
-  label: string;
-  url: string;
-}
+export type InterruptReason = { code: string } & Omit<DeskInterruptReason, "code" | "phrase"> & {
+  phrase?: DeskInterruptReason["phrase"];
+};
 
-export interface DeskMention {
-  text: string;
-  url: string;
-}
+export type DeskInterrupt = Omit<CortexDeskInterrupt, "reason"> & { reason?: InterruptReason };
 
-export interface RulingChoice {
-  label: string;
-  consequence: string;
-  ruling: string;
-}
+export type DeskItemDetail = Omit<CortexDeskItem["detail"], "links" | "history" | "refs"> & {
+  links: DeskLink[];
+  history?: CortexDeskItem["detail"]["history"];
+  refs?: CortexDeskItem["detail"]["refs"];
+};
 
-export interface InterruptReason {
-  code: string;
-  target?: string;
-  eventKey?: string;
-  dueAt?: string;
-}
-
-export interface DeskInterrupt {
-  delivery: "off" | "held" | "pending" | "sending" | "sent" | "buffered" | "failed";
-  reason?: InterruptReason;
-  feedback?: "yes" | "no";
-  held?: { eventKey: string; title: string; until: number };
-  error?: string;
-}
-
-export interface DeskItem {
-  key: string;
-  kind: DeskItemKind;
-  source: string;
-  title: string;
-  why: string;
-  score: number;
-  urgency: "now" | "today" | "this-week" | "waiting";
-  actions: DeskAction[];
-  more?: DeskAction[];
-  detail: { summary: string; links: DeskLink[]; refs?: string[]; history?: string[]; suspicion?: string[] };
-  mentions?: DeskMention[];
-  excerpt?: string;
-  suggestion?: string;
-  eventKey?: string;
-  since?: number;
+export type DeskItem = Omit<CortexDeskItem, "detail" | "interrupt"> & {
+  detail: DeskItemDetail;
   interrupt?: DeskInterrupt;
-  todoFingerprint?: string;
-  readOnly?: boolean;
-  question?: { condition: string | null; reason: string };
-  explanation?: { sentence: string; choices: RulingChoice[] };
-  reply?: { to: string; subject: string };
-  suspicious?: boolean;
-  attention?: "action" | "update";
-  handoff?: HandoffView;
-}
+};
 
-export interface DeskEvent {
-  key: string;
-  at: number;
-  end?: number;
-  title: string;
-  note?: string;
-  kind: "agent" | "agent-stop" | "meeting" | "all-day" | "reminder";
-  url?: string;
-  online?: boolean;
-}
+export type DeskEvent = Pick<CortexDeskEvent, "key" | "at" | "end" | "title" | "kind" | "note" | "url" | "online">;
 
+export type DeskAgents = CortexDeskView["agents"];
+export type DoneEntry = DeskAutonomy["done"][number];
+export type AreaShare = Pick<AreaReview, "areaId" | "targetShare" | "actualShare">;
 export interface TodayTask {
-  task: { id: string; title: string };
+  task: Pick<OutlineNode, "id" | "title">;
   areaTitle: string;
 }
+export type TodayWin = MyDayView["wins"][number];
 
-export interface TodayWin {
-  taskId: string;
-  title: string;
+export interface DeskDay {
+  date: MyDayView["date"];
+  items: readonly TodayTask[];
+  wins?: readonly TodayWin[];
 }
 
-export interface MailSweepMail {
-  key: string;
-  from: string;
-  subject: string;
-  url?: string;
+export type MailSweepMail = Pick<SweepMailView, "key" | "from" | "subject" | "url">;
+
+export type MailSweep =
+  Pick<MailSweepView, "id" | "kind" | "target" | "label" | "title" | "why"> & { mails: MailSweepMail[] };
+
+export type MailRule = Pick<MailRuleView, "id" | "match" | "value" | "action" | "on" | "sentence">;
+
+export interface MailRules {
+  rules: MailRuleView[];
 }
 
-export interface MailSweep {
-  id: string;
-  kind: string;
-  target: "archive" | "junk" | "trash";
-  label: string;
-  title: string;
-  why: string;
-  mails: MailSweepMail[];
+export interface RoutineView {
+  installed: Pick<CortexRoutineView["installed"][number], "title">[];
+  pending: Pick<CortexRoutineView["pending"][number], "decisionId" | "impulseSummary">[];
 }
 
-export interface DoneEntry {
-  key: string;
-  action?: string;
-  undo?: string;
-  title: string;
-  message: string;
-  at: number;
-  ok: boolean;
-}
+export type DeskView =
+  Pick<CortexDeskView, "generatedAt" | "displayName"> & {
+    items: DeskItem[];
+    today: DeskEvent[];
+    timeZone?: CortexDeskView["timeZone"];
+    assistantName?: CortexDeskView["assistantName"];
+    ahead?: DeskEvent[];
+    myDay?: DeskDay;
+    mailSweeps?: MailSweep[];
+    mailDigests?: MailSweep[];
+    autonomy?: Pick<DeskAutonomy, "done">;
+    routines?: RoutineView | null;
+    agents?: DeskAgents;
+    mirror?: CortexDeskView["mirror"];
+  };
 
-export interface DeskView {
-  timeZone?: string;
-  ahead?: DeskEvent[];
-  generatedAt: number;
-  displayName: string | null;
-  assistantName?: string;
-  items: DeskItem[];
-  today: DeskEvent[];
-  myDay?: { date: string; items: TodayTask[]; wins?: TodayWin[] };
-  mailSweeps?: MailSweep[];
-  mailDigests?: MailSweep[];
-  autonomy?: { done: DoneEntry[] };
-  routines?: RoutineView | null;
-  agents?: DeskAgents;
-  mirror?: { balance: { areas: AreaShare[] } | null };
-}
-
-export interface AreaShare {
-  areaId: string;
-  targetShare: number;
-  actualShare: number;
-}
-
-export interface OutlineRepeat {
-  mode?: "calendar" | "completion";
-  unit: "day" | "week" | "month";
-  interval: number;
-  weekdays?: number[];
-  count?: number;
-  until?: string;
-}
-
-export interface OutlineRow {
-  id: string;
-  title: string;
-  weight: number;
-  ordering: "parallel" | "sequential";
-  children: OutlineRow[];
-  done?: boolean;
-  completedAt?: string;
-  deferredUntil?: string;
-  startDate?: string;
-  dueDate?: string;
-  repeat?: OutlineRepeat;
-  recurrence?: { returnsOn: string | null; reappearsOn: string | null; finished: boolean };
-  note?: string;
-  focusMonth?: string;
-  context?: string;
-  effort?: 1 | 2 | 4;
-  estimateMinutes?: number | null;
-}
-
-export interface StudioProject {
-  id: string;
-  slug: string;
-  state: "active" | "parked" | "closed" | null;
-  openNotes: number | null;
-}
-
-export interface MyDayOutline {
-  date: string;
-  revision: number;
-  outline: OutlineRow;
-  studioTasks?: { id: string; slug: string }[];
-  studioProjects?: StudioProject[];
-}
-
-export interface OutlineDetails {
-  title: string;
-  weight: number;
-  note: string;
-  ordering: "parallel" | "sequential";
-  focus: boolean;
-  dueDate: string;
-  context: string;
-  effort: 1 | 2 | 4;
-  estimateMinutes: number | null;
-  startDate?: string;
-  deferredUntil?: string;
-  repeat?: (OutlineRepeat & { mode: "calendar" | "completion" }) | null;
-}
-
-export type OutlineCommand =
-  | { op: "outline-add"; revision: number; parent: string; title: string; kind?: "task" }
-  | { op: "outline-move"; revision: number; id: string; parent: string; index: number }
-  | { op: "outline-edit"; revision: number; id: string; details: OutlineDetails; yes: boolean }
-  | { op: "outline-complete" | "outline-reopen"; revision: number; id: string; confirm: true };
-
-export type MyDayCommand =
-  | OutlineCommand
-  | { op: "todo"; key: string; fingerprint: string }
-  | { op: "done"; id: string };
+export type MyDayOutline =
+  Pick<MyDayView, "date" | "revision" | "outline"> &
+  Partial<Pick<MyDayView, "studioProjects" | "studioTasks">>;
 
 export interface MyDayChange {
   view: MyDayOutline;
@@ -229,109 +115,35 @@ export interface MyDayChange {
   notice?: string;
 }
 
-export interface RoutineView {
-  installed: { title: string }[];
-  pending: { decisionId: string; impulseSummary: string }[];
-}
+export type StudioNote =
+  Pick<AssistantNote, "at" | "kind" | "status" | "because" | "relates" | "text"> &
+  Partial<Pick<AssistantNote, "trigger" | "model" | "mode" | "run">>;
 
-export interface DeskAgents {
-  line: string;
-  working: { title: string; note: string; since: number }[];
-  waiting: number;
-}
-
-export type StudioNoteKind = "note" | "stand" | "idea" | "relation";
-export type StudioNoteStatus = "open" | "kept" | "dismissed";
-
-export interface StudioNote {
-  at: string;
-  trigger?: string;
-  model?: string;
-  kind: StudioNoteKind;
-  status: StudioNoteStatus;
-  because?: string;
-  relates?: StudioMaterial;
-  text: string;
-}
-
-export interface StudioResponse {
-  at: string;
-  re?: string;
-  text: string;
-}
-
-export interface StudioMaterial {
-  kind: string;
-  label: string;
-  href?: string;
-}
-
-export type StudioOutcome = "decided" | "shipped" | "dropped";
-
-export type ThinkingBudget = "open" | "spent" | "off";
-
-export interface StudioThinkingRun {
-  id: string;
-  mode: string;
-  status: "pending" | "failed";
-  reason: string;
-}
-
-export type StudioThinking =
-  | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; budget: ThinkingBudget; reason: string | null; runs: StudioThinkingRun[] };
-
-export type StudioThreadType = "question" | "topic" | "making";
-
-export interface StudioLogEntry {
-  at: string;
-  text: string;
-}
-
+type Thread = StudioThreadView;
 export interface StudioThread {
-  slug: string;
-
-  type?: StudioThreadType;
-  state?: "active" | "parked" | "closed";
-  closed?: string;
-  outcome?: StudioOutcome;
-  outcomeText?: string;
-  thinkTonight?: boolean;
-  question: string;
-  stand: string;
+  slug: Thread["slug"];
+  question: Thread["question"];
+  stand: Thread["stand"];
   notes: StudioNote[];
-  responses: StudioResponse[];
-  log?: StudioLogEntry[];
-  material?: StudioMaterial[];
-  thinking?: StudioThinking;
+  responses: Thread["responses"];
+  type?: ThreadType;
+  state?: ThreadState;
+  closed?: Thread["closed"];
+  outcome?: ThreadOutcome;
+  outcomeText?: Thread["outcomeText"];
+  thinkTonight?: Thread["thinkTonight"];
+  log?: Thread["log"];
+  material?: Thread["material"];
+  thinking?: ThreadThinking;
 }
 
 export interface StudioList {
-  studio: { personas?: string[]; active: StudioThread[]; parked?: StudioThread[]; closed?: StudioThread[] } | null;
-}
-
-export type SparMode = "think" | "grill" | "other-side" | "red-team" | "first-principles" | `persona:${string}`;
-
-export type StudioAct =
-  | { act: "respond"; thread: string; text: string }
-  | { act: "keep" | "dismiss"; thread: string; note: string }
-  | { act: "park"; thread: string }
-  | { act: "unpark"; thread: string }
-  | { act: "think"; thread: string; on: boolean }
-  | { act: "spar"; thread: string; mode: SparMode }
-  | { act: "close"; thread: string; outcome: StudioOutcome; text: string; expect?: string; reviewOn?: string };
-
-export interface MailRule {
-  id: string;
-  match: string;
-  value: string;
-  action: string;
-  on: boolean;
-  sentence: string;
-}
-
-export interface MailRules {
-  rules: MailRule[];
+  studio: {
+    personas?: string[];
+    active: StudioThread[];
+    parked?: StudioThread[];
+    closed?: StudioThread[];
+  } | null;
 }
 
 export interface StudioProposal {
@@ -339,3 +151,5 @@ export interface StudioProposal {
   reason: string;
   threads: { slug: string; question: string }[];
 }
+
+export type StudioThinkingRun = Extract<ThreadThinking, { kind: "ready" }>["runs"][number];
