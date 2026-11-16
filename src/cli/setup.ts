@@ -259,6 +259,16 @@ function firstLine(result: RunResult): string {
   return (result.stderr || result.stdout).trim().split("\n")[0] ?? "";
 }
 
+export function writtenPort(stackText: string | null): number | null {
+  if (stackText === null) return null;
+  try {
+    const port = (JSON.parse(stackText) as { mc?: { port?: unknown } }).mc?.port;
+    return typeof port === "number" ? port : null;
+  } catch {
+    return null;
+  }
+}
+
 async function writeStack(deps: SetupDeps, paths: StackPaths, plan: StackPlan): Promise<Checked<null>> {
   for (const dir of [join(paths.dir, "system"), join(paths.dir, "stacks"), plan.studioDir]) deps.mkdir(dir);
   deps.writeFile(paths.pointer, POINTER_TEXT);
@@ -309,7 +319,8 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     return 0;
   }
   const { port } = parsed.value;
-  if (!written && (await answersOn(deps, port))) {
+  const ownServicePort = written ? writtenPort(deps.readFile(join(paths.dir, "stacks", `${STACK_SLUG}.yaml`))) : null;
+  if (ownServicePort !== port && (await answersOn(deps, port))) {
     deps.say(`Another program already answers on port ${port}, perhaps another Cortex. Stop it, or run threva setup --port <port> with a free port.`);
     return 1;
   }

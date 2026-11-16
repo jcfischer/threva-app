@@ -16,13 +16,16 @@ interface Harness {
   posts: { url: string; body: string }[];
 }
 
-function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean; unfinished?: boolean }): Harness {
+function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean; unfinished?: boolean; writtenPort?: number }): Harness {
   const files = new Map<string, string>([
     [`${LIBEXEC}/cortex/src/cortex.ts`, ""],
     [`${LIBEXEC}/ui/index.html`, ""],
   ]);
   if (options.engines !== null) files.set(`${LIBEXEC}/cortex/package.json`, JSON.stringify({ engines: { bun: options.engines ?? ">=1.4.4" } }));
-  if (options.existing || options.unfinished) files.set(stackPaths(HOME).pointer, "# old\n");
+  if (options.existing || options.unfinished) {
+    files.set(stackPaths(HOME).pointer, "# old\n");
+    files.set(join(stackPaths(HOME).dir, "stacks", "threva.yaml"), JSON.stringify({ mc: { port: options.writtenPort ?? 8767 } }));
+  }
   if (options.existing) files.set(stackPaths(HOME).finished, "2026-11-16T00:00:00.000Z\n");
   const said: string[] = [];
   const calls: Harness["calls"] = [];
@@ -160,6 +163,19 @@ describe("threva setup", () => {
     expect(h.calls.filter((c) => c.tool === "brew").map((c) => c.args.join(" "))).toContain("services restart threva");
     expect(h.posts.map((p) => p.body)).toEqual([JSON.stringify({ code: "mail.ranked", on: false })]);
     expect(h.files.get(stackPaths(HOME).finished)).toBeDefined();
+  });
+
+  test("a re-run on a different port than the unfinished stack still refuses a port another program answers on", async () => {
+    const h = harness({ answers: [], unfinished: true, writtenPort: 9000, portTaken: true });
+    expect(await setup([], h.deps)).toBe(1);
+    expect(h.said.at(-1)).toContain("Another program already answers on port 8767");
+    expect(h.posts).toEqual([]);
+  });
+
+  test("--reconfigure onto a taken port refuses before it asks anything", async () => {
+    const h = harness({ answers: [], existing: true, portTaken: true });
+    expect(await setup(["--reconfigure", "--port", "8795"], h.deps)).toBe(1);
+    expect(h.said.at(-1)).toContain("Another program already answers on port 8795");
   });
 
   test("a setup whose service never answers leaves no finished marker", async () => {
