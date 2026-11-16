@@ -5,7 +5,7 @@ export interface LoggedCall {
   args: unknown[];
 }
 
-export type Answer = Result<unknown> | ((...args: never[]) => Result<unknown>);
+export type Answer = Result<unknown> | ((...args: never[]) => Result<unknown> | Promise<Result<unknown>>);
 
 export interface MemoryClient extends DeskClient {
   calls: LoggedCall[];
@@ -31,7 +31,7 @@ export function createMemoryClient(): MemoryClient {
   const named = (name: string) => (...args: unknown[]) => {
     calls.push({ name, args });
     const answer = answers.get(name);
-    return Promise.resolve(typeof answer === "function" ? (answer as (...args: unknown[]) => Result<unknown>)(...args) : (answer ?? UNSEEDED));
+    return Promise.resolve(typeof answer === "function" ? (answer as (...args: unknown[]) => Result<unknown> | Promise<Result<unknown>>)(...args) : (answer ?? UNSEEDED));
   };
   const client: Record<string, unknown> = {};
   for (const name of FLAT) client[name] = named(name);

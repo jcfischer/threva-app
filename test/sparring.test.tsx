@@ -1,23 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
+import type { Result } from "../src/ui/api/client";
+import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
 import type { StudioThread } from "../src/ui/api/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
 import { sparAvailability, sparRequests, Sparring } from "../src/ui/studio/sparring";
 import { budgetThread, openThinking } from "./fixtures/studio";
 import { mountDom } from "./fixtures/dom";
 
 const MODES = ["Think now", "Grill me", "Argue the other side", "Red team", "First principles"];
 
-const noFetch: Fetch = async () => new Response("{}");
-
 const render = (thread: StudioThread = budgetThread, personas: readonly string[] = [], locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
-      <QueueContext.Provider value={{ client: createClient(noFetch), refresh: () => {} }}>
+      <QueueContext.Provider value={{ client: createMemoryClient(), refresh: () => {} }}>
         <Sparring thread={thread} personas={personas} />
       </QueueContext.Provider>
     </I18nProvider>,
@@ -115,7 +113,7 @@ async function withDom(
     container: HTMLElement,
     show: (thread: StudioThread) => Promise<void>,
   ) => Promise<void>,
-  fetchImpl: Fetch,
+  seed: (client: MemoryClient) => void,
 ) {
   const { root, container, cleanup } = mountDom();
   const click = async (label: string) => {
@@ -125,7 +123,8 @@ async function withDom(
       button.click();
     });
   };
-  const client = createClient(fetchImpl);
+  const client = createMemoryClient();
+  seed(client);
   const show = async (thread: StudioThread) => {
     await act(async () => {
       root.render(
@@ -143,43 +142,37 @@ async function withDom(
   } finally {
     await cleanup();
   }
+  return client;
 }
+
+const sparActs = (client: MemoryClient) => client.calls.filter((call) => call.name === "studio.act");
+const ok = (message: string) => (client: MemoryClient) => client.seed("studio.act", { ok: true, data: { message } });
 
 describe("a click on the rail", () => {
   test("sends the spar act and marks the button queued once Cortex answers", async () => {
-    const posts: { path: string; body: Record<string, unknown> }[] = [];
-    const fetchImpl: Fetch = async (path, init) => {
-      posts.push({ path, body: JSON.parse(String(init?.body)) });
-      return Response.json({ ok: true, message: "Asked Ivy: grill. The note will appear here when it lands." });
-    };
-    await withDom(async (click, container) => {
+    const client = await withDom(async (click, container) => {
       await click("Grill me");
       const button = label(container, "Queued: Grill me");
       expect(button).toBeDefined();
       expect(button?.hasAttribute("disabled")).toBe(true);
       expect(container.textContent).toContain("Asked Ivy: grill. The note will appear here when it lands.");
-    }, fetchImpl);
+    }, ok("Asked Ivy: grill. The note will appear here when it lands."));
+    const posts = sparActs(client);
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.path).toBe(STUDIO_ACT_PATH);
-    expect(posts[0]?.body).toMatchObject({ act: "spar", thread: "budget-next-year", mode: "grill" });
-    expect(String(posts[0]?.body.requestId)).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(posts[0]?.args[0]).toMatchObject({ act: "spar", thread: "budget-next-year", mode: "grill" });
+    expect(String(posts[0]?.args[1])).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
   });
 
   test("a persona button sends its persona mode", async () => {
-    let body: Record<string, unknown> = {};
-    const fetchImpl: Fetch = async (_path, init) => {
-      body = JSON.parse(String(init?.body));
-      return Response.json({ ok: true, message: "Asked Ivy: persona:Grace Hopper." });
-    };
-    await withDom(async (click, container) => {
+    const client = await withDom(async (click, container) => {
       await click("What would Grace Hopper say?");
       expect(container.textContent).toContain("Asked Ivy: persona:Grace Hopper.");
-    }, fetchImpl);
-    expect(body).toMatchObject({ act: "spar", thread: "budget-next-year", mode: "persona:Grace Hopper" });
+    }, ok("Asked Ivy: persona:Grace Hopper."));
+    expect(sparActs(client)[0]?.args[0]).toMatchObject({ act: "spar", thread: "budget-next-year", mode: "persona:Grace Hopper" });
   });
 
   test("a run that failed before a refresh settles the mark, so the mode can be asked again", async () => {
-    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: grill." });
+    const seeded = ok("Asked Ivy: grill.");
     const failed: StudioThread = {
       ...budgetThread,
       thinking: {
@@ -198,11 +191,11 @@ describe("a click on the rail", () => {
       expect(button?.hasAttribute("disabled")).toBe(false);
       expect(label(container, "Queued: Grill me")).toBeUndefined();
       expect(container.textContent).toContain("Ranger stopped: the model is unavailable.");
-    }, fetchImpl);
+    }, seeded);
   });
 
   test("a run that finished before a refresh settles the mark, so the mode can be asked again", async () => {
-    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: red-team." });
+    const seeded = ok("Asked Ivy: red-team.");
     await withDom(async (click, container, show) => {
       await click("Red team");
       expect(label(container, "Queued: Red team")?.hasAttribute("disabled")).toBe(true);
@@ -211,33 +204,29 @@ describe("a click on the rail", () => {
       const button = label(container, "Red team");
       expect(button?.hasAttribute("disabled")).toBe(false);
       expect(container.textContent).not.toContain("Asked Ivy: red-team.");
-    }, fetchImpl);
+    }, seeded);
   });
 
   test("keeps the mark while the same snapshot shows no run yet", async () => {
-    const fetchImpl: Fetch = async () => Response.json({ ok: true, message: "Asked Ivy: think." });
+    const seeded = ok("Asked Ivy: think.");
     await withDom(async (click, container) => {
       await click("Think now");
       expect(label(container, "Queued: Think now")?.hasAttribute("disabled")).toBe(true);
-    }, fetchImpl);
+    }, seeded);
   });
 
   test("a retry after no answer or a server error reuses the request id; after a refusal the next click gets a fresh one", async () => {
-    const ids: unknown[] = [];
-    const replies = [
-      () => { throw new TypeError("network down"); },
-      () => Response.json({ ok: false, error: "Ranger timed out." }, { status: 503 }),
-      () => Response.json({ ok: false, error: "This thread is closed." }, { status: 409 }),
-      () => Response.json({ ok: false, error: "This thread is closed." }, { status: 409 }),
+    const replies: Result<unknown>[] = [
+      { ok: false, message: null, status: 0 },
+      { ok: false, message: "Ranger timed out.", status: 503 },
+      { ok: false, message: "This thread is closed.", status: 409 },
+      { ok: false, message: "This thread is closed.", status: 409 },
     ];
-    const fetchImpl: Fetch = async (_path, init) => {
-      const body: { requestId: unknown } = JSON.parse(init!.body as string);
-      ids.push(body.requestId);
-      return replies[ids.length - 1]();
-    };
-    await withDom(async (click) => {
+    let sent = 0;
+    const client = await withDom(async (click) => {
       for (const _reply of replies) await click("Red team");
-    }, fetchImpl);
+    }, (c) => c.seed("studio.act", () => replies[sent++]));
+    const ids = sparActs(client).map((call) => call.args[1]);
     expect(ids).toHaveLength(4);
     expect(ids[1]).toBe(ids[0]);
     expect(ids[2]).toBe(ids[0]);
@@ -245,12 +234,12 @@ describe("a click on the rail", () => {
   });
 
   test("shows Cortex's message when the act answers an error, and leaves the buttons alone", async () => {
-    const fetchImpl: Fetch = async () => Response.json({ ok: false, error: "Ranger is configured for another Studio directory." }, { status: 503 });
+    const seeded = (client: MemoryClient) => client.seed("studio.act", { ok: false, message: "Ranger is configured for another Studio directory.", status: 503 });
     await withDom(async (click, container) => {
       await click("Red team");
       expect(container.querySelector('[role="alert"]')?.textContent).toBe("Ranger is configured for another Studio directory.");
       const button = label(container, "Red team");
       expect(button?.hasAttribute("disabled")).toBe(false);
-    }, fetchImpl);
+    }, seeded);
   });
 });
