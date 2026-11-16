@@ -124,6 +124,26 @@ describe("queue rendering", () => {
     expect(html).toContain("1 card");
   });
 
+  test("renders a task-handoff item as a card", () => {
+    const html = render({
+      view: view({
+        items: [
+          item({
+            key: "handoff:h1",
+            kind: "task-handoff",
+            title: "Codex finished “Draft the memo”",
+            actions: [{ id: "task.done", label: "Done", role: "primary", wired: true }],
+            handoff: { id: "h1", state: "ready", line: "Done", since: NOW, result: "The memo." },
+          }),
+        ],
+      }),
+      studio: null,
+      error: null,
+    });
+    expect(html).toContain("Codex finished “Draft the memo”");
+    expect(html).toContain("1 card");
+  });
+
   test("shows the empty state in German", () => {
     expect(render({ view: view(), studio: null, error: null }, "de")).toContain("Nichts braucht dich gerade.");
   });
