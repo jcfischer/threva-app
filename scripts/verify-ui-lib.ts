@@ -56,7 +56,8 @@ export const journeys = {
     await page.getByRole("button", { name: "Back to the cards", exact: true }).click();
     await question.waitFor();
     await noOldView();
-    await page.getByRole("textbox", { name: "Your answer", exact: true }).fill("Day card answer: one hire now, the second in summer.");
+    const answer = "Day card answer: one hire now, the second in summer.";
+    await page.getByRole("textbox", { name: "Your answer", exact: true }).fill(answer);
     const response = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     const act = await response;
@@ -68,13 +69,13 @@ export const journeys = {
     await loaded(page, "Loading your outline…");
     await page.getByRole("button", { name: "Work", exact: true }).click();
     await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
-    await page.locator(".thread-main").getByText("Day card answer: one hire now, the second in summer.", { exact: false }).waitFor();
+    await page.locator(".thread-main").getByText(answer, { exact: false }).waitFor();
     await shot("studio-topic-page");
     await page.getByRole("button", { name: "Open the desk", exact: true }).click();
     await page.locator('[data-desk="middle"]').waitFor();
     await noOldView();
     await page.getByRole("button", { name: "Back to Everything", exact: true }).click();
-    await page.locator(".thread-main").getByText("Day card answer: one hire now, the second in summer.", { exact: false }).waitFor();
+    await page.locator(".thread-main").getByText(answer, { exact: false }).waitFor();
     await noOldView();
     await shot("studio-topic-page-return");
   },
