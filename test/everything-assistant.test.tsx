@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { EditorView } from "@codemirror/view";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient, type Answer } from "../src/ui/api/memory-client";
+import type { Result } from "@desk/client";
+import { createMemoryClient, type Answer } from "@desk/memory-client";
 import { AssistantNotes, askAssistant, findPassage, layoutNotes, lineAbove, pageAfterKeep, pageAfterReplace, type OpenNote } from "../src/ui/everything/assistant";
 import { NotePage } from "../src/ui/everything/page";
 import { row } from "./fixtures/outline";

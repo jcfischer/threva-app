@@ -1,4 +1,4 @@
-import type { DeskItem, DeskView, MailSweep, StudioList, StudioThread } from "../../src/ui/api/types";
+import type { DeskItem, DeskView, MailSweep, StudioList, StudioThread } from "@desk/types";
 
 export const NOW = Date.parse("2026-11-13T10:00:00+01:00");
 export const DAY = "2026-11-13";

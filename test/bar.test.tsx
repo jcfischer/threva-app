@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Proposal } from "../src/ui/api/capture";
+import type { Proposal } from "@desk/capture";
 import { BarView } from "../src/ui/bar/bar";
 import { barReducer, INITIAL, looksLikeQuestion, type BarState } from "../src/ui/bar/state";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

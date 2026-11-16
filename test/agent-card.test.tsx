@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { type Root } from "react-dom/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
-import type { DeskAction, DeskItem } from "../src/ui/api/types";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { DeskAction, DeskItem } from "@desk/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { AgentCard } from "../src/ui/cards/queue-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
@@ -14,7 +14,7 @@ const action = (id: string, label: string, role: DeskAction["role"], wired: bool
 const DETAIL = action("detail", "Look first", "secondary", true);
 const SNOOZE = action("snooze", "Not now", "secondary", true);
 
-// Shapes as Cortex v6.29.0 sends them on /api/desk.
+// Shapes as Cortex v6.29.0 sends them on the Desk.
 const blocked = (overrides: Partial<DeskItem> = {}) =>
   item({
     key: "ranger:the-metafactory/cortex#3475",

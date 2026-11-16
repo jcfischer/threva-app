@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderStudioThreads, seedStudio, STUDIO_AREA, type Git } from "../scripts/dev-stack-studio";
-import type { StudioNote } from "../src/ui/api/types";
+import type { StudioNote } from "@desk/types";
 import { threadWaits } from "../src/ui/queue/order";
 
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;

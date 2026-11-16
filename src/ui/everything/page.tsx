@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeDesc } from "@codemirror/state";
-import type { DeskClient } from "../api/client";
-import type { OutlineRow } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { OutlineRow } from "@desk/types";
 import { useDeskAct, WRITE_LANDED } from "../act/use-act";
 import { useI18n } from "../i18n";
 import { addressedText, lineRemovalRange } from "./addressed";

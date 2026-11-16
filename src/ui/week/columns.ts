@@ -1,4 +1,4 @@
-import type { DeskEvent, DeskView, MyDayOutline, OutlineRow } from "../api/types";
+import type { DeskEvent, DeskView, MyDayOutline, OutlineRow } from "@desk/types";
 import { relativeDay, rowTime } from "../everything/time";
 import type { I18n } from "../i18n";
 

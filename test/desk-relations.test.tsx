@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { act, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
-import type { StudioList, StudioMaterial, StudioNote, StudioThread } from "../src/ui/api/types";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { StudioList, StudioMaterial, StudioNote, StudioThread } from "@desk/types";
 import { TopicCard } from "../src/ui/desk/topic-card";
 import { noteCards, relationTarget } from "../src/ui/desk/cards";
 import { Desk } from "../src/ui/desk/desk";
@@ -125,18 +125,22 @@ describe("opened relation content", () => {
   });
 });
 
-async function withDesk(body: (container: HTMLElement, rerender: (studio: StudioList) => Promise<void>) => Promise<void>, studio = list, fetchImpl: Fetch = async () => Response.json({})) {
+async function withDesk(body: (container: HTMLElement, rerender: (studio: StudioList) => Promise<void>) => Promise<void>, studio = list, configure: (client: MemoryClient) => void = () => {}) {
   const { root, container, cleanup } = mountDom();
+  const client = createMemoryClient();
+  client.seed("studio.act", { ok: true, data: {} });
+  configure(client);
   function Harness({ studio }: { studio: StudioList }) {
     const [slug, setSlug] = useState(budgetThread.slug);
     return <I18nProvider value={createI18n("en")}>
-      <Desk client={createClient(fetchImpl)} studio={studio} slug={slug} backLabel="Back" onBack={() => {}} now={NOW} onOpenDesk={setSlug} />
+      <Desk client={client} studio={studio} slug={slug} backLabel="Back" onBack={() => {}} now={NOW} onOpenDesk={setSlug} />
     </I18nProvider>;
   }
   const render = async (studio: StudioList) => { await act(async () => { root.render(<Harness studio={studio} />); }); };
   try {
     await render(studio);
     await body(container, render);
+    return client;
   } finally {
     await cleanup();
   }
@@ -183,19 +187,15 @@ describe("following on the desk", () => {
   });
 
   test("works without material and Open its desk navigates and resets both slots without a conversation", async () => {
-    const requests: string[] = [];
-    await withDesk(async (container) => {
+    const client = await withDesk(async (container) => {
       await openRelation(container);
       await press(container, "right", "Follow");
       expect(opened(container, "left")?.getAttribute("data-placed")).toBe("true");
       await press(container, "left", "Open its desk");
       expect(container.querySelector("h2")?.textContent).toBe(topic.question);
       expect(container.querySelectorAll("[data-desk-opened]")).toHaveLength(0);
-    }, studioList([{ ...budgetThread, material: [] }, topic]), async (path) => {
-      requests.push(path);
-      return Response.json({});
-    });
-    expect(requests).toEqual([]);
+    }, studioList([{ ...budgetThread, material: [] }, topic]));
+    expect(client.calls).toEqual([]);
   });
 
   test("Escape closes both slots", async () => {
@@ -209,21 +209,14 @@ describe("following on the desk", () => {
 
   for (const action of ["keep", "dismiss"] as const) {
     test(`${action} uses the Studio act client for the relation note`, async () => {
-      const posts: { path: string; body: Record<string, unknown> }[] = [];
-      await withDesk(async (container) => {
+      const client = await withDesk(async (container) => {
         await openRelation(container);
         await press(container, "right", "Follow");
         await press(container, "right", action === "keep" ? "Keep" : "Dismiss");
         expect(opened(container, "right")).toBeNull();
         expect(opened(container, "left")?.textContent).toContain(topic.question);
-      }, list, async (path, init) => {
-        posts.push({ path, body: JSON.parse(typeof init?.body === "string" ? init.body : "{}") });
-        return Response.json({ ok: true, message: "Saved." });
-      });
-      expect(posts).toHaveLength(1);
-      expect(posts[0]?.path).toBe("/api/desk/studio/act");
-      expect(posts[0]?.body).toMatchObject({ act: action, thread: budgetThread.slug, note: relation.at });
-      expect(posts[0]?.body.requestId).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+      }, list, (client) => client.seed("studio.act", { ok: true, data: { message: "Saved." } }));
+      expect(client.calls).toEqual([{ name: "studio.act", args: [{ act: action, thread: budgetThread.slug, note: relation.at }, expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/)] }]);
     });
   }
 
@@ -232,6 +225,6 @@ describe("following on the desk", () => {
       await openRelation(container);
       await press(container, "right", "Keep");
       expect(opened(container, "right")?.textContent).toContain("This relation is no longer open. Nothing was written.");
-    }, list, async () => Response.json({ error: "This relation is no longer open. Nothing was written." }, { status: 409 }));
+    }, list, (client) => client.seed("studio.act", { ok: false, message: "This relation is no longer open. Nothing was written.", status: 409 }));
   });
 });

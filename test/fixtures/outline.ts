@@ -1,5 +1,5 @@
-import { createClient } from "../../src/ui/api/client";
-import type { MyDayOutline, OutlineCommand, OutlineRow } from "../../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { MyDayOutline, OutlineCommand, OutlineRow } from "@desk/types";
 import { pathTo } from "../../src/ui/everything/moves";
 import recorded from "./my-day.json";
 

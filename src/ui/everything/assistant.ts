@@ -1,5 +1,5 @@
 import { WRITE_LANDED } from "../act/use-act";
-import { newRequestId, type DeskClient } from "../api/client";
+import { newRequestId, type DeskClient } from "@desk/client";
 import type { PlaceStore } from "./note";
 
 export type AskKind = "answer" | "shorten";

@@ -1,5 +1,5 @@
-import type { StudioList, StudioMaterial, StudioNote, StudioNoteKind, StudioThread } from "../api/types";
-import { safeHref } from "../api/safe-link";
+import type { StudioList, StudioMaterial, StudioNote, StudioNoteKind, StudioThread } from "@desk/types";
+import { safeHref } from "@desk/safe-link";
 
 export const FAINT_FROM = 5;
 

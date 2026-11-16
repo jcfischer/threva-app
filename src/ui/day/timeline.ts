@@ -1,4 +1,4 @@
-import type { DeskEvent, TodayTask } from "../api/types";
+import type { DeskEvent, TodayTask } from "@desk/types";
 
 export const MIN_FREE_MS = 15 * 60 * 1000;
 export const EVENING_HOUR = 18;

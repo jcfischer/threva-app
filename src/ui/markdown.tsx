@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Autolink, parser, Strikethrough } from "@lezer/markdown";
-import { safeHref } from "./api/safe-link";
+import { safeHref } from "@desk/safe-link";
 
 const markdown = parser.configure([Autolink, Strikethrough]);
 type SyntaxNode = ReturnType<typeof markdown.parse>["topNode"];

@@ -1,7 +1,7 @@
-import { safeHref } from "../api/safe-link";
+import { safeHref } from "@desk/safe-link";
 import { useState } from "react";
-import { asUuid, type DeskClient } from "../api/client";
-import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "../api/types";
+import { asUuid, type DeskClient } from "@desk/client";
+import type { DeskItem, DoneEntry, MailSweep, StudioProposal } from "@desk/types";
 import {
   MAIL_ACTION_DOES, MAIL_ACTIONS, OUTCOMES, proposedThread, requests, SNOOZE_TIMES, suggestedOutcome, WAITING_ACTIONS, wiredActions,
   type InviteReply, type MailAction, type Outcome, type SnoozeTime, type WaitingAction,

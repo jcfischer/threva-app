@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DeskClient } from "../api/client";
-import type { DeskView, MailRule, StudioList } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { DeskView, MailRule, StudioList } from "@desk/types";
 
 export const POLL_MS = 15_000;
 

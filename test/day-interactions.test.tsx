@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
-import type { DeskView } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { DeskView } from "@desk/types";
 import { inboxCard, meetingCard } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
 import { DAY, NOW, item, sweep, view } from "./fixtures/desk";

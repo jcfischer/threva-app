@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { act } from "react";
 import { EditorView } from "@codemirror/view";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { pathTo } from "../src/ui/everything/moves";
 import { NotePage } from "../src/ui/everything/page";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

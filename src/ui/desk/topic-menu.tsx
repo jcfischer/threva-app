@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { StudioAct, StudioThread } from "../api/types";
+import type { StudioAct, StudioThread } from "@desk/types";
 import type { ActError } from "../cards/act";
 import { ErrorLine } from "../cards/parts";
 import { useI18n } from "../i18n";

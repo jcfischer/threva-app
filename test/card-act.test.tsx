@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { QueueContext, useAct } from "../src/ui/cards/act";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
 let dom: MountedDom;

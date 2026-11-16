@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
-import type { DeskView, MailSweep, StudioList } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { DeskView, MailSweep, StudioList } from "@desk/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { around } from "../src/ui/queue/around";

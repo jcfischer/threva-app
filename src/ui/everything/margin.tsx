@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { findPassage, layoutNotes, type OpenNote } from "./assistant";
-import type { StudioNote } from "../api/types";
+import type { StudioNote } from "@desk/types";
 import { useI18n, type TextKey } from "../i18n";
 import { useStudioAct } from "../studio/act";
 import { ErrorLine } from "../cards/parts";

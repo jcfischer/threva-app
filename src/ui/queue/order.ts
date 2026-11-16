@@ -1,4 +1,4 @@
-import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailRule, MailSweep, StudioList, StudioThread, TodayTask } from "../api/types";
+import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailRule, MailSweep, StudioList, StudioThread, TodayTask } from "@desk/types";
 import { inLearningPhase, isRuleOffer } from "../arrivals/outcomes";
 
 export type Entry =

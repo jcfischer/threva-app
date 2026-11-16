@@ -1,4 +1,4 @@
-import type { DeskView, DoneEntry, StudioList, StudioOutcome } from "../api/types";
+import type { DeskView, DoneEntry, StudioList, StudioOutcome } from "@desk/types";
 import { buildTimeline, type Clock, type Timeline, type TimelineRow } from "./timeline";
 
 export interface EarlierLine {

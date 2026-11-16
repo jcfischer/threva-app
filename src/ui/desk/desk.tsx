@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { DeskClient } from "../api/client";
-import type { StudioList } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { StudioList } from "@desk/types";
 import { QueueContext } from "../cards/act";
 import { useI18n } from "../i18n";
 import { orderedThreadEntries } from "../everything/thread-page";

@@ -1,7 +1,7 @@
 import { useReducer } from "react";
 import { useDeskAct, type DeskAct } from "../act/use-act";
-import type { DeskClient } from "../api/client";
-import { create, filesAtOnce, propose, type Created, type Proposal } from "../api/capture";
+import type { DeskClient } from "@desk/client";
+import { create, filesAtOnce, propose, type Created, type Proposal } from "@desk/capture";
 import { useI18n, type I18n } from "../i18n";
 import type { Entry } from "../queue/order";
 import { barReducer, INITIAL, type BarEvent, type BarState } from "./state";

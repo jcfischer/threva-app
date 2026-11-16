@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { StudioMaterial, StudioNote, StudioResponse, StudioThread } from "../api/types";
-import { safeHref } from "../api/safe-link";
+import type { StudioMaterial, StudioNote, StudioResponse, StudioThread } from "@desk/types";
+import { safeHref } from "@desk/safe-link";
 import { Markdown } from "../markdown";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";

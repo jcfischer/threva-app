@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
-import type { DeskView } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { DeskView } from "@desk/types";
 import { I18nProvider, createI18n } from "../src/ui/i18n";
 import { keyMap } from "../src/ui/queue/keys";
 import { buildQueue, EMPTY_SESSION, pin } from "../src/ui/queue/order";

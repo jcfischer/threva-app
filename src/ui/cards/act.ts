@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect } from "react";
 import { useDeskAct, type ActError as SharedActError } from "../act/use-act";
-import type { DeskClient } from "../api/client";
-import type { DeskItem, MyDayChange, MyDayCommand } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { DeskItem, MyDayChange, MyDayCommand } from "@desk/types";
 import { allowsCardKey, type EnterAct } from "../queue/keys";
 
 export interface QueueContextValue {

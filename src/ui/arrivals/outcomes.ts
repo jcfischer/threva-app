@@ -1,4 +1,4 @@
-import type { DeskItem, MailRule, StudioProposal } from "../api/types";
+import type { DeskItem, MailRule, StudioProposal } from "@desk/types";
 
 export const OUTCOMES = ["archive", "attach", "draft", "ask"] as const;
 export type Outcome = (typeof OUTCOMES)[number];

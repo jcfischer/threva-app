@@ -1,7 +1,7 @@
-import { safeHref } from "../api/safe-link";
+import { safeHref } from "@desk/safe-link";
 import { useState } from "react";
-import { captureText, NOT_A_CARD } from "../api/capture";
-import type { DeskEvent, DeskItem } from "../api/types";
+import { captureText, NOT_A_CARD } from "@desk/capture";
+import type { DeskEvent, DeskItem } from "@desk/types";
 import { useI18n } from "../i18n";
 import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton } from "./parts";

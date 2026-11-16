@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
-import type { StudioThread } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
+import type { StudioThread } from "@desk/types";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { sparAvailability, sparRequests, Sparring } from "../src/ui/studio/sparring";

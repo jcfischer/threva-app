@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { linkedConversation, lines, readExchange, type Exchange, type StudioSession } from "../src/ui/api/conversations";
-import { createMemoryClient, type MemoryClient } from "../src/ui/api/memory-client";
+import { linkedConversation, lines, readExchange, type Exchange, type StudioSession } from "@desk/conversations";
+import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { DiscussNote, ExchangeView, SessionView, TalkItThrough } from "../src/ui/studio/conversation";

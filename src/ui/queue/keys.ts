@@ -1,4 +1,4 @@
-import type { MailSweep, MyDayCommand, TodayTask } from "../api/types";
+import type { MailSweep, MyDayCommand, TodayTask } from "@desk/types";
 import type { TextKey } from "../i18n/catalog";
 import type { Entry } from "./order";
 

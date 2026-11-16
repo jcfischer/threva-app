@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Result } from "../src/ui/api/client";
-import { createMemoryClient } from "../src/ui/api/memory-client";
-import type { StudioThread } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { StudioThread } from "@desk/types";
 import { Desk } from "../src/ui/desk/desk";
 import { standLine } from "../src/ui/desk/topic-menu";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

@@ -366,11 +366,6 @@
       "count": 1
     }
   },
-  "test/make-task.test.tsx": {
-    "threva/no-comments": {
-      "count": 1
-    }
-  },
   "test/markdown.test.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 2

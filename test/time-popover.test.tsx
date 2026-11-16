@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
-import type { OutlineCommand } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { OutlineCommand } from "@desk/types";
 import { pathTo } from "../src/ui/everything/moves";
 import { draftOf, timeDetails, type TimeDraft } from "../src/ui/everything/time-edit";
 import { TimeForm, TimeMargin } from "../src/ui/everything/time-popover";
