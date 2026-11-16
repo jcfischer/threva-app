@@ -63,3 +63,7 @@ THREVA_DEV_LANES=~/threva-dev/lanes.yaml THREVA_DEV_PARSER_ROUTING=~/threva-dev/
 ```
 
 With either file, the command runs `cortex config validate` on the generated config and stops with Cortex's error if it is refused. A file that is missing or cannot be parsed stops the command before it writes anything.
+
+## Licence
+
+Threva is licensed under the GNU Affero General Public License, version 3 only (`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). The UI's runtime dependencies are MIT; [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) lists each one with its version, licence and the licence text the package ships. `bun run check` fails when `package.json` and that file disagree; `bun run notices` regenerates it. Threva runs Cortex, also AGPL-3.0, as a separate program and the bundle offers that source.
