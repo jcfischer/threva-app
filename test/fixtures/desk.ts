@@ -18,6 +18,17 @@ export function item(overrides: Partial<DeskItem> & Pick<DeskItem, "key" | "kind
   };
 }
 
+export function afterMeeting(key: string, title: string): DeskItem {
+  return item({
+    key: `after-${key}`,
+    kind: "meeting-after",
+    title: `${title} ended.`,
+    why: "It ended 5 minutes ago.",
+    eventKey: key,
+    detail: { summary: title, links: [] },
+  });
+}
+
 export function view(overrides: Partial<DeskView> = {}): DeskView {
   return { generatedAt: NOW, displayName: null, items: [], today: [], ...overrides };
 }

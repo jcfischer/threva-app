@@ -3,12 +3,18 @@ import { journeys, parseArgs } from "../scripts/verify-ui-lib";
 import { parseExploreArgs } from "../scripts/explore-ui-lib";
 
 describe("verify:ui arguments", () => {
-  test("runs every journey against the dev port when nothing is named", () => {
+  test("runs the default journeys without dismissing a meeting when nothing is named", () => {
     const parsed = parseArgs([], { THREVA_DEV_PORT: "8791", THREVA_VERIFY_OUT: "out" });
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.value.url).toBe("http://127.0.0.1:8791/");
     expect(parsed.value.out).toBe("out");
-    expect(parsed.value.names.join(", ")).toBe(Object.keys(journeys).join(", "));
+    expect(parsed.value.names).toEqual(["search", "day", "desk", "relations", "week", "everything"]);
+  });
+
+  test("runs the after-meeting dismissal only when explicitly named", () => {
+    const parsed = parseArgs(["after-meeting"], {});
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.value.names).toEqual(["after-meeting"]);
   });
 
   test("takes named journeys, a URL and an output directory", () => {

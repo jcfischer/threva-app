@@ -6,10 +6,10 @@ import type { ActError, useAct } from "./act";
 
 export const CardFooterContext = createContext<ReactNode>(null);
 
-export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: ReactNode; children: ReactNode }) {
+export function Card({ eyebrow, pill, children, itemKey }: { eyebrow: string; pill?: ReactNode; children: ReactNode; itemKey?: string }) {
   const footer = useContext(CardFooterContext);
   return (
-    <div className="card">
+    <div className="card" data-item-key={itemKey}>
       <span className="row" style={{ justifyContent: "space-between" }}>
         <span className="eyebrow">{eyebrow}</span>
         {pill}

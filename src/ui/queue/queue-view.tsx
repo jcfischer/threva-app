@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { DeskClient } from "@desk/client";
+import { useDeskAct } from "../act/use-act";
 import { QueueContext, useQueue } from "../cards/act";
 import { InterruptionFeedback } from "../cards/interruption";
 import { CardFooterContext } from "../cards/parts";
@@ -13,9 +14,10 @@ import { allowsCardKey, keyMap } from "./keys";
 import { buildQueue, pin, skip, type Entry, type Session } from "./order";
 import type { DeskState } from "./use-desk";
 
-export function EntryCard({ entry, onDismissMeeting, onOpenDesk, now = Date.now() }: {
+export function EntryCard({ entry, onDismissMeeting, dismissBusy, onOpenDesk, now = Date.now() }: {
   entry: Entry;
-  onDismissMeeting: (key: string) => void;
+  onDismissMeeting: () => void;
+  dismissBusy?: boolean;
   onOpenDesk?: (slug: string) => void;
   now?: number;
 }) {
@@ -23,7 +25,7 @@ export function EntryCard({ entry, onDismissMeeting, onOpenDesk, now = Date.now(
     case "soon":
       return <MeetingSoonCard item={entry.item} event={entry.event} />;
     case "after":
-      return <AfterMeetingCard event={entry.event} onDismiss={() => onDismissMeeting(entry.event.key)} />;
+      return <AfterMeetingCard item={entry.item} onDismiss={onDismissMeeting} dismissBusy={dismissBusy} />;
     case "agent":
       return <AgentCard item={entry.item} />;
     case "thread":
@@ -57,8 +59,6 @@ function whyText(why: WhyNow, t: I18n["t"]): string {
     }
     case "cortex":
       return why.text;
-    case "after":
-      return t("queue.why.after", { title: why.title });
     case "thread":
       return t("queue.why.thread");
     case "task":
@@ -99,26 +99,32 @@ export interface QueueBodyProps {
   session: Session;
   setSession: (s: Session) => void;
   now: number;
-  dismissed?: readonly string[];
-  onDismissMeeting?: (key: string) => void;
   onOpenDesk?: (slug: string) => void;
 }
 
-export function QueueBody({ state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, onOpenDesk }: QueueBodyProps) {
+export function QueueBody({ state, session, setSession, now, onOpenDesk }: QueueBodyProps) {
   const { t, tn } = useI18n();
   const outer = useQueue();
   const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
   const [answers, setAnswers] = useState<ReadonlyMap<string, "yes" | "no">>(() => new Map());
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
-  const first = queue[0];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now) : [];
+  const first = queue.at(0);
   const front = first?.k ?? "";
   useEffect(() => {
     setAdded((a) => (!a ? a : a.next === undefined ? { ...a, next: front } : a.next === front ? a : null));
   }, [front]);
+  const dismissal = useDeskAct(outer.refresh);
+  const [dismissErrorKey, setDismissErrorKey] = useState<string | null>(null);
+  const dismissMeeting = async () => {
+    if (first?.type !== "after" || dismissal.isInFlight()) return;
+    const { key } = first.item;
+    setDismissErrorKey(key);
+    await dismissal.act({ action: "meeting.dismiss", key }, () => outer.client.queue.action("meeting.dismiss", key));
+  };
   const keys = keyMap(first);
   const escape = () => {
     if (!first || !keys) return;
-    if (keys.esc.kind === "dismiss" && first.type === "after") onDismissMeeting(first.event.key);
+    if (keys.esc.kind === "dismiss") void dismissMeeting();
     else setSession(skip(session, first.k));
   };
   useEffect(() => {
@@ -164,11 +170,15 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
               <EntryCard
                 key={first.k}
                 entry={first}
-                onDismissMeeting={onDismissMeeting}
+                onDismissMeeting={() => void dismissMeeting()}
+                dismissBusy={dismissal.busy}
                 onOpenDesk={onOpenDesk}
                 now={now}
               />
             </CardFooterContext.Provider>
+            {first.type === "after" && first.item.key === dismissErrorKey && dismissal.error && (
+              <p className="faint" role="alert">{t("meeting.after.dismissError")}</p>
+            )}
             {keys && <div className="keyhint">
               {keys.enter && <span><kbd>{t("queue.key.enter")}</kbd> {t(keys.enter.label)}</span>}
               <span><kbd>{t("queue.key.esc")}</kbd> {t(keys.esc.label)}</span>
