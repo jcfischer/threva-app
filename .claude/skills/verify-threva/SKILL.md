@@ -38,11 +38,14 @@ Then run the `day` journey. If it fails with `Page title is "…", not "Threva"`
 Scripted journeys, defined in `scripts/verify-ui-lib.ts` (`journeys`), with selectors from roles and the English catalog:
 
 ```bash
-bun run verify:ui                      # every journey
+bun run verify:ui                      # default journeys
 bun run verify:ui everything --out "$SCRATCH/evidence"
+bun run verify:ui after-meeting --out "$SCRATCH/evidence"
 ```
 
 Each journey screenshots each step, records console errors, uncaught exceptions and HTTP responses of 400 or more, and writes `report.json`. Exit 0 means every journey passed. Add a journey to `journeys` for the feature you changed, using `getByRole` and catalog text, and wait for the loading text (`Loading your cards…`, `Loading your outline…`) to go away before a screenshot; a screenshot of a loading state proves nothing.
+
+The `after-meeting` journey runs only when named. It permanently dismisses one served after-meeting card through Cortex, then reads the Desk from a fresh browser context to check persistence. Use an isolated stack with an eligible test meeting; seed a new meeting before repeating it.
 
 Property exploration with Bombadil clicks, types, scrolls and reloads at random and checks the properties in `explore/threva.ts` on every state:
 
@@ -56,7 +59,7 @@ The feature map in `features/` says what to drive for each part of the UI.
 
 ## One command
 
-`bun run probe:ui` does Launch, Drive and Cleanup in one go: it starts a stack in a fresh temporary `THREVA_DEV_DIR` on a free port, runs every journey and a Bombadil run (`THREVA_PROBE_EXPLORE`, default `2m`), stops the stack, and prints `FAILED: verify:ui · explore:ui` for what failed. It needs `CORTEX_DIR` and `CORTEX_ADAPTERS_DIR`. Evidence goes to `THREVA_PROBE_OUT`, or to `evidence/` in the temporary directory. Set it as threva-app's `commands.probe` in ranger.yaml and ranger runs it before a pull request is marked ready.
+`bun run probe:ui` does Launch, Drive and Cleanup in one go: it starts a stack in a fresh temporary `THREVA_DEV_DIR` on a free port, runs the default journeys and a Bombadil run (`THREVA_PROBE_EXPLORE`, default `2m`), stops the stack, and prints `FAILED: verify:ui · explore:ui` for what failed. It needs `CORTEX_DIR` and `CORTEX_ADAPTERS_DIR`. Evidence goes to `THREVA_PROBE_OUT`, or to `evidence/` in the temporary directory. Set it as threva-app's `commands.probe` in ranger.yaml and ranger runs it before a pull request is marked ready.
 
 ## Evidence
 

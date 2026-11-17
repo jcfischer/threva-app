@@ -50,8 +50,8 @@ describe("around", () => {
     expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3, archive: true }] });
   });
 
-  test("names a catalog reason for an after-meeting card, a waiting thread and a task", () => {
-    const ended = view({ items: [afterMeeting("e0", "Board call")], today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
+  test("takes Cortex’s reason for an after-meeting card and catalog reasons for a waiting thread and a task", () => {
+    const ended = view({ items: [afterMeeting("e0", "Board call")] });
     expect(around(buildQueue(ended, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "cortex", text: "It ended 5 minutes ago." });
     expect(around(buildQueue(view(), studio(thread("s1", "open", false)), EMPTY_SESSION, NOW)).why).toEqual({ kind: "thread" });
     const task = view({ myDay: { date: DAY, items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] } });
@@ -117,7 +117,7 @@ describe("the lines around the card", () => {
   });
 
   test("uses Cortex’s reason for an after-meeting card", () => {
-    const ended = view({ items: [afterMeeting("e0", "Board call")], today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
+    const ended = view({ items: [afterMeeting("e0", "Board call")] });
     expect(render(ended)).toContain("It ended 5 minutes ago.");
   });
 

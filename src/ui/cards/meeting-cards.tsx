@@ -61,7 +61,7 @@ export function AfterMeetingCard({ item, onDismiss, dismissBusy }: { item: DeskI
     }
   };
   return (
-    <Card eyebrow={t("meeting.after.eyebrow")} pill={<span className="pill think">{t("card.item.new")}</span>}>
+    <Card itemKey={item.key} eyebrow={t("meeting.after.eyebrow")} pill={<span className="pill think">{t("card.item.new")}</span>}>
       <span className="q">{item.title}</span>
       <span className="sub">{t("meeting.after.question")}</span>
       {kept.length > 0 && (

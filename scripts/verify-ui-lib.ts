@@ -208,22 +208,24 @@ export const journeys = {
     const queue = page.getByRole("region", { name: "Cards" });
     const ended = queue.getByText("Meeting over", { exact: true });
     await ended.waitFor();
+    const key = await queue.locator(".card").getAttribute("data-item-key");
+    if (!key) throw new Error("The after-meeting card has no item key.");
+    const dismissed = queue.locator(`[data-item-key=${JSON.stringify(key)}]`);
     await shot("before-dismiss");
     const posted = page.waitForResponse(response => response.url().endsWith("/api/desk/action") && response.request().method() === "POST");
     await queue.getByRole("button", { name: "Nothing to note", exact: true }).click();
     const response = await posted;
     if (!response.ok()) throw new Error(`Dismiss refused: ${await response.text()}`);
-    await ended.waitFor({ state: "hidden" });
+    const action: unknown = response.request().postDataJSON();
+    if (!action || typeof action !== "object" || !("action" in action) || action.action !== "meeting.dismiss" || !("key" in action) || action.key !== key) throw new Error("The dismissal did not target the visible after-meeting card.");
+    await dismissed.waitFor({ state: "hidden" });
     const browser = page.context().browser();
     if (!browser) throw new Error("The journey requires a new browser context.");
-    const second = await browser.newPage();
+    const second = await browser.newContext();
     try {
-      const reloaded = await second.goto(page.url(), { waitUntil: "networkidle" });
-      if (!reloaded?.ok()) throw new Error("The second browser could not load Threva.");
       const stored = await second.request.get(new URL("/api/desk", page.url()).href);
       if (!stored.ok()) throw new Error("The second browser could not read the Desk.");
       const desk = await stored.json() as DeskView;
-      const { key } = response.request().postDataJSON() as { key: string };
       if (desk.items.some(item => item.key === key)) throw new Error("The dismissed card returned in a second browser.");
     } finally {
       await second.close();
@@ -257,5 +259,5 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     } else if (isJourney(arg)) names.push(arg);
     else return { ok: false, error: `Unknown journey "${arg}". Journeys: ${Object.keys(journeys).join(", ")}.` };
   }
-  return { ok: true, value: { url, out, names: names.length > 0 ? names : (Object.keys(journeys) as JourneyName[]) } };
+  return { ok: true, value: { url, out, names: names.length > 0 ? names : Object.keys(journeys).filter(isJourney).filter(name => name !== "after-meeting") } };
 }
