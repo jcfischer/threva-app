@@ -206,6 +206,7 @@ export function Bar({ client, entries = [], onPull, onChange }: {
   const onSubmit = async (row?: Suggestion) => {
     if (!canSubmit(state)) return;
     const next = actFor(row);
+    if (state.phase === "search-error" && !row) return onSearch();
     if (next.kind === "search") return onSearch();
     if (next.kind === "ask") return takeAsk(client, text, send);
     if (next.kind === "match") {
@@ -244,7 +245,7 @@ export function Bar({ client, entries = [], onPull, onChange }: {
       state={state}
       send={send}
       entries={entries}
-      onSubmit={(row) => { void (state.phase === "search-error" && !row ? onSearch() : onSubmit(row)); }}
+      onSubmit={(row) => { void onSubmit(row); }}
       onSearch={() => { void onSearch(); }}
       onNote={() => { void takeNote(client, text, send, act); }}
       onKeep={() => { void onKeep(); }}
