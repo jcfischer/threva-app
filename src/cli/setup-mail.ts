@@ -1,10 +1,11 @@
 import { join } from "node:path";
-import { mailKeychainInput } from "./mail-keychain";
+import { mailKeychainInput, mailKeychainRestore } from "./mail-keychain";
 import { COMMAND_NOT_RUN } from "./run";
 import { askUntil } from "./setup-prompts";
 import type { SetupDeps } from "./setup";
 
 const PROBE_PASSWORD_ENV = "THREVA_SETUP_IMAP_PASSWORD";
+const KEYCHAIN_ITEM_MISSING = 44;
 const SERVICE_PREFIX = "threva-mail-";
 const ACCOUNT_PROMPT = "Mail account name (leave empty to keep current accounts or skip mail): ";
 const ACCOUNT_NAME = /^[a-z][a-z0-9-]{0,31}$/;
@@ -75,21 +76,20 @@ interface AccountWrite {
   config: string;
   name: string;
   service: string;
-  input: string;
+  password: string;
   next: MailConfig;
-  updates: boolean;
 }
 
-async function saveAccount(deps: MailDeps, { config, name, service, input, next, updates }: AccountWrite): Promise<boolean> {
-  const lookup = updates ? await deps.security(["find-generic-password", "-s", service, "-a", name, "-w"]) : undefined;
-  const rollback = lookup?.status === 0
-    ? mailKeychainInput(service, name, lookup.stdout.replace(/\n$/, ""), true)
-    : null;
-  if (updates && !rollback) {
+async function saveAccount(deps: MailDeps, { config, name, service, password, next }: AccountWrite): Promise<boolean> {
+  const lookup = await deps.security(["find-generic-password", "-s", service, "-a", name, "-g"]);
+  const updates = lookup.status === 0;
+  const rollback = updates ? mailKeychainRestore(service, name, lookup.stderr) : null;
+  if ((updates && !rollback) || (!updates && lookup.status !== KEYCHAIN_ITEM_MISSING)) {
     deps.say("The existing mail password could not be read for replacement. The mail account was left unchanged.");
     return false;
   }
-  if (!await deps.storeMailPassword(input)) {
+  const input = mailKeychainInput(service, name, password, updates);
+  if (!input || !await deps.storeMailPassword(input)) {
     deps.say("The mail password could not be stored in the Keychain. The mail account was left unchanged.");
     return false;
   }
@@ -105,6 +105,29 @@ async function saveAccount(deps: MailDeps, { config, name, service, input, next,
     return false;
   }
   return true;
+}
+
+async function askAccountSettings(deps: MailDeps) {
+  const address = await askUntil(deps, "Mail address: ", value => EMAIL.test(value), "Enter one email address.");
+  const imapHost = await askUntil(deps, "IMAP hostname (TLS required): ", value => HOST_NAME.test(value), "Enter the server hostname.");
+  const imapPort = await port(deps, "IMAP TLS", 993);
+  const smtpHost = await askUntil(deps, "SMTP hostname: ", value => HOST_NAME.test(value), "Enter the server hostname.");
+  const smtpTls = await askUntil(deps, "SMTP encryption: 1 for STARTTLS (default), 2 for implicit TLS: ", value => ["", "1", "2"].includes(value), "Choose 1 or 2.");
+  const secure = smtpTls === "2";
+  const smtpPort = await port(deps, "SMTP", secure ? 465 : 587);
+  const login = await askUntil(deps, "Mail server login (leave empty to use your address): ", value => !/[\r\n\0]/.test(value), "Enter the login on one line.") || address;
+  const reportTo = await askUntil(deps, "Phishing report address (leave empty to keep the current address or skip, type - to remove): ",
+    value => value === "" || value === "-" || EMAIL.test(value), "Enter one email address, leave it empty, or type - to remove it.");
+
+  const account = (pass: string) => {
+    const auth = { user: login, pass };
+    return {
+      from: { email: address },
+      imap: { enabled: true, host: imapHost, port: imapPort, tls: true, auth },
+      smtp: { host: smtpHost, port: smtpPort, secure, auth },
+    };
+  };
+  return { account, reportTo };
 }
 
 export async function setupMail(libexec: string, home: string, deps: MailDeps): Promise<MailSetup> {
@@ -131,36 +154,14 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
   const name = await askUntil(deps, ACCOUNT_PROMPT, value => value === "" || ACCOUNT_NAME.test(value), "Use a lowercase name such as personal or work-mail.");
   if (!name) return retained;
 
-  const address = await askUntil(deps, "Mail address: ", value => EMAIL.test(value), "Enter one email address.");
-  const imapHost = await askUntil(deps, "IMAP hostname (TLS required): ", value => HOST_NAME.test(value), "Enter the server hostname.");
-  const imapPort = await port(deps, "IMAP TLS", 993);
-  const smtpHost = await askUntil(deps, "SMTP hostname: ", value => HOST_NAME.test(value), "Enter the server hostname.");
-  const smtpTls = await askUntil(deps, "SMTP encryption: 1 for STARTTLS (default), 2 for implicit TLS: ", value => ["", "1", "2"].includes(value), "Choose 1 or 2.");
-  const secure = smtpTls === "2";
-  const smtpPort = await port(deps, "SMTP", secure ? 465 : 587);
-  const login = await askUntil(deps, "Mail server login (leave empty to use your address): ", value => !/[\r\n\0]/.test(value), "Enter the login on one line.") || address;
-  const reportTo = await askUntil(deps, "Phishing report address (leave empty to keep the current address or skip, type - to remove): ",
-    value => value === "" || value === "-" || EMAIL.test(value), "Enter one email address, leave it empty, or type - to remove it.");
-
-  const account = (pass: string) => {
-    const auth = { user: login, pass };
-    return {
-      from: { email: address },
-      imap: { enabled: true, host: imapHost, port: imapPort, tls: true, auth },
-      smtp: { host: smtpHost, port: smtpPort, secure, auth },
-    };
-  };
+  const { account, reportTo } = await askAccountSettings(deps);
   const probe = JSON.stringify({ accounts: { [name]: account(`env:${PROBE_PASSWORD_ENV}`) } });
   const service = `${SERVICE_PREFIX}${name}`;
-  const previous = existing.accounts[name];
-  const updates = isRecord(previous) && isRecord(previous.imap) && isRecord(previous.imap.auth)
-    && previous.imap.auth.pass === `keychain:${service}`;
   for (;;) {
     const password = await deps.ask("Mail password (leave empty to keep current accounts or skip mail): ", { secret: true });
     if (!password) return retained;
-    const input = mailKeychainInput(service, name, password, updates);
-    if (!input || password.trim() !== password) {
-      deps.say("Enter a shorter password without leading or trailing whitespace, or leave it empty to skip.");
+    if (!/^[ -~]+$/.test(password) || password.trim() !== password || !mailKeychainInput(service, name, password, true)) {
+      deps.say("Enter a shorter password using ASCII characters without leading or trailing whitespace, or leave it empty to skip.");
       continue;
     }
     const attempt = await deps.mailProbe(path => [...command("desk-imap", path), "--account", name, "--limit", "1"], probe, { [PROBE_PASSWORD_ENV]: password });
@@ -179,7 +180,7 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
       phishingReportTo: reportTo === "-" ? undefined : reportTo || existing.phishingReportTo,
       accounts: { ...existing.accounts, [name]: account(`keychain:${service}`) },
     };
-    if (!await saveAccount(deps, { config, name, service, input, next, updates })) return { ok: false };
+    if (!await saveAccount(deps, { config, name, service, password, next })) return { ok: false };
     return { ok: true, plan: mailPlan(next, command) };
   }
 }

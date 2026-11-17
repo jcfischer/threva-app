@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { mailKeychainInput, storeMailPassword } from "../src/cli/mail-keychain";
+import { mailKeychainInput, mailKeychainRestore, storeMailPassword } from "../src/cli/mail-keychain";
 import { writeMailConfig } from "../src/cli/mail-config";
 import { setupMail } from "../src/cli/setup-mail";
 import { setup } from "../src/cli/setup";
@@ -32,6 +32,11 @@ function installed(options: Parameters<typeof harness>[0]) {
   for (const bin of ["desk-imap", "desk-mail-move", "desk-mail-trash", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"]) {
     h.files.set(join(adapterDir, `${bin}.ts`), "");
   }
+  const security = h.deps.security;
+  h.deps.security = async argv => {
+    const result = await security(argv);
+    return argv[0] === "find-generic-password" ? { ...result, status: 44 } : result;
+  };
   h.deps.which = path => path === "bun" ? bun : path === calendar ? path : null;
   return h;
 }
@@ -97,7 +102,7 @@ function existingKeychain(h: ReturnType<typeof installed>) {
   const security = h.deps.security;
   h.deps.security = async argv => {
     await security(argv);
-    return { ...ok, stdout: argv[0] === "find-generic-password" ? `${old}\n` : "" };
+    return { ...ok, stderr: argv[0] === "find-generic-password" ? `password: "${old}"\n` : "" };
   };
 }
 
@@ -219,4 +224,21 @@ test.skipIf(process.platform !== "darwin")("macOS security returns failure for a
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("recreates a missing Keychain item or recovers a stale item after losing the mail config", async () => {
+  const missing = installed({ existing: true, answers: ["1", KEY, "", ...answers(name, [good])] });
+  missing.files.set(config, existing);
+  expect(await setup(["--reconfigure"], missing.deps)).toBe(0);
+  expect(missing.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
+
+  const stale = installed({ answers: ["1", KEY, "", ...answers(name, [good])] });
+  existingKeychain(stale);
+  expect(await setup([], stale.deps)).toBe(0);
+  expect(stale.mailKeychainInput).toEqual([mailKeychainInput(service, name, good, true) ?? ""]);
+});
+
+test("an encoded Keychain snapshot is restored as exact bytes", () => {
+  expect(mailKeychainRestore(service, name, 'password: 0x6669787475726500FF  "fixture"\n')).toContain("-X 6669787475726500FF\n");
+  expect(mailKeychainRestore(service, name, 'unexpected response')).toBeNull();
 });
