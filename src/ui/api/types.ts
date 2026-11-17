@@ -90,6 +90,7 @@ export interface RoutineView {
 export type DeskView =
   Pick<CortexDeskView, "generatedAt" | "displayName"> & {
     items: DeskItem[];
+    notes?: CortexDeskView["notes"];
     mailLearning?: boolean;
     today: DeskEvent[];
     timeZone?: CortexDeskView["timeZone"];
@@ -126,6 +127,7 @@ export type StudioThread = Pick<StudioThreadView, "slug" | "question" | "stand" 
 export interface StudioList {
   studio: {
     personas?: string[];
+    inbox?: { id: string; path?: string; text: string }[];
     active: StudioThread[];
     parked?: StudioThread[];
     closed?: StudioThread[];

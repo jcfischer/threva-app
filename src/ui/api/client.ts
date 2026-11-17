@@ -1,6 +1,9 @@
 import type { ConversationDetail, ConversationEntry, ConversationMeta, SessionRequest, SourceConversations, StudioSession } from "./conversations";
 import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioAct, StudioList } from "./types";
 
+import type { DeskSearchResponse } from "@the-metafactory/cortex/desk-api";
+export type { DeskSearchHit } from "@the-metafactory/cortex/desk-api";
+
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -40,6 +43,7 @@ function jsonPost<T>(fetchImpl: Fetch, path: string, body: unknown): Promise<Res
 const PATHS = {
   desk: "/api/desk",
   action: "/api/desk/action",
+  search: "/api/desk/search",
   ruling: "/api/desk/ruling",
   interruptionFeedback: "/api/desk/interruptions/feedback",
   mail: "/api/desk/mail",
@@ -122,6 +126,7 @@ export interface DeskContract {
 export type ContractCalls = () => Call<DeskContract>;
 
 export interface DeskClient {
+  search(query: string): Call<DeskSearchResponse>;
   desk(): Call<DeskView>;
   rules(): Call<MailRules>;
   changeMyDay(date: string, command: MyDayCommand): Call<MyDayChange>;
@@ -144,6 +149,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
   const desk = () => read<DeskView>(PATHS.desk);
   const rules = () => read<MailRules>(PATHS.mailRules);
   return {
+    search: (query) => read(`${PATHS.search}?${new URLSearchParams({ q: query, kinds: "desk-note,desk-item,studio-capture,studio-thread" })}`),
     desk,
     rules,
     changeMyDay: (date, command) => change(date, command),
