@@ -6,10 +6,10 @@ function quote(value: string): string {
   return '"' + value.replace(/[\\"]/g, "\\$&") + '"';
 }
 
-export function mailKeychainInput(service: string, account: string, password: string): string | null {
+export function mailKeychainInput(service: string, account: string, password: string, update = false): string | null {
   if (/[\r\n\0]/.test(service) || /[\r\n\0]/.test(account) || password.includes("\0")) return null;
   const hex = Buffer.from(password, "utf8").toString("hex");
-  const command = `add-generic-password -s ${quote(service)} -a ${quote(account)} -X ${hex}\n`;
+  const command = `add-generic-password${update ? " -U" : ""} -s ${quote(service)} -a ${quote(account)} -X ${hex}\n`;
   return hex && Buffer.byteLength(command) <= MAX_INPUT_BYTES ? command : null;
 }
 

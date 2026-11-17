@@ -30,9 +30,11 @@ The route lives on the work graph: the map root issue in this repository, labell
 
 ## Connect mail and calendar after installation
 
-Run `threva setup` from a terminal after installing the bundle. Enter your IMAP login, TLS hostname, port (993 by default) and password. Setup checks that the inbox can be read and asks for the password again if the check fails. A successful connection stores the password in the macOS Keychain and writes its reference to `~/.config/metafactory/cortex/threva/mail.json`.
+Run `threva setup` from a terminal after installing the bundle. Enter an account name, mail address, IMAP and SMTP settings, and the mail server login and password. IMAP uses implicit TLS (port 993 by default). SMTP supports STARTTLS (port 587) or implicit TLS (port 465). You can also enter an address for phishing reports.
 
-Setup also requests access to macOS Calendars and Reminders. Mail arrivals and calendar events appear in Day once their sources are connected. If you skip mail or deny a macOS permission, you can run `threva setup --reconfigure` later. Leaving the IMAP login empty keeps a previously configured account.
+Setup checks that the inbox can be read and asks for the password again if the check fails. A successful connection stores the password in the macOS Keychain and writes its reference to `~/.config/threva/mail-accounts.json`. To change settings, run `threva setup --reconfigure` and enter the existing account name, or leave the name empty to keep the current accounts.
+
+Setup also requests access to macOS Calendars and Reminders. Mail arrivals and calendar events appear in Day once their sources are connected. If you skip mail or deny a macOS permission, you can run setup again with `--reconfigure`.
 
 ## Run it locally
 

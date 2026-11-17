@@ -1,5 +1,5 @@
 import { askUntil } from "./setup-prompts";
-import { setupMail } from "./setup-mail";
+import { setupMail, type MailPlan } from "./setup-mail";
 import { setupCalendar } from "./setup-calendar";
 import { join } from "node:path";
 import { KEYCHAIN_SERVICE_PREFIX } from "./launch";
@@ -52,6 +52,7 @@ export type Provider =
 
 export interface StackPlan {
   sources: { id: string; command: string[] }[];
+  mail: Omit<MailPlan, "sources">;
   ask?: Awaited<ReturnType<typeof setupCalendar>>["ask"];
   principal: string;
   uiDir: string;
@@ -172,7 +173,7 @@ export function renderStack(plan: StackPlan): string {
         ...(plan.sources.length ? { sources: plan.sources } : {}),
         enabled: true,
         studio: { dir: plan.studioDir },
-        mail: { rules: { proposeAfter: 3 } },
+        mail: { ...plan.mail, rules: { proposeAfter: 3 } },
         interruptions,
       },
     },
@@ -341,11 +342,12 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   }
 
   const studioDir = join(deps.home, ".local", "share", STACK_SLUG, "studio");
-  const mail = await setupMail(libexec, paths.dir, deps);
+  const mail = await setupMail(libexec, deps.home, deps);
   if (!mail.ok) return 1;
   const calendar = await setupCalendar(prefix, deps);
-  const sources = [...(calendar.sources ?? []), ...(mail.source ? [mail.source] : [])];
-  const plan: StackPlan = { sources, ask: calendar.ask, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
+  const { sources: mailSources, ...mailOptions } = mail.plan;
+  const sources = [...(calendar.sources ?? []), ...mailSources];
+  const plan: StackPlan = { sources, mail: mailOptions, ask: calendar.ask, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
   const stack = await writeStack(deps, paths, plan);
   if (!stack.ok) {
     deps.say(stack.error);
