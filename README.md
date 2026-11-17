@@ -41,6 +41,8 @@ bun run dev:stack stop
 
 The stack refuses to start when `CORTEX_DIR`'s `HEAD` does not contain the Cortex release tag in `MIN_CORTEX_TAG` (`scripts/dev-stack-lib.ts`), and it fails closed when that tag is not fetched there. A Threva change that relies on newer Cortex behaviour raises `MIN_CORTEX_TAG` in the same pull request. `bun run probe:ui` starts the stack, so it fails the same way.
 
+The minimum is Cortex `v6.34.0`, which ships Desk HTTP search over captures, notes, cards and threads. See [the search API handoff](docs/desk-search.md) for the released contract and how to open a hit (node #149, prerequisite for node #145).
+
 The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus and no Discord, and it runs Ranger only when a parser-routing file names it (see below). `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
 
 To prove a UI change in a real browser, start a second stack with its own `THREVA_DEV_DIR` and `THREVA_DEV_PORT`, then run `bun run verify:ui` (scripted journeys with screenshots) and `bun run explore:ui` (Bombadil property exploration). `.claude/skills/verify-threva` has the steps.

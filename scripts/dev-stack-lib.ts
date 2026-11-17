@@ -5,7 +5,7 @@ import { STUDIO_AREA } from "./dev-stack-studio";
 
 export const DEFAULT_PORT = 8790;
 
-export const MIN_CORTEX_TAG = "v6.30.0";
+export const MIN_CORTEX_TAG = "v6.34.0";
 
 export function checkCortexMinimum(cortexDir: string, minTag: string = MIN_CORTEX_TAG): Checked<string> {
   const git = (...args: string[]) => spawnSync("git", ["-C", cortexDir, ...args], { encoding: "utf8" });
