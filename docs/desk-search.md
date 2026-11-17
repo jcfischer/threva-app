@@ -45,6 +45,10 @@ The search UI and its named client calls belong to node #145. This prerequisite 
 
 ## Verification
 
-Verified on 2026-11-17 against the installed `v6.34.0` source. `bun test test/dev-stack-cortex-minimum.test.ts` passed all five tests, including rejection of `v6.33.0` and acceptance of `v6.34.0` through the default minimum. In the installed Cortex directory, `bun run test src/surface/mc/__tests__/desk-search.test.ts` passed all eight search tests, and `bun scripts/probe-desk-search.ts` exercised the real HTTP server: a note search returned 200 with its snippet and opening route; an empty query returned 400.
+Publication checked on 2026-11-17 with `git ls-remote https://github.com/the-metafactory/cortex.git refs/tags/v6.34.0`: the upstream tag points to `a443dd118e249c597a74004b553f29ae5e2bb039`. In a Cortex checkout, `git merge-base --is-ancestor 5835e3e2b9f09690f8d3ccb8fccf9f4bb284e844 a443dd118e249c597a74004b553f29ae5e2bb039` exited 0, confirming that the release contains search.
+
+The offline release assertions in `test/dev-stack-cortex-minimum.test.ts` require this exact verified tag for both the dependency pin and the dev-stack minimum. When upgrading, verify the new upstream tag and its search implementation before updating those assertions. A version comparison cannot prove publication. The separate temporary-repository test checks checkout ancestry only.
+
+Verified on 2026-11-17 against the installed `v6.34.0` source. `bun test test/dev-stack-cortex-minimum.test.ts` passed all six tests, including rejection of `v6.33.0` and acceptance of `v6.34.0` through the default minimum. In the installed Cortex directory, `bun run test src/surface/mc/__tests__/desk-search.test.ts` passed all eight search tests, and `bun scripts/probe-desk-search.ts` exercised the real HTTP server: a note search returned 200 with its snippet and opening route; an empty query returned 400.
 
 Node #145 owns browser verification of the command bar’s capture-and-search journey.

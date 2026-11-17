@@ -61,22 +61,21 @@ describe("checkCortexMinimum", () => {
     expect(MIN_CORTEX_TAG).toMatch(/^v\d+\.\d+\.\d+$/);
   });
 
-  test("the dependency pin and default dev stack require releases with Desk search", () => {
-    const cortexSource = "github:the-metafactory/cortex#";
-    const dependency = manifest.devDependencies["@the-metafactory/cortex"];
-    expect(dependency.startsWith(cortexSource)).toBe(true);
-    expect(Bun.semver.satisfies(dependency.slice(cortexSource.length), ">=6.34.0")).toBe(true);
-    expect(Bun.semver.satisfies(MIN_CORTEX_TAG, ">=6.34.0")).toBe(true);
+  test("pins the verified published Cortex v6.34.0 release with Desk search", () => {
+    expect(manifest.devDependencies["@the-metafactory/cortex"]).toBe("github:the-metafactory/cortex#v6.34.0");
+    expect(MIN_CORTEX_TAG).toBe("v6.34.0");
+  });
 
+  test("the default minimum refuses the older checkout and accepts the required tag", () => {
     const dir = repo();
     git(dir, "init", "-q");
     commit(dir, "before-search");
     git(dir, "tag", "v6.33.0");
     commit(dir, "with-search");
-    git(dir, "tag", MIN_CORTEX_TAG);
+    git(dir, "tag", "v6.34.0");
     git(dir, "checkout", "-q", "v6.33.0");
     expect(checkCortexMinimum(dir).ok).toBe(false);
-    git(dir, "checkout", "-q", MIN_CORTEX_TAG);
-    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: MIN_CORTEX_TAG });
+    git(dir, "checkout", "-q", "v6.34.0");
+    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: "v6.34.0" });
   });
 });
