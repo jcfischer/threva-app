@@ -38,8 +38,8 @@ export function MeetingSoonCard({ item, event }: { item: DeskItem; event: DeskEv
   );
 }
 
-export function AfterMeetingCard({ event, onDismiss }: { event: DeskEvent; onDismiss: () => void }) {
-  const { t, time } = useI18n();
+export function AfterMeetingCard({ item, onDismiss, dismissBusy }: { item: DeskItem; onDismiss: () => void; dismissBusy?: boolean }) {
+  const { t } = useI18n();
   const { client, refresh } = useQueue();
   const [text, setText] = useState("");
   const [kept, setKept] = useState<string[]>([]);
@@ -61,8 +61,8 @@ export function AfterMeetingCard({ event, onDismiss }: { event: DeskEvent; onDis
     }
   };
   return (
-    <Card eyebrow={t("meeting.after.eyebrow")} pill={<span className="pill think">{t("card.item.new")}</span>}>
-      <span className="q">{t("meeting.after.title", { title: event.title, end: time(new Date(event.end ?? event.at)) })}</span>
+    <Card itemKey={item.key} eyebrow={t("meeting.after.eyebrow")} pill={<span className="pill think">{t("card.item.new")}</span>}>
+      <span className="q">{item.title}</span>
       <span className="sub">{t("meeting.after.question")}</span>
       {kept.length > 0 && (
         <ul className="plain kept">
@@ -74,7 +74,7 @@ export function AfterMeetingCard({ event, onDismiss }: { event: DeskEvent; onDis
       <div className="row" style={{ flexWrap: "nowrap" }}>
         <input
           type="text"
-          aria-label={t("meeting.after.input", { title: event.title })}
+          aria-label={t("meeting.after.input", { title: item.detail.summary })}
           placeholder={kept.length ? t("meeting.after.more") : t("meeting.after.placeholder")}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -92,7 +92,7 @@ export function AfterMeetingCard({ event, onDismiss }: { event: DeskEvent; onDis
         </span>
       )}
       <div className="row">
-        <button type="button" className={kept.length ? "btn pri" : "btn quiet"} onClick={onDismiss}>
+        <button type="button" className={kept.length ? "btn pri" : "btn quiet"} onClick={onDismiss} disabled={dismissBusy}>
           {kept.length ? t("meeting.after.done") : t("meeting.after.nothing")}
         </button>
       </div>

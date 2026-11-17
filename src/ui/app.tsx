@@ -7,7 +7,6 @@ import { clockAt } from "./day/timeline";
 import { About } from "./about/about";
 import { useI18n } from "./i18n";
 import { QueueView } from "./queue/queue-view";
-import { useDismissedMeetings } from "./queue/dismissed";
 import { buildQueue, EMPTY_SESSION, pin, type Entry, type Session } from "./queue/order";
 import { useDesk, type DeskState } from "./queue/use-desk";
 import { useStartup } from "./queue/use-startup";
@@ -46,7 +45,6 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
   const startup = useStartup(api);
   const state = useDesk(api, startup);
   const [session, setSession] = useState<Session>(EMPTY_SESSION);
-  const [dismissed, dismiss] = useDismissedMeetings();
   const [view, setView] = useState<View>("day");
   const [openEverythingRow, setOpenEverythingRow] = useState<{ id: string; request: number } | null>(null);
   const [openedEverything, setOpenedEverything] = useState(false);
@@ -60,7 +58,7 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
     if (state.view) watchInterruptions(state.view.items);
   }, [state.view, watchInterruptions]);
   const now = Date.now();
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now) : [];
   const pull = (k: string) => { setSession((current) => (current.pin === k ? current : pin(current, k))); };
   if (startup.state === "refused") {
     return <main className="wrap"><p className="faint" role="alert">{t("startup.version", { built: startup.built, found: startup.found })}</p></main>;
@@ -72,7 +70,7 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
         <Bar client={api} entries={queue} onPull={pull} onChange={state.refresh} />
         <ViewSwitch view={view} onChange={next => { setView(next); if (next === "everything") setOpenedEverything(true); }} />
         {view === "day" && <NotifyControl notifier={notifier} />}
-        {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={dismiss} queue={queue} onOpenDesk={slug => { setDesk({ slug, from: "day" }); }} />}
+        {view === "day" && desk === null && <DayView client={api} state={state} session={session} setSession={setSession} now={now} queue={queue} onOpenDesk={slug => { setDesk({ slug, from: "day" }); }} />}
         {view === "week" && <WeekView client={api} state={state} onOpenRow={id => { setOpenEverythingRow(current => ({ id, request: (current?.request ?? 0) + 1 })); setOpenedEverything(true); setView("everything"); }} />}
         {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} openRow={openEverythingRow} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => { setDesk({ slug, from: "everything" }); }} /></div>}
       </div>
@@ -86,22 +84,20 @@ function DeskScreen({ client, slug, from, state, now, onBack, onOpenDesk }: { cl
   return <Desk client={client} refresh={state.refresh} studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} onOpenDesk={onOpenDesk} />;
 }
 
-export function DayView({ client, state, session, setSession, now, dismissed = [], onDismissMeeting = () => {}, queue: given, onOpenDesk }: {
+export function DayView({ client, state, session, setSession, now, queue: given, onOpenDesk }: {
   client: DeskClient;
   state: DeskState & { refresh: () => void };
   session: Session;
   setSession: (s: Session) => void;
   now: number;
-  dismissed?: readonly string[];
-  onDismissMeeting?: (key: string) => void;
   queue?: readonly Entry[];
   onOpenDesk?: (slug: string) => void;
 }) {
-  const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : []);
+  const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now) : []);
   const onPull = (k: string) => { setSession(session.pin === k ? session : pin(session, k)); };
   return (
     <div className="daygrid one">
-      <QueueView client={client} state={state} session={session} setSession={setSession} now={now} dismissed={dismissed} onDismissMeeting={onDismissMeeting} onOpenDesk={onOpenDesk} />
+      <QueueView client={client} state={state} session={session} setSession={setSession} now={now} onOpenDesk={onOpenDesk} />
       {state.view && <aside className="rail">
         <TimelineView view={state.view} studio={state.studio} clock={clockAt(now)} queue={queue} onPull={onPull} />
         <Footer view={state.view} now={now} queue={queue} onPull={onPull} />
