@@ -1,3 +1,5 @@
+import { askUntil } from "./setup-prompts";
+import { setupMail } from "./setup-mail";
 import { setupCalendar } from "./setup-calendar";
 import { join } from "node:path";
 import { KEYCHAIN_SERVICE_PREFIX } from "./launch";
@@ -30,6 +32,8 @@ export interface SetupDeps {
   readFile: (path: string) => string | null;
   writeFile: (path: string, text: string) => void;
   mkdir: (path: string) => void;
+  mailProbe: (command: (config: string) => string[], text: string, env: Record<string, string>) => Promise<RunResult>;
+  writeMailConfig: (path: string, text: string) => void;
   adapter: (args: string[]) => Promise<RunResult>;
   security: (args: string[]) => Promise<RunResult>;
   brew: (args: string[]) => Promise<RunResult>;
@@ -46,6 +50,7 @@ export type Provider =
   | { kind: "claude-code" };
 
 export interface StackPlan {
+  mailSource?: { id: string; command: string[] };
   calendar?: Awaited<ReturnType<typeof setupCalendar>>;
   principal: string;
   uiDir: string;
@@ -163,6 +168,7 @@ export function renderStack(plan: StackPlan): string {
       ui: { dir: plan.uiDir },
       desk: {
         ...plan.calendar,
+        ...(plan.mailSource ? { sources: [...(plan.calendar?.sources ?? []), plan.mailSource] } : {}),
         enabled: true,
         studio: { dir: plan.studioDir },
         mail: { rules: { proposeAfter: 3 } },
@@ -187,14 +193,6 @@ async function choose(deps: SetupDeps, claudeOnPath: boolean): Promise<Provider[
   const n = options.length;
   const answer = await askUntil(deps, `Choose 1-${n}: `, (a) => /^\d+$/.test(a) && Number(a) >= 1 && Number(a) <= n, `Type a number from 1 to ${n}.`);
   return options[Number(answer) - 1].kind;
-}
-
-async function askUntil(deps: SetupDeps, question: string, valid: (answer: string) => boolean, hint: string, secret = false): Promise<string> {
-  for (;;) {
-    const answer = (await deps.ask(question, { secret })).trim();
-    if (valid(answer)) return answer;
-    deps.say(hint);
-  }
 }
 
 const isKey = (answer: string): boolean => answer !== "" && !/\s/.test(answer);
@@ -284,7 +282,7 @@ async function writeStack(deps: SetupDeps, paths: StackPaths, plan: StackPlan): 
   return { ok: true, value: null };
 }
 
-async function resolveInstall(args: SetupArgs, deps: SetupDeps): Promise<Checked<{ cortexDir: string; uiDir: string; prefix: string }>> {
+async function resolveInstall(args: SetupArgs, deps: SetupDeps): Promise<Checked<{ cortexDir: string; uiDir: string; prefix: string; libexec: string }>> {
   const prefixRun = await deps.brew(["--prefix"]);
   const prefix = prefixRun.stdout.trim();
   if (prefixRun.status !== 0 || prefix === "") return { ok: false, error: "Homebrew did not answer brew --prefix. Check that Homebrew is installed." };
@@ -293,7 +291,7 @@ async function resolveInstall(args: SetupArgs, deps: SetupDeps): Promise<Checked
   const uiDir = args.ui ?? join(libexec, "ui");
   if (deps.readFile(join(cortexDir, "src", "cortex.ts")) === null) return { ok: false, error: `No Cortex at ${cortexDir}. Reinstall with brew reinstall threva, or pass --cortex <dir>.` };
   if (deps.readFile(join(uiDir, "index.html")) === null) return { ok: false, error: `No Threva UI at ${uiDir}. Reinstall with brew reinstall threva, or pass --ui <dir>.` };
-  return { ok: true, value: { cortexDir, uiDir, prefix } };
+  return { ok: true, value: { cortexDir, uiDir, prefix, libexec } };
 }
 
 export async function setup(argv: readonly string[], deps: SetupDeps): Promise<number> {
@@ -307,7 +305,7 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     deps.say(install.error);
     return 1;
   }
-  const { cortexDir, uiDir, prefix } = install.value;
+  const { cortexDir, uiDir, prefix, libexec } = install.value;
 
   const engines = bunMeetsEngines(deps.readFile(join(cortexDir, "package.json")), deps.bunVersion);
   if (!engines.ok) {
@@ -342,8 +340,10 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   }
 
   const studioDir = join(deps.home, ".local", "share", STACK_SLUG, "studio");
+  const mail = await setupMail(libexec, paths.dir, deps);
+  if (!mail.ok) return 1;
   const calendar = await setupCalendar(prefix, deps);
-  const plan: StackPlan = { calendar, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
+  const plan: StackPlan = { calendar, mailSource: mail.source, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
   const stack = await writeStack(deps, paths, plan);
   if (!stack.ok) {
     deps.say(stack.error);

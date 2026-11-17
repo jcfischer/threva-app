@@ -50,6 +50,8 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
     writeFile: (path, text) => files.set(path, text),
     mkdir: (path) => calls.push({ tool: "mkdir", args: [path] }),
     adapter: record("adapter"),
+    mailProbe: command => record("mailProbe")(command("/tmp/threva-fixture/mail.json")),
+    writeMailConfig: (path, text) => files.set(path, text),
     security: record("security", options.securityStatus),
     brew: record("brew"),
     git: (args, cwd) => record("git")([cwd, ...args]),

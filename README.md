@@ -28,6 +28,12 @@ bun run check
 
 The route lives on the work graph: the map root issue in this repository, labelled `orienteer:map`. Cortex-side work for Threva lives on a map in `the-metafactory/cortex`. Reference nodes in commits and pull requests with `Refs #N`, never a closing keyword.
 
+## Connect mail and calendar after installation
+
+Run `threva setup` from a terminal after installing the bundle. Enter your IMAP login, TLS hostname, port (993 by default) and password. Setup checks that the inbox can be read and asks for the password again if the check fails. A successful connection stores the password in the macOS Keychain and writes its reference to `~/.config/metafactory/cortex/threva/mail.json`.
+
+Setup also requests access to macOS Calendars and Reminders. Mail arrivals and calendar events appear in Day once their sources are connected. If you skip mail or deny a macOS permission, you can run `threva setup --reconfigure` later. Leaving the IMAP login empty keeps a previously configured account.
+
 ## Run it locally
 
 `bun run dev:stack` starts a separate development Cortex stack that serves the built UI with sample calendar and mail data. It needs a Cortex checkout that supports `mc.ui.dir` and a `cortex-desk-adapters` checkout:
