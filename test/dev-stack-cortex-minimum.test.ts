@@ -59,4 +59,17 @@ describe("checkCortexMinimum", () => {
   test("declares a release tag", () => {
     expect(MIN_CORTEX_TAG).toMatch(/^v\d+\.\d+\.\d+$/);
   });
+
+  test("requires the release that ships Desk search by default", () => {
+    const dir = repo();
+    git(dir, "init", "-q");
+    commit(dir, "before-search");
+    git(dir, "tag", "v6.33.0");
+    commit(dir, "with-search");
+    git(dir, "tag", "v6.34.0");
+    git(dir, "checkout", "-q", "v6.33.0");
+    expect(checkCortexMinimum(dir).ok).toBe(false);
+    git(dir, "checkout", "-q", "v6.34.0");
+    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: "v6.34.0" });
+  });
 });
