@@ -20,12 +20,12 @@ export function BarView({ state, send, onSubmit, onSearch, onNote, onKeep, onAsk
   state: BarState;
   send: (e: BarEvent) => void;
   onSubmit: (row?: Suggestion) => void;
-  onSearch?: () => void;
-  onNote?: () => void;
+  onSearch: () => void;
+  onNote: () => void;
   onKeep: () => void;
   onAsk: () => void;
   onUndo: () => void;
-  onOpenHit?: (hit: DeskSearchHit) => void;
+  onOpenHit: (hit: DeskSearchHit) => void;
   entries?: readonly Entry[];
 }) {
   const { t } = useI18n();
@@ -124,7 +124,7 @@ export function BarView({ state, send, onSubmit, onSearch, onNote, onKeep, onAsk
             <ul className="plain">
               {state.hits.map((hit) => (
                 <li key={`${hit.kind}:${hit.id}`}>
-                  <button type="button" className="lk" onClick={() => { onOpenHit?.(hit); }}>{hit.title}</button>
+                  <button type="button" className="lk" onClick={() => { onOpenHit(hit); }}>{hit.title}</button>
                 </li>
               ))}
             </ul>

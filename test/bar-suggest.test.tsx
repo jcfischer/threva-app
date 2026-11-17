@@ -99,7 +99,7 @@ describe("the list under the bar", () => {
   const render = (state: BarState, entries = queue, locale: "en" | "de" = "en") =>
     renderToStaticMarkup(
       <I18nProvider value={createI18n(locale)}>
-        <BarView state={state} send={() => {}} onSubmit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} entries={entries} />
+        <BarView state={state} send={() => {}} onSubmit={() => {}} onSearch={() => {}} onNote={() => {}} onOpenHit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} entries={entries} />
       </I18nProvider>,
     );
 
