@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import manifest from "../package.json";
 import { checkCortexMinimum, MIN_CORTEX_TAG } from "../scripts/dev-stack-lib";
 
 const dirs: string[] = [];
@@ -60,7 +61,12 @@ describe("checkCortexMinimum", () => {
     expect(MIN_CORTEX_TAG).toMatch(/^v\d+\.\d+\.\d+$/);
   });
 
-  test("requires the release that ships Desk search by default", () => {
+  test("pins the verified published Cortex v6.34.0 release with Desk search", () => {
+    expect(manifest.devDependencies["@the-metafactory/cortex"]).toBe("github:the-metafactory/cortex#v6.34.0");
+    expect(MIN_CORTEX_TAG).toBe("v6.34.0");
+  });
+
+  test("the default minimum refuses the older checkout and accepts the required tag", () => {
     const dir = repo();
     git(dir, "init", "-q");
     commit(dir, "before-search");
