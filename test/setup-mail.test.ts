@@ -242,3 +242,15 @@ test("an encoded Keychain snapshot is restored as exact bytes", () => {
   expect(mailKeychainRestore(service, name, 'password: 0x6669787475726500FF  "fixture"\n')).toContain("-X 6669787475726500FF\n");
   expect(mailKeychainRestore(service, name, 'unexpected response')).toBeNull();
 });
+
+test("rejects passwords the pinned adapter cannot read back and preserves internal spaces", async () => {
+  const h = installed({ answers: ["1", KEY, "", ...answers(name, [" leading", "trailing ", "non-ASCII é", good])] });
+  const probed: string[] = [];
+  h.deps.mailProbe = async (_command, _text, values) => {
+    probed.push(values[env]);
+    return ok;
+  };
+  expect(await setup([], h.deps)).toBe(0);
+  expect(probed).toEqual([good]);
+  expect(h.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
+});
