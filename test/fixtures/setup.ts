@@ -49,6 +49,7 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
     readFile: (path) => files.get(path) ?? null,
     writeFile: (path, text) => files.set(path, text),
     mkdir: (path) => calls.push({ tool: "mkdir", args: [path] }),
+    adapter: record("adapter"),
     security: record("security", options.securityStatus),
     brew: record("brew"),
     git: (args, cwd) => record("git")([cwd, ...args]),
