@@ -1,14 +1,16 @@
-import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export function writeMailConfig(path: string, text: string): void {
-  mkdirSync(dirname(path), { recursive: true });
-  const dir = mkdtempSync(join(dirname(path), ".mail-"));
+  const dir = dirname(path);
+  mkdirSync(dir, { recursive: true });
+  const temp = join(dir, `.mail-${randomUUID()}.json`);
   try {
-    const temp = join(dir, "mail.json");
-    writeFileSync(temp, text, { mode: 0o600 });
+    writeFileSync(temp, text, { flag: "wx", mode: 0o600 });
     renameSync(temp, path);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
   }
 }

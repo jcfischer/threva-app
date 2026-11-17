@@ -126,3 +126,27 @@ test("a missing adapter cannot remove a configured mail source during reconfigur
   expect(h.files.get(stack)).toBe(before);
   expect(h.said.join("\n")).toContain("Reinstall Threva");
 });
+
+test("cleans up a replaced Threva-only Keychain entry after saving the new config", async () => {
+  const h = installed({ existing: true, answers: ["1", KEY, "", login, "imap.example.org", "", good] });
+  const previous = JSON.parse(existing);
+  const previousService = "ai.meta-factory.threva.imap.11111111-2222-3333-4444-555555555555";
+  previous.accounts.personal.imap.auth.pass = `keychain:${previousService}`;
+  h.files.set(config, JSON.stringify(previous));
+  const security = h.deps.security;
+  h.deps.security = args => {
+    if (args[0] === "delete-generic-password") expect(h.files.get(config)).not.toContain(previousService);
+    return security(args);
+  };
+  expect(await setup(["--reconfigure"], h.deps)).toBe(0);
+  expect(h.calls).toContainEqual({ tool: "security", args: ["delete-generic-password", "-s", previousService, "-a", login] });
+});
+
+test("an adapter execution failure stops setup rather than retrying the password", async () => {
+  const h = installed({ answers: ["1", KEY, "", login, "imap.example.org", "", good] });
+  h.deps.mailProbe = async () => ({ status: 127, stdout: "", stderr: "" });
+  expect(await setup([], h.deps)).toBe(1);
+  expect(h.files.has(config)).toBe(false);
+  expect(h.files.has(stack)).toBe(false);
+  expect(h.said.join("\n")).toContain("IMAP adapter could not run");
+});
