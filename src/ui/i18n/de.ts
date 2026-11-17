@@ -321,6 +321,8 @@ export const de: Messages = {
   "bar.search.empty": "Keine Treffer.",
   "bar.search.unavailable": "Die Suche ist nicht verfügbar. Versuche es erneut.",
   "bar.search.partial": "Einige Quellen konnten nicht durchsucht werden.",
+  "bar.search.retry": "Erneut suchen",
+  "bar.search.note": "Als Notiz behalten",
   "bar.search.close": "Treffer schliessen",
   "bar.search.openError": "Der Treffer konnte nicht geöffnet werden. Versuche es erneut.",
   "bar.row.ask": "Den Assistenten fragen: «{text}»",

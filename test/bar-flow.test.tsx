@@ -241,7 +241,17 @@ describe("searching the Desk from the bar", () => {
     await click("Search for offline");
     expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("Search is unavailable. Try again.");
     expect(field().value).toBe("offline");
-    await enter();
+    await click("Keep as a note");
     expect(names()).toEqual(["search", "capture.ask", "capture.create"]);
+  });
+
+  test("Enter after a failed search tries the search again", async () => {
+    await mount();
+    await type("offline");
+    await click("Search for offline");
+    client.seed("search", { ok: true, data: { status: "empty", unavailableKinds: [], next: null, hits: [] } });
+    await enter();
+    expect(names()).toEqual(["search", "search"]);
+    expect(dom.container.textContent).toContain("Nothing matched.");
   });
 });

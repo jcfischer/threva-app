@@ -5,7 +5,7 @@ import type { DeskClient, DeskSearchHit } from "@desk/client";
 import { create, filesAtOnce, propose, type Created, type Proposal } from "@desk/capture";
 import { useI18n, type I18n } from "../i18n";
 import type { Entry } from "../queue/order";
-import { barReducer, INITIAL, type BarEvent, type BarState } from "./state";
+import { barReducer, canSubmit, INITIAL, type BarEvent, type BarState } from "./state";
 import { actFor, suggest, type Suggestion } from "./suggest";
 
 export type BarSend = (event: BarEvent) => void;
@@ -16,10 +16,12 @@ function rowLabel(t: I18n["t"], row: Suggestion): string {
   return row.kind === "ask" ? t("bar.row.ask", { text: row.text }) : t("bar.row.note", { text: row.text });
 }
 
-export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, onOpenHit, entries = [] }: {
+export function BarView({ state, send, onSubmit, onSearch, onNote, onKeep, onAsk, onUndo, onOpenHit, entries = [] }: {
   state: BarState;
   send: (e: BarEvent) => void;
   onSubmit: (row?: Suggestion) => void;
+  onSearch?: () => void;
+  onNote?: () => void;
   onKeep: () => void;
   onAsk: () => void;
   onUndo: () => void;
@@ -105,7 +107,15 @@ export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, onOpenHi
         </div>
       )}
       {state.phase === "conversation" && <span className="faint">{t("bar.started")}</span>}
-      {state.phase === "search-error" && <p className="faint" role="alert">{t("bar.search.unavailable")}</p>}
+      {state.phase === "search-error" && (
+        <div className="card">
+          <p className="faint" role="alert">{t("bar.search.unavailable")}</p>
+          <div className="row">
+            <button type="button" className="btn pri" onClick={onSearch}>{t("bar.search.retry")}</button>
+            <button type="button" className="btn" onClick={onNote}>{t("bar.search.note")}</button>
+          </div>
+        </div>
+      )}
       {state.phase === "results" && (
         <div className="card">
           {state.unavailable && <p className="faint" role="status">{t("bar.search.partial")}</p>}
@@ -125,7 +135,7 @@ export function BarView({ state, send, onSubmit, onKeep, onAsk, onUndo, onOpenHi
               <button type="button" className="btn quiet" onClick={() => { send({ type: "close-hit" }); }}>{t("bar.search.close")}</button>
               {state.open.failed ? <p role="alert">{t("bar.search.openError")}</p> :
                 state.open.text === undefined ? <p role="status">{t("bar.working")}</p> :
-                <div style={{ whiteSpace: "pre-wrap" }}>{state.open.text}</div>}
+                <div className="bar-note-text" style={{ whiteSpace: "pre-wrap" }}>{state.open.text}</div>}
             </div>
           )}
         </div>
@@ -186,15 +196,17 @@ export function Bar({ client, entries = [], onPull, onChange }: {
   const { act } = useDeskAct(onChange);
   const text = "text" in state ? state.text : "";
 
+  const onSearch = async () => {
+    if (!canSubmit(state)) return;
+    send({ type: "search" });
+    const result = await client.search(text.trim());
+    send(result.ok ? { type: "found", hits: result.data.hits, unavailable: result.data.unavailableKinds.length > 0 } : { type: "search-failed" });
+  };
+
   const onSubmit = async (row?: Suggestion) => {
-    if (!text.trim() || (state.phase !== "idle" && state.phase !== "error" && state.phase !== "results" && state.phase !== "search-error")) return;
+    if (!canSubmit(state)) return;
     const next = actFor(row);
-    if (next.kind === "search") {
-      send({ type: "search" });
-      const result = await client.search(text.trim());
-      send(result.ok ? { type: "found", hits: result.data.hits, unavailable: result.data.unavailableKinds.length > 0 } : { type: "search-failed" });
-      return;
-    }
+    if (next.kind === "search") return onSearch();
     if (next.kind === "ask") return takeAsk(client, text, send);
     if (next.kind === "match") {
       send({ type: "clear" });
@@ -232,7 +244,9 @@ export function Bar({ client, entries = [], onPull, onChange }: {
       state={state}
       send={send}
       entries={entries}
-      onSubmit={(row) => { void onSubmit(row); }}
+      onSubmit={(row) => { void (state.phase === "search-error" && !row ? onSearch() : onSubmit(row)); }}
+      onSearch={() => { void onSearch(); }}
+      onNote={() => { void takeNote(client, text, send, act); }}
       onKeep={() => { void onKeep(); }}
       onAsk={() => { void takeAsk(client, text, send); }}
       onUndo={() => { void onUndo(); }}

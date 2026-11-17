@@ -39,7 +39,7 @@ export const journeys = {
     await page.getByRole("option", { name: `Search for ${word}` }).click();
     await page.getByRole("button", { name: note, exact: true }).click();
     await page.getByRole("button", { name: "Close result", exact: true }).waitFor();
-    await page.locator(".bar1").getByText(note, { exact: true }).last().waitFor();
+    await page.locator(".bar1 .bar-note-text").getByText(note, { exact: true }).waitFor();
     await shot("opened-note");
     const absent = `Absent${Date.now()}`;
     await bar.fill(absent);

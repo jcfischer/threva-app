@@ -319,6 +319,8 @@ export const en = {
   "bar.search.empty": "Nothing matched.",
   "bar.search.unavailable": "Search is unavailable. Try again.",
   "bar.search.partial": "Some sources could not be searched.",
+  "bar.search.retry": "Search again",
+  "bar.search.note": "Keep as a note",
   "bar.search.close": "Close result",
   "bar.search.openError": "The result could not be opened. Try again.",
   "bar.row.ask": "Ask the assistant: “{text}”",

@@ -41,6 +41,10 @@ function textOf(state: BarState): string {
   return "text" in state ? state.text : "";
 }
 
+export function canSubmit(state: BarState): boolean {
+  return textOf(state).trim() !== "" && (state.phase === "idle" || state.phase === "error" || state.phase === "search-error" || state.phase === "results");
+}
+
 export function looksLikeQuestion(text: string): boolean {
   return /\?\s*$/.test(text.trim());
 }
@@ -71,7 +75,7 @@ export function barReducer(state: BarState, event: BarEvent): BarState {
     case "clear":
       return INITIAL;
     case "submit":
-      return textOf(state).trim() && (state.phase === "idle" || state.phase === "error" || state.phase === "search-error" || state.phase === "results") ? { phase: "asking", text: textOf(state) } : state;
+      return canSubmit(state) ? { phase: "asking", text: textOf(state) } : state;
     case "proposed":
       return state.phase === "asking" ? { phase: "proposed", text: state.text, proposal: event.proposal } : state;
     case "keep":
