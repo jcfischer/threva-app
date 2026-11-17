@@ -209,3 +209,39 @@ describe("the ids the bar shows reach Cortex through the real client", () => {
     expect(sent[0]?.body.startId).toMatch(DASHED);
   });
 });
+
+describe("searching the Desk from the bar", () => {
+  test("opens the full note from the Desk by ID", async () => {
+    client.seed("search", { ok: true, data: { status: "ok", unavailableKinds: [], next: null, hits: [
+      { kind: "desk-note", id: "41", title: "Workshop", snippet: "Short preview", at: null },
+    ] } });
+    client.seed("desk", { ok: true, data: { items: [], notes: [{ id: 41, text: "Full workshop note", createdAt: 0 }] } });
+    await mount();
+    await type("workshop");
+    await click("Search for workshop");
+    await click("Workshop");
+    expect(client.calls).toEqual([{ name: "search", args: ["workshop"] }, { name: "desk", args: [] }]);
+    expect(dom.container.textContent).toContain("Full workshop note");
+  });
+
+  test("retains the words when nothing matches", async () => {
+    client.seed("search", { ok: true, data: { status: "empty", unavailableKinds: [], next: null, hits: [] } });
+    await mount();
+    await type("missing");
+    await click("Search for missing");
+    expect(dom.container.textContent).toContain("Nothing matched.");
+    expect(field().value).toBe("missing");
+  });
+
+  test("a failed search leaves note capture available", async () => {
+    client.seed("capture.ask", { ok: true, data: { proposal: capture } });
+    client.seed("capture.create", { ok: true, data: { id: "c1" } });
+    await mount();
+    await type("offline");
+    await click("Search for offline");
+    expect(dom.container.querySelector('[role="alert"]')?.textContent).toBe("Search is unavailable. Try again.");
+    expect(field().value).toBe("offline");
+    await enter();
+    expect(names()).toEqual(["search", "capture.ask", "capture.create"]);
+  });
+});

@@ -31,6 +31,7 @@ const ID = "11111111-2222-3333-4444-555555555555";
 type Case = [string, (c: DeskClient) => unknown, string, string, Record<string, unknown> | undefined];
 
 const reads: Case[] = [
+  ["search", (c) => c.search("word & phrase"), "GET", "/api/desk/search?q=word+%26+phrase&kinds=desk-note%2Cdesk-item%2Cstudio-capture%2Cstudio-thread", undefined],
   ["desk", (c) => c.desk(), "GET", "/api/desk", undefined],
   ["queue.desk", (c) => c.queue.desk(), "GET", "/api/desk", undefined],
   ["mail.rules", (c) => c.mail.rules(), "GET", "/api/desk/mail/rules", undefined],

@@ -35,12 +35,6 @@
   "src/ui/bar/bar.tsx": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
-    },
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 8
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 4
     }
   },
   "src/ui/cards/act.ts": {

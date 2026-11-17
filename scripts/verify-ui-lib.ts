@@ -22,6 +22,32 @@ async function loaded(page: Page, loadingText: string): Promise<void> {
 }
 
 export const journeys = {
+  search: async (page, shot) => {
+    await showsThreva(page);
+    await loaded(page, "Loading your cards…");
+    const bar = page.getByRole("textbox", { name: "Capture, or ask", exact: true });
+    const word = `Zephyr${Date.now()}`;
+    const note = `${word} is the workshop code`;
+    await bar.fill(`note ${note}`);
+    await bar.press("Enter");
+    const created = page.waitForResponse(response => response.url().endsWith("/api/desk/create") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Keep", exact: true }).click();
+    const creation = await created;
+    if (!creation.ok()) throw new Error(`Note capture refused: ${await creation.text()}`);
+    await bar.waitFor();
+    await bar.fill(word);
+    await page.getByRole("option", { name: `Search for ${word}` }).click();
+    await page.getByRole("button", { name: note, exact: true }).click();
+    await page.getByRole("button", { name: "Close result", exact: true }).waitFor();
+    await page.locator(".bar1").getByText(note, { exact: true }).last().waitFor();
+    await shot("opened-note");
+    const absent = `Absent${Date.now()}`;
+    await bar.fill(absent);
+    await page.getByRole("option", { name: `Search for ${absent}` }).click();
+    await page.getByText("Nothing matched.", { exact: true }).waitFor();
+    if (await bar.inputValue() !== absent) throw new Error("Search cleared the words after an empty result.");
+    await shot("no-matches");
+  },
   day: async (page, shot) => {
     await showsThreva(page);
     await loaded(page, "Loading your cards…");

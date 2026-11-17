@@ -24,7 +24,7 @@ const GROUPS = {
 } as const;
 
 const CALLABLE_GROUPS = { myDay: ["outline", "change"], studio: ["list", "act", "session"] } as const;
-const FLAT = ["desk", "rules", "changeMyDay", "contract"] as const;
+const FLAT = ["desk", "rules", "changeMyDay", "contract", "search"] as const;
 
 export function createMemoryClient(): MemoryClient {
   const calls: LoggedCall[] = [];

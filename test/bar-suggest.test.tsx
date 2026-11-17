@@ -47,17 +47,17 @@ describe("the bar's matcher", () => {
 describe("what Enter does", () => {
   test("a question asks first, then the matches, then the note", () => {
     const rows = suggest("workshop?", queue);
-    expect(rows.map((row) => row.kind)).toEqual(["ask", "match", "match", "note"]);
+    expect(rows.map((row) => row.kind)).toEqual(["ask", "match", "match", "note", "search"]);
   });
 
   test("one or two words with a match start at that match", () => {
-    expect(kinds("workshop")).toEqual(["match", "match", "note", "ask"]);
-    expect(kinds("workshop dates")).toEqual(["match", "note", "ask"]);
+    expect(kinds("workshop")).toEqual(["match", "match", "note", "ask", "search"]);
+    expect(kinds("workshop dates")).toEqual(["match", "note", "ask", "search"]);
   });
 
   test("everything else notes the text first, the matches after it", () => {
-    expect(kinds("workshop follow up")).toEqual(["note", "match", "ask"]);
-    expect(kinds("book a table")).toEqual(["note", "ask"]);
+    expect(kinds("workshop follow up")).toEqual(["note", "match", "ask", "search"]);
+    expect(kinds("book a table")).toEqual(["note", "ask", "search"]);
   });
 
   test("an empty bar offers nothing", () => {
