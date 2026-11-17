@@ -10,9 +10,7 @@ export type Entry =
   | { k: string; type: "rule"; item: DeskItem }
   | { k: string; type: "sweep"; sweep: MailSweep }
   | { k: string; type: "soon"; item: DeskItem; event: DeskEvent | null }
-  | { k: string; type: "after"; event: DeskEvent };
-
-export const AFTER_WINDOW_MS = 60 * 60 * 1000;
+  | { k: string; type: "after"; item: DeskItem };
 
 export interface Session {
   readonly skip: readonly string[];
@@ -38,12 +36,6 @@ export function isMeetingItem(item: DeskItem): boolean {
   return item.kind === "meeting";
 }
 
-export function endedMeetings(view: DeskView, now: number, dismissed: readonly string[]): DeskEvent[] {
-  return view.today
-    .filter((e) => e.kind === "meeting" && e.end !== undefined && e.end <= now && now - e.end < AFTER_WINDOW_MS && !dismissed.includes(e.key))
-    .sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
-}
-
 export function isAgentItem(item: DeskItem): boolean {
   return AGENT_KINDS.has(item.kind);
 }
@@ -63,17 +55,16 @@ export function buildQueue(
   studio: StudioList | null,
   session: Session,
   now: number,
-  dismissed: readonly string[] = [],
 ): Entry[] {
   const items = [...view.items].sort((a, b) => b.score - a.score);
   const isFresh = (item: DeskItem) => item.since !== undefined && now - item.since < DAY;
   const eventFor = (item: DeskItem) => view.today.find((e) => e.key === item.eventKey) ?? null;
-  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i) && !isRuleOffer(i);
+  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i) && i.kind !== "meeting-after" && !isRuleOffer(i);
   const learning = view.mailLearning === true;
 
   const queue: Entry[] = [
     ...items.filter(isMeetingItem).map((item): Entry => ({ k: `i:${item.key}`, type: "soon", item, event: eventFor(item) })),
-    ...endedMeetings(view, now, dismissed).map((event): Entry => ({ k: `a:${event.key}`, type: "after", event })),
+    ...items.filter((item) => item.kind === "meeting-after").map((item): Entry => ({ k: `i:${item.key}`, type: "after", item })),
     ...items.filter(isAgentItem).map((item): Entry => ({ k: `i:${item.key}`, type: "agent", item })),
     ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
     ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item, learning })),

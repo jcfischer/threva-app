@@ -196,6 +196,40 @@ export const journeys = {
     await switchView(page, "Day");
     await shot("back-to-day");
   },
+  "after-meeting": async (page, shot) => {
+    await showsThreva(page);
+    await loaded(page, "Loading your cards…");
+    await page.route("**/api/desk", async route => {
+      const response = await route.fetch();
+      const desk = await response.json() as DeskView;
+      await route.fulfill({ response, json: { ...desk, items: desk.items.filter(item => item.kind === "meeting-after") } });
+    });
+    await page.reload({ waitUntil: "networkidle" });
+    const queue = page.getByRole("region", { name: "Cards" });
+    const ended = queue.getByText("Meeting over", { exact: true });
+    await ended.waitFor();
+    await shot("before-dismiss");
+    const posted = page.waitForResponse(response => response.url().endsWith("/api/desk/action") && response.request().method() === "POST");
+    await queue.getByRole("button", { name: "Nothing to note", exact: true }).click();
+    const response = await posted;
+    if (!response.ok()) throw new Error(`Dismiss refused: ${await response.text()}`);
+    await ended.waitFor({ state: "hidden" });
+    const browser = page.context().browser();
+    if (!browser) throw new Error("The journey requires a new browser context.");
+    const second = await browser.newPage();
+    try {
+      const reloaded = await second.goto(page.url(), { waitUntil: "networkidle" });
+      if (!reloaded?.ok()) throw new Error("The second browser could not load Threva.");
+      const stored = await second.request.get(new URL("/api/desk", page.url()).href);
+      if (!stored.ok()) throw new Error("The second browser could not read the Desk.");
+      const desk = await stored.json() as DeskView;
+      const { key } = response.request().postDataJSON() as { key: string };
+      if (desk.items.some(item => item.key === key)) throw new Error("The dismissed card returned in a second browser.");
+    } finally {
+      await second.close();
+    }
+    await shot("dismissed");
+  },
 } satisfies Record<string, Journey>;
 
 export type JourneyName = keyof typeof journeys;

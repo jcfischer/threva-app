@@ -7,7 +7,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { around } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
 import { QueueBody } from "../src/ui/queue/queue-view";
-import { DAY, item, NOW, studio, thread, view } from "./fixtures/desk";
+import { afterMeeting, DAY, item, NOW, studio, thread, view } from "./fixtures/desk";
 
 const MIN = 60 * 1000;
 
@@ -51,8 +51,8 @@ describe("around", () => {
   });
 
   test("names a catalog reason for an after-meeting card, a waiting thread and a task", () => {
-    const ended = view({ today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
-    expect(around(buildQueue(ended, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "after", title: "Board call" });
+    const ended = view({ items: [afterMeeting("e0", "Board call")], today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
+    expect(around(buildQueue(ended, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "cortex", text: "It ended 5 minutes ago." });
     expect(around(buildQueue(view(), studio(thread("s1", "open", false)), EMPTY_SESSION, NOW)).why).toEqual({ kind: "thread" });
     const task = view({ myDay: { date: DAY, items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] } });
     expect(around(buildQueue(task, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "task" });
@@ -116,9 +116,9 @@ describe("the lines around the card", () => {
     expect(render(view(), { studio: waiting, locale: "de" })).toContain("<b>Warum jetzt:</b> Der Assistent hat dir eine Notiz zu diesem Thema hinterlassen.");
   });
 
-  test("uses a catalog sentence for an after-meeting card", () => {
-    const ended = view({ today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
-    expect(render(ended)).toContain("“Board call” just ended.");
+  test("uses Cortex’s reason for an after-meeting card", () => {
+    const ended = view({ items: [afterMeeting("e0", "Board call")], today: [{ key: "e0", at: NOW - 60 * MIN, end: NOW - 5 * MIN, title: "Board call", kind: "meeting" }] });
+    expect(render(ended)).toContain("It ended 5 minutes ago.");
   });
 
   test("leaves out the Then line for a single card", () => {
