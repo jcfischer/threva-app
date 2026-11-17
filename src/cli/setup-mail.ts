@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { mailKeychainInput } from "./mail-keychain";
 import { COMMAND_NOT_RUN } from "./run";
 import { askUntil } from "./setup-prompts";
 import type { SetupDeps } from "./setup";
@@ -9,7 +10,7 @@ const PROBE_PASSWORD_ENV = "THREVA_SETUP_IMAP_PASSWORD";
 const SERVICE_PREFIX = "ai.meta-factory.threva.imap.";
 const ACCOUNT_PROMPT = "IMAP login (leave empty to keep the current account or skip mail): ";
 
-type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "writeMailConfig">;
+type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "storeMailPassword" | "writeMailConfig">;
 interface Source { id: string; command: string[] }
 type MailSetup = { ok: true; source?: Source } | { ok: false };
 
@@ -59,7 +60,7 @@ export async function setupMail(libexec: string, dir: string, deps: MailDeps): P
   const command = (path: string) => [bun, adapter, "--config", path, "--account", ACCOUNT];
   const source = { id: "mail", command: command(config) };
   const retained: MailSetup = primary ? { ok: true, source } : { ok: true };
-  const login = (await deps.ask(ACCOUNT_PROMPT)).trim();
+  const login = await askUntil(deps, ACCOUNT_PROMPT, value => !/[\r\n\0]/.test(value), "Enter the login on one line.");
   if (!login) return retained;
 
   const host = await askUntil(deps, "IMAP server (for example imap.example.com): ", value => /^[a-z0-9.-]+$/i.test(value) && /[a-z0-9]/i.test(value), "Enter the server hostname.");
@@ -69,9 +70,15 @@ export async function setupMail(libexec: string, dir: string, deps: MailDeps): P
     imap: { enabled: true, host, port, tls: true, auth: { user: login, pass: password } },
   });
   const probe = JSON.stringify({ accounts: { [ACCOUNT]: account(`env:${PROBE_PASSWORD_ENV}`) } });
+  const service = `${SERVICE_PREFIX}${randomUUID()}`;
   for (;;) {
     const password = await deps.ask("IMAP password (leave empty to keep the current account or skip mail): ", { secret: true });
     if (!password) return retained;
+    const keychainInput = mailKeychainInput(service, login, password);
+    if (!keychainInput) {
+      deps.say("Try a shorter, valid IMAP password or leave it empty to skip.");
+      continue;
+    }
     const attempt = await deps.mailProbe(path => [...command(path), "--limit", "1"], probe, { [PROBE_PASSWORD_ENV]: password });
     if (attempt.status === COMMAND_NOT_RUN) {
       deps.say("The IMAP adapter could not run. Reinstall Threva and try setup again.");
@@ -82,9 +89,7 @@ export async function setupMail(libexec: string, dir: string, deps: MailDeps): P
       continue;
     }
 
-    const service = `${SERVICE_PREFIX}${randomUUID()}`;
-    const stored = await deps.security(["add-generic-password", "-s", service, "-a", login, "-w", password]);
-    if (stored.status !== 0) {
+    if (!await deps.storeMailPassword(keychainInput)) {
       deps.say("The IMAP password could not be stored in the Keychain. The mail config was left unchanged.");
       return { ok: false };
     }

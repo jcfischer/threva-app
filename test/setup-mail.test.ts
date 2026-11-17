@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { mailKeychainInput, storeMailPassword } from "../src/cli/mail-keychain";
 import { writeMailConfig } from "../src/cli/mail-config";
 import { setupMail } from "../src/cli/setup-mail";
 import { setup } from "../src/cli/setup";
@@ -35,7 +36,7 @@ test("probes IMAP with desk-imap --config, retries a bad password, and only writ
     });
     expect(text).not.toContain(values[env]);
     expect(h.files.has(config)).toBe(false);
-    expect(h.calls.some(c => c.tool === "security" && c.args.includes(login))).toBe(false);
+    expect(h.mailKeychainInput).toEqual([]);
     attempted.push(values[env]);
     return values[env] === good ? ok : { status: 1, stdout: "", stderr: bad };
   };
@@ -47,8 +48,9 @@ test("probes IMAP with desk-imap --config, retries a bad password, and only writ
   const auth = JSON.parse(h.files.get(config) ?? "").accounts.personal.imap.auth;
   expect(auth.user).toBe(login);
   expect(auth.pass).toMatch(/^keychain:ai\.meta-factory\.threva\.imap\./);
-  const keychain = h.calls.find(c => c.tool === "security" && c.args.includes(login));
-  expect(keychain?.args).toEqual(["add-generic-password", "-s", auth.pass.slice("keychain:".length), "-a", login, "-w", good]);
+  expect(h.mailKeychainInput).toEqual([mailKeychainInput(auth.pass.slice("keychain:".length), login, good) ?? ""]);
+  expect(h.calls.flatMap(c => c.args)).not.toContain(good);
+  expect(h.calls.flatMap(c => c.args)).not.toContain(bad);
   expect(writtenText(h.files)).not.toContain(good);
   expect(writtenText(h.files)).not.toContain(bad);
   expect(JSON.parse(h.files.get(stack) ?? "").mc.desk.sources).toEqual([
@@ -82,9 +84,9 @@ test("preserves the existing config when writing the new keychain reference fail
   expect(await setup(["--reconfigure"], h.deps)).toBe(1);
   expect(h.files.get(config)).toBe(existing);
   expect(h.files.get(stack)).toBe(oldStack);
-  const added = h.calls.find(c => c.tool === "security" && c.args[0] === "add-generic-password" && c.args.includes(login));
-  expect(added).toBeDefined();
-  expect(h.calls.some(c => c.tool === "security" && c.args[0] === "delete-generic-password" && c.args[2] === added?.args[2])).toBe(true);
+  const rollback = h.calls.find(c => c.tool === "security" && c.args[0] === "delete-generic-password");
+  expect(rollback?.args).toEqual(["delete-generic-password", "-s", expect.any(String), "-a", login]);
+  expect(h.mailKeychainInput).toEqual([mailKeychainInput(rollback?.args[2] ?? "", login, good) ?? ""]);
 });
 
 test("the mail step writes only a Keychain reference to a real temporary config path", async () => {
@@ -149,4 +151,37 @@ test("an adapter execution failure stops setup rather than retrying the password
   expect(h.files.has(config)).toBe(false);
   expect(h.files.has(stack)).toBe(false);
   expect(h.said.join("\n")).toContain("IMAP adapter could not run");
+});
+
+test("the Keychain writer sends a single encoded command through stdin and never puts the password in process arguments", async () => {
+  const synthetic = "synthetic \" \\ \n café";
+  const input = mailKeychainInput("fixture-service", 'login \\ " quoted', synthetic);
+  if (!input) throw new Error("Fixture input was rejected");
+  const encoded = / -X ([0-9a-f]+)\n$/.exec(input)?.[1];
+  expect(input).toContain('\\" quoted"');
+  expect(input.split("\n")).toHaveLength(2);
+  expect(Buffer.from(encoded ?? "", "hex").toString("utf8")).toBe(synthetic);
+  for (const status of [0, 1]) {
+    expect(await storeMailPassword(input, async (args, env, stdin) => {
+      expect(args).toEqual(["/usr/bin/security", "-i"]);
+      expect(env).toBeUndefined();
+      expect(await stdin?.text()).toBe(input);
+      expect(args).not.toContain(synthetic);
+      expect(args).not.toContain(encoded);
+      return { ...ok, status };
+    })).toBe(status === 0);
+  }
+  expect(mailKeychainInput("fixture", "bad\nsecond-command", synthetic)).toBeNull();
+  expect(mailKeychainInput("fixture", "login", "x".repeat(4096))).toBeNull();
+});
+
+test("a failed Keychain process leaves the validated replacement and existing config unapplied", async () => {
+  const h = installed({ existing: true, answers: ["1", KEY, "", login, "imap.example.org", "", good] });
+  h.files.set(config, existing);
+  const previousStack = h.files.get(stack);
+  h.deps.storeMailPassword = input => storeMailPassword(input, async () => ({ ...ok, status: 1 }));
+  expect(await setup(["--reconfigure"], h.deps)).toBe(1);
+  expect(h.files.get(config)).toBe(existing);
+  expect(h.files.get(stack)).toBe(previousStack);
+  expect(h.said.join("\n")).toContain("could not be stored in the Keychain");
 });

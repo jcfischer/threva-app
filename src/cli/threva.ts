@@ -3,6 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { doctor, launch, type LaunchDeps } from "./launch";
+import { storeMailPassword } from "./mail-keychain";
 import { writeMailConfig } from "./mail-config";
 import { runCapture, runOrReport } from "./run";
 import { ntfy } from "./ntfy";
@@ -98,6 +99,7 @@ function setupDeps(): SetupDeps {
         rmSync(dir, { recursive: true, force: true });
       }
     },
+    storeMailPassword,
     writeMailConfig,
     adapter: runOrReport,
     security: (args) => runOrReport(["security", ...args]),
