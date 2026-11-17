@@ -9,6 +9,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 - Threva talks to Cortex only over Cortex's local HTTP and WebSocket API. It never imports Cortex modules. Cortex is AGPL-3.0 and not published as a package, and its internals carry no contract.
 - A Cortex stack serves the built Threva UI from a configured directory, so the UI and the API share one origin and Cortex's Host and Origin checks apply unchanged.
 - The product ships as one bundle: an installer that pins a Cortex release, the adapters it needs and this UI, writes a minimal stack config and registers a local service.
+- The bundle pins `cortex-desk-adapters` `v0.2.0`, the first tagged release whose portable mail commands read a mail account file with `--config`. [The adapter release note](docs/desk-mail-adapters.md) holds the tarball sha256 the formula takes and the file contract that `threva setup` writes (node #185, prerequisite for node #146).
 
 ## Layout
 
