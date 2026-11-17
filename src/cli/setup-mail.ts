@@ -71,16 +71,21 @@ function safeDiagnostic(stderr: string, password: string): string {
   return line.replace(/\p{C}/gu, " ").slice(0, 300);
 }
 
-async function saveAccount(
-  deps: MailDeps, config: string, name: string, service: string, input: string, next: MailConfig, previous: unknown,
-): Promise<boolean> {
-  const hadReference = isRecord(previous) && isRecord(previous.imap) && isRecord(previous.imap.auth)
-    && previous.imap.auth.pass === `keychain:${service}`;
-  const lookup = hadReference ? await deps.security(["find-generic-password", "-s", service, "-a", name, "-w"]) : undefined;
+interface AccountWrite {
+  config: string;
+  name: string;
+  service: string;
+  input: string;
+  next: MailConfig;
+  updates: boolean;
+}
+
+async function saveAccount(deps: MailDeps, { config, name, service, input, next, updates }: AccountWrite): Promise<boolean> {
+  const lookup = updates ? await deps.security(["find-generic-password", "-s", service, "-a", name, "-w"]) : undefined;
   const rollback = lookup?.status === 0
     ? mailKeychainInput(service, name, lookup.stdout.replace(/\n$/, ""), true)
     : null;
-  if (hadReference && !rollback) {
+  if (updates && !rollback) {
     deps.say("The existing mail password could not be read for replacement. The mail account was left unchanged.");
     return false;
   }
@@ -134,7 +139,8 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
   const secure = smtpTls === "2";
   const smtpPort = await port(deps, "SMTP", secure ? 465 : 587);
   const login = await askUntil(deps, "Mail server login (leave empty to use your address): ", value => !/[\r\n\0]/.test(value), "Enter the login on one line.") || address;
-  const reportTo = await askUntil(deps, "Phishing report address (leave empty to skip): ", value => value === "" || EMAIL.test(value), "Enter one email address or leave it empty.");
+  const reportTo = await askUntil(deps, "Phishing report address (leave empty to keep the current address or skip, type - to remove): ",
+    value => value === "" || value === "-" || EMAIL.test(value), "Enter one email address, leave it empty, or type - to remove it.");
 
   const account = (pass: string) => {
     const auth = { user: login, pass };
@@ -170,10 +176,10 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
     const next = {
       ...existing,
       defaultAccount: existing.defaultAccount ?? name,
-      phishingReportTo: reportTo || undefined,
+      phishingReportTo: reportTo === "-" ? undefined : reportTo || existing.phishingReportTo,
       accounts: { ...existing.accounts, [name]: account(`keychain:${service}`) },
     };
-    if (!await saveAccount(deps, config, name, service, input, next, previous)) return { ok: false };
+    if (!await saveAccount(deps, { config, name, service, input, next, updates })) return { ok: false };
     return { ok: true, plan: mailPlan(next, command) };
   }
 }

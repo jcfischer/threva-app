@@ -144,6 +144,17 @@ test("replacing a named account preserves other accounts and replaces its IMAP a
   expect(JSON.parse(h.files.get(stack) ?? "").mc.desk.sources).toContainEqual(mailSource("other"));
 });
 
+test("leaving reporting blank preserves the existing address and a dash explicitly removes it", async () => {
+  for (const report of ["", "-"]) {
+    const h = installed({ existing: true, answers: ["1", KEY, "", ...answers(name, [good], report)] });
+    h.files.set(config, JSON.stringify({ ...JSON.parse(existing), phishingReportTo: reportTo }));
+    existingKeychain(h);
+    expect(await setup(["--reconfigure"], h.deps)).toBe(0);
+    const desk = JSON.parse(h.files.get(stack) ?? "").mc.desk;
+    expect(desk.mail.report).toEqual(report === "-" ? undefined : { command: args("desk-mail-report"), to: reportTo });
+  }
+});
+
 test("missing commands cannot remove a configured mail source during reconfigure", async () => {
   const h = harness({ existing: true, answers: ["1", KEY, ""] });
   h.files.set(config, existing);
