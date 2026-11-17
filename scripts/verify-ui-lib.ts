@@ -206,9 +206,9 @@ export const journeys = {
     });
     await page.reload({ waitUntil: "networkidle" });
     const queue = page.getByRole("region", { name: "Cards" });
-    const ended = queue.getByText("Meeting over", { exact: true });
+    const ended = page.getByText("Meeting over", { exact: true });
     await ended.waitFor();
-    const key = await queue.locator(".card").getAttribute("data-item-key");
+    const key = await queue.locator(".card", { has: ended }).getAttribute("data-item-key");
     if (!key) throw new Error("The after-meeting card has no item key.");
     const dismissed = queue.locator(`[data-item-key=${JSON.stringify(key)}]`);
     await shot("before-dismiss");
@@ -236,6 +236,8 @@ export const journeys = {
 
 export type JourneyName = keyof typeof journeys;
 
+const OPT_IN = new Set<JourneyName>(["after-meeting"]);
+
 export interface VerifyArgs {
   url: string;
   out: string;
@@ -259,5 +261,5 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     } else if (isJourney(arg)) names.push(arg);
     else return { ok: false, error: `Unknown journey "${arg}". Journeys: ${Object.keys(journeys).join(", ")}.` };
   }
-  return { ok: true, value: { url, out, names: names.length > 0 ? names : Object.keys(journeys).filter(isJourney).filter(name => name !== "after-meeting") } };
+  return { ok: true, value: { url, out, names: names.length > 0 ? names : Object.keys(journeys).filter(isJourney).filter(name => !OPT_IN.has(name)) } };
 }

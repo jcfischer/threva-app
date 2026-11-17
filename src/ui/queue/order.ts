@@ -36,6 +36,10 @@ export function isMeetingItem(item: DeskItem): boolean {
   return item.kind === "meeting";
 }
 
+export function isAfterMeetingItem(item: DeskItem): boolean {
+  return item.kind === "meeting-after";
+}
+
 export function isAgentItem(item: DeskItem): boolean {
   return AGENT_KINDS.has(item.kind);
 }
@@ -59,12 +63,12 @@ export function buildQueue(
   const items = [...view.items].sort((a, b) => b.score - a.score);
   const isFresh = (item: DeskItem) => item.since !== undefined && now - item.since < DAY;
   const eventFor = (item: DeskItem) => view.today.find((e) => e.key === item.eventKey) ?? null;
-  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i) && i.kind !== "meeting-after" && !isRuleOffer(i);
+  const other = (i: DeskItem) => !isAgentItem(i) && !isMailItem(i) && !isMeetingItem(i) && !isAfterMeetingItem(i) && !isRuleOffer(i);
   const learning = view.mailLearning === true;
 
   const queue: Entry[] = [
     ...items.filter(isMeetingItem).map((item): Entry => ({ k: `i:${item.key}`, type: "soon", item, event: eventFor(item) })),
-    ...items.filter((item) => item.kind === "meeting-after").map((item): Entry => ({ k: `i:${item.key}`, type: "after", item })),
+    ...items.filter(isAfterMeetingItem).map((item): Entry => ({ k: `i:${item.key}`, type: "after", item })),
     ...items.filter(isAgentItem).map((item): Entry => ({ k: `i:${item.key}`, type: "agent", item })),
     ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
     ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item, learning })),
