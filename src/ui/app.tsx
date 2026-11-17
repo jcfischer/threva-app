@@ -60,7 +60,7 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
     if (state.view) watchInterruptions(state.view.items);
   }, [state.view, watchInterruptions]);
   const now = Date.now();
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
   const pull = (k: string) => { setSession((current) => (current.pin === k ? current : pin(current, k))); };
   if (startup.state === "refused") {
     return <main className="wrap"><p className="faint" role="alert">{t("startup.version", { built: startup.built, found: startup.found })}</p></main>;
@@ -97,7 +97,7 @@ export function DayView({ client, state, session, setSession, now, dismissed = [
   queue?: readonly Entry[];
   onOpenDesk?: (slug: string) => void;
 }) {
-  const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : []);
+  const queue = given ?? (state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : []);
   const onPull = (k: string) => { setSession(session.pin === k ? session : pin(session, k)); };
   return (
     <div className="daygrid one">

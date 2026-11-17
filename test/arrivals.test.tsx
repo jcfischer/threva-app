@@ -1,15 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@desk/client";
-import { createMemoryClient } from "@desk/memory-client";
-import type { DeskAction, DeskItem, MailRule } from "@desk/types";
-import { inLearningPhase, isRuleOffer, requests, suggestedOutcome } from "../src/ui/arrivals/outcomes";
+import type { DeskAction, DeskItem } from "@desk/types";
+import { isRuleOffer, requests } from "../src/ui/arrivals/outcomes";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard, type MailCardProps, RuleOfferCard } from "../src/ui/cards/mail-cards";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION } from "../src/ui/queue/order";
-import { loadDesk } from "../src/ui/queue/use-desk";
-import { item, NOW, seededApp, view } from "./fixtures/desk";
+import { item, NOW, view } from "./fixtures/desk";
 
 const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
@@ -26,14 +24,12 @@ const mail = (key: string, overrides: Partial<DeskItem> = {}) =>
 
 const fixtures = {
   unclassified: mail("plain"),
-  fyi: mail("fyi", { attention: "update", actions: [act("mail.seen", "Seen, delete", "primary"), act("open", "Open in Mail")] }),
-  archive: mail("archive", { actions: [act("mail.archive", "Archive", "primary"), act("open", "Open in Mail")], suggestion: undefined }),
-  meeting: mail("meeting", { eventKey: "ev1", actions: [act("meeting.show", "Show on the meeting", "primary"), act("open", "Open in Mail")] }),
-  reply: mail("reply", { suggestion: "Suggested: reply", actions: [act("mail.draft", "Draft a reply", "primary"), act("open", "Open in Mail")] }),
+  fyi: mail("fyi", { outcome: "archive", attention: "update", actions: [act("mail.seen", "Seen, delete", "primary"), act("open", "Open in Mail")] }),
+  archive: mail("archive", { outcome: "archive", actions: [act("mail.archive", "Archive", "primary"), act("open", "Open in Mail")], suggestion: undefined }),
+  meeting: mail("meeting", { eventKey: "ev1", outcome: "attach", actions: [act("meeting.show", "Show on the meeting", "primary"), act("open", "Open in Mail")] }),
+  reply: mail("reply", { suggestion: "Suggested: reply", outcome: "draft", actions: [act("mail.draft", "Draft a reply", "primary"), act("open", "Open in Mail")] }),
   replyNotFirst: mail("reply2", { actions: [act("open", "Open in Mail", "primary"), act("mail.draft", "Draft a reply")] }),
 };
-
-const rule: MailRule = { id: "r1", match: "sender", value: "news@example.com", action: "archive", on: true, sentence: "Archive mail from news@example.com" };
 
 const offer = item({
   key: "mailrule:sender:archive:news@example.com",
@@ -44,48 +40,20 @@ const offer = item({
 });
 const held = item({ key: "mailrule:held:r1", kind: "mail-rule", actions: [act("mailrule.release", "Handle all 40", "primary"), act("mailrule.stop", "Stop this rule")] });
 
-describe("outcome mapping", () => {
-  test("maps what Cortex sends to one of the four outcomes", () => {
-    expect(suggestedOutcome(fixtures.fyi)).toBe("archive");
-    expect(suggestedOutcome(fixtures.archive)).toBe("archive");
-    expect(suggestedOutcome(fixtures.meeting)).toBe("attach");
-    expect(suggestedOutcome(fixtures.reply)).toBe("draft");
-  });
-
-  test("a mail without classifier fields gets no suggestion", () => {
-    expect(suggestedOutcome(fixtures.unclassified)).toBeNull();
-    expect(suggestedOutcome(fixtures.replyNotFirst)).toBeNull();
-  });
-});
-
 describe("learning phase", () => {
-  test("lasts until a first approved rule", () => {
-    expect(inLearningPhase(null)).toBe(true);
-    expect(inLearningPhase([])).toBe(true);
-    expect(inLearningPhase([rule])).toBe(false);
+  const entries = (mailLearning?: boolean) =>
+    buildQueue(view({ items: [fixtures.unclassified, fixtures.fyi], mailLearning }), null, EMPTY_SESSION, NOW).map((e) => (e.type === "mail" ? e.learning : null));
+
+  test("follows the flag Cortex sends", () => {
+    expect(entries(true)).toEqual([true, true]);
+    expect(entries(false)).toEqual([false, false]);
   });
 
-  test("the poll reads the rules, and a refused read leaves none", async () => {
-    const client = createMemoryClient();
-    seededApp(client, { rules: [rule] });
-    const read = await loadDesk(client, { view: null, studio: null, error: null });
-    expect(read.rules).toEqual([rule]);
-    client.seed("rules", { ok: false, message: "Mail rules need the move command.", status: 409 });
-    const refused = await loadDesk(client, read);
-    expect(read.rules).toEqual([rule]);
-    expect(refused.rules).toBeNull();
-    expect(inLearningPhase(refused.rules)).toBe(true);
+  test("an older Cortex without the flag shows no learning state", () => {
+    expect(entries(undefined)).toEqual([false, false]);
   });
 
-  test("marks every mail entry while no rule exists", () => {
-    const desk = view({ items: [fixtures.unclassified, fixtures.fyi] });
-    const learning = buildQueue(desk, null, EMPTY_SESSION, NOW, [], []);
-    expect(learning.map((e) => (e.type === "mail" ? e.learning : null))).toEqual([true, true]);
-    const ruled = buildQueue(desk, null, EMPTY_SESSION, NOW, [], [rule]);
-    expect(ruled.map((e) => (e.type === "mail" ? e.learning : null))).toEqual([false, false]);
-  });
-
-  test("the card says so in one line, and not after a rule", () => {
+  test("the card says so in one line, and not otherwise", () => {
     expect(wrap(<MailCard item={fixtures.unclassified} learning />)).toContain("Learning phase: every mail comes to you until you approve a first rule.");
     expect(wrap(<MailCard item={fixtures.unclassified} learning />, "de")).toContain("Lernphase:");
     expect(wrap(<MailCard item={fixtures.unclassified} />)).not.toContain("Learning phase");

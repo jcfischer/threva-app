@@ -49,6 +49,7 @@ export type DeskItemDetail = Omit<CortexDeskItem["detail"], "links" | "history" 
 };
 
 export type DeskItem = Omit<CortexDeskItem, "detail" | "interrupt"> & {
+  outcome?: "archive" | "attach" | "draft" | "ask";
   detail: DeskItemDetail;
   interrupt?: DeskInterrupt;
 };
@@ -89,6 +90,7 @@ export interface RoutineView {
 export type DeskView =
   Pick<CortexDeskView, "generatedAt" | "displayName"> & {
     items: DeskItem[];
+    mailLearning?: boolean;
     today: DeskEvent[];
     timeZone?: CortexDeskView["timeZone"];
     assistantName?: CortexDeskView["assistantName"];

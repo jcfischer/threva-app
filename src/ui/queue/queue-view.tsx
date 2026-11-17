@@ -109,7 +109,7 @@ export function QueueBody({ state, session, setSession, now, dismissed = [], onD
   const outer = useQueue();
   const [added, setAdded] = useState<{ title: string; next?: string } | null>(null);
   const [answers, setAnswers] = useState<ReadonlyMap<string, "yes" | "no">>(() => new Map());
-  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed, state.rules ?? null) : [];
+  const queue = state.view ? buildQueue(state.view, state.studio, session, now, dismissed) : [];
   const first = queue[0];
   const front = first?.k ?? "";
   useEffect(() => {
