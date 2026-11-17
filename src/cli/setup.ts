@@ -1,3 +1,4 @@
+import { setupCalendar } from "./setup-calendar";
 import { join } from "node:path";
 import { KEYCHAIN_SERVICE_PREFIX } from "./launch";
 import { errorMessage, isNtfyTopicUrl } from "./text";
@@ -29,6 +30,7 @@ export interface SetupDeps {
   readFile: (path: string) => string | null;
   writeFile: (path: string, text: string) => void;
   mkdir: (path: string) => void;
+  adapter: (args: string[]) => Promise<RunResult>;
   security: (args: string[]) => Promise<RunResult>;
   brew: (args: string[]) => Promise<RunResult>;
   git: (args: string[], cwd: string) => Promise<RunResult>;
@@ -44,6 +46,7 @@ export type Provider =
   | { kind: "claude-code" };
 
 export interface StackPlan {
+  calendar?: Awaited<ReturnType<typeof setupCalendar>>;
   principal: string;
   uiDir: string;
   studioDir: string;
@@ -159,6 +162,7 @@ export function renderStack(plan: StackPlan): string {
       port: plan.port,
       ui: { dir: plan.uiDir },
       desk: {
+        ...plan.calendar,
         enabled: true,
         studio: { dir: plan.studioDir },
         mail: { rules: { proposeAfter: 3 } },
@@ -338,7 +342,8 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   }
 
   const studioDir = join(deps.home, ".local", "share", STACK_SLUG, "studio");
-  const plan: StackPlan = { principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
+  const calendar = await setupCalendar(prefix, deps);
+  const plan: StackPlan = { calendar, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
   const stack = await writeStack(deps, paths, plan);
   if (!stack.ok) {
     deps.say(stack.error);

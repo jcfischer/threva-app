@@ -106,6 +106,7 @@ function setupDeps(): SetupDeps {
     mkdir: (path) => {
       mkdirSync(path, { recursive: true });
     },
+    adapter: runOrReport,
     security: (args) => runOrReport(["security", ...args]),
     brew: (args) => runOrReport(["brew", ...args]),
     git: (args, cwd) => runOrReport(["git", "-C", cwd, ...args]),
