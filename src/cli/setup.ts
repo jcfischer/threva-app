@@ -50,8 +50,8 @@ export type Provider =
   | { kind: "claude-code" };
 
 export interface StackPlan {
-  mailSource?: { id: string; command: string[] };
-  calendar?: Awaited<ReturnType<typeof setupCalendar>>;
+  sources: { id: string; command: string[] }[];
+  ask?: Awaited<ReturnType<typeof setupCalendar>>["ask"];
   principal: string;
   uiDir: string;
   studioDir: string;
@@ -167,8 +167,8 @@ export function renderStack(plan: StackPlan): string {
       port: plan.port,
       ui: { dir: plan.uiDir },
       desk: {
-        ...plan.calendar,
-        ...(plan.mailSource ? { sources: [...(plan.calendar?.sources ?? []), plan.mailSource] } : {}),
+        ...(plan.ask ? { ask: plan.ask } : {}),
+        ...(plan.sources.length ? { sources: plan.sources } : {}),
         enabled: true,
         studio: { dir: plan.studioDir },
         mail: { rules: { proposeAfter: 3 } },
@@ -343,7 +343,8 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   const mail = await setupMail(libexec, paths.dir, deps);
   if (!mail.ok) return 1;
   const calendar = await setupCalendar(prefix, deps);
-  const plan: StackPlan = { calendar, mailSource: mail.source, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
+  const sources = [...(calendar.sources ?? []), ...(mail.source ? [mail.source] : [])];
+  const plan: StackPlan = { sources, ask: calendar.ask, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
   const stack = await writeStack(deps, paths, plan);
   if (!stack.ok) {
     deps.say(stack.error);

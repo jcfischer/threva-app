@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { COMMAND_NOT_RUN } from "./run";
 import { askUntil } from "./setup-prompts";
 import type { SetupDeps } from "./setup";
 
 const ACCOUNT = "personal";
 const PROBE_PASSWORD_ENV = "THREVA_SETUP_IMAP_PASSWORD";
 const SERVICE_PREFIX = "ai.meta-factory.threva.imap.";
-const COMMAND_NOT_RUN = 127;
 const ACCOUNT_PROMPT = "IMAP login (leave empty to keep the current account or skip mail): ";
 
 type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "writeMailConfig">;
@@ -22,6 +22,16 @@ function readAccounts(text: string | null): MailConfig {
   const value: unknown = JSON.parse(text);
   if (!isRecord(value) || !isRecord(value.accounts)) throw new Error("Invalid account file");
   return { ...value, accounts: value.accounts };
+}
+
+async function removeReplacedSecret(deps: MailDeps, auth: unknown, config: string): Promise<void> {
+  if (!isRecord(auth) || typeof auth.user !== "string" || typeof auth.pass !== "string") return;
+  const referencePrefix = `keychain:${SERVICE_PREFIX}`;
+  if (!auth.pass.startsWith(referencePrefix) || config.includes(JSON.stringify(auth.pass))) return;
+  const suffix = auth.pass.slice(referencePrefix.length);
+  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(suffix)) return;
+  const removed = await deps.security(["delete-generic-password", "-s", `${SERVICE_PREFIX}${suffix}`, "-a", auth.user]);
+  if (removed.status !== 0) deps.say("The new mail account is saved. The previous Threva password could not be removed from the Keychain.");
 }
 
 export async function setupMail(libexec: string, dir: string, deps: MailDeps): Promise<MailSetup> {
@@ -94,16 +104,7 @@ export async function setupMail(libexec: string, dir: string, deps: MailDeps): P
       deps.say(`The mail config at ${config} could not be written. Setup left it unchanged.`);
       return { ok: false };
     }
-    const previousRef = isRecord(previousAuth) && typeof previousAuth.pass === "string" ? previousAuth.pass : "";
-    if (previousRef.startsWith(`keychain:${SERVICE_PREFIX}`) && !text.includes(JSON.stringify(previousRef))) {
-      const previousService = previousRef.slice("keychain:".length);
-      const suffix = previousService.slice(SERVICE_PREFIX.length);
-      const previousLogin = isRecord(previousAuth) ? previousAuth.user : null;
-      if (typeof previousLogin === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(suffix)) {
-        const removed = await deps.security(["delete-generic-password", "-s", previousService, "-a", previousLogin]);
-        if (removed.status !== 0) deps.say("The new mail account is saved. The previous Threva password could not be removed from the Keychain.");
-      }
-    }
+    await removeReplacedSecret(deps, previousAuth, text);
     return { ok: true, source };
   }
 }
