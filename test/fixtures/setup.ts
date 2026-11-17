@@ -12,6 +12,7 @@ interface Harness {
   files: Map<string, string>;
   said: string[];
   calls: { tool: string; args: string[] }[];
+  mailKeychainInput: string[];
   posts: { url: string; body: string }[];
 }
 
@@ -26,6 +27,7 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
     files.set(join(stackPaths(HOME).dir, "stacks", "threva.yaml"), JSON.stringify({ mc: { port: options.writtenPort ?? 8767 } }));
   }
   if (options.existing) files.set(stackPaths(HOME).finished, "2026-11-16T00:00:00.000Z\n");
+  const mailKeychainInput: string[] = [];
   const said: string[] = [];
   const calls: Harness["calls"] = [];
   const posts: Harness["posts"] = [];
@@ -50,6 +52,9 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
     writeFile: (path, text) => files.set(path, text),
     mkdir: (path) => calls.push({ tool: "mkdir", args: [path] }),
     adapter: record("adapter"),
+    mailProbe: command => record("mailProbe")(command("/tmp/threva-fixture/mail.json")),
+    storeMailPassword: async input => { mailKeychainInput.push(input); return true; },
+    writeMailConfig: (path, text) => files.set(path, text),
     security: record("security", options.securityStatus),
     brew: record("brew"),
     git: (args, cwd) => record("git")([cwd, ...args]),
@@ -63,7 +68,7 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
     },
     sleep: async () => {},
   };
-  return { deps, files, said, calls, posts };
+  return { deps, files, said, calls, posts, mailKeychainInput };
 }
 
 export const stackDir = stackPaths(HOME).dir;
