@@ -12,10 +12,12 @@ export async function setupCalendar(prefix: string, deps: Pick<SetupDeps, "adapt
     }
     const result = await deps.adapter([command, ...args]);
     if (result.status === 0) return true;
-    deps.say(result.status === 3
-      ? `To use ${service}, allow access in System Settings > Privacy & Security > ${service}, then run threva setup --reconfigure.`
-      : `The ${service} adapter could not check access (exit ${result.status}).`);
-    return false;
+    if (result.status === 3) {
+      deps.say(`To use ${service}, allow access in System Settings > Privacy & Security > ${service}, then run threva setup --reconfigure.`);
+      return false;
+    }
+    deps.say(`The ${service} adapter could not check access (exit ${result.status}). Setup kept ${service} configured.`);
+    return true;
   }
   const canReadCalendar = await available(calendar, ["--days", "1"], "Calendars");
   const canWriteReminders = await available(reminders, ["--check-access"], "Reminders");

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { mailKeychainInput, mailKeychainRestore } from "./mail-keychain";
 import { COMMAND_NOT_RUN } from "./run";
@@ -10,10 +11,11 @@ const SERVICE_PREFIX = "threva-mail-";
 const ACCOUNT_PROMPT = "Mail account name (leave empty to keep current accounts or skip mail): ";
 const ACCOUNT_NAME = /^[a-z][a-z0-9-]{0,31}$/;
 const HOST_NAME = /^[a-z0-9][a-z0-9.-]*[a-z0-9]$/i;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ADAPTERS = ["desk-imap", "desk-mail-move", "desk-mail-trash", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"] as const;
+const EXISTING_ACCOUNT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const EMAIL = /^[^\s@<>,;"'()]+@[^\s@<>,;"'()]+\.[^\s@<>,;"'()]+$/;
+export const ADAPTERS = ["desk-imap", "desk-mail-move", "desk-mail-trash", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"] as const;
 
-type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "storeMailPassword" | "writeMailConfig">;
+type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "storeMailPassword" | "writeMailConfig"> & Partial<Pick<SetupDeps, "mailServiceId">>;
 type Adapter = typeof ADAPTERS[number];
 interface MailSource {
   id: string;
@@ -41,7 +43,7 @@ function readAccounts(text: string | null): MailConfig {
 
 function mailPlan(config: MailConfig, command: (adapter: Adapter) => string[]): MailPlan {
   const sources = Object.entries(config.accounts).flatMap(([name, value]) => {
-    if (!ACCOUNT_NAME.test(name) || !isRecord(value) || !isRecord(value.imap) || value.imap.enabled !== true) return [];
+    if (!EXISTING_ACCOUNT_NAME.test(name) || !isRecord(value) || !isRecord(value.imap) || value.imap.enabled !== true) return [];
     return [{
       id: `mail-${name}`, command: [...command("desk-imap"), "--account", name, "--sent"], everySeconds: 300, timeoutSeconds: 60,
     }];
@@ -156,7 +158,7 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
 
   const { account, reportTo } = await askAccountSettings(deps);
   const probe = JSON.stringify({ accounts: { [name]: account(`env:${PROBE_PASSWORD_ENV}`) } });
-  const service = `${SERVICE_PREFIX}${name}`;
+  const service = `${SERVICE_PREFIX}${name}-${(deps.mailServiceId ?? randomUUID)()}`;
   for (;;) {
     const password = await deps.ask("Mail password (leave empty to keep current accounts or skip mail): ", { secret: true });
     if (!password) return retained;

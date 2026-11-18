@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mailKeychainInput, mailKeychainRestore, storeMailPassword } from "../src/cli/mail-keychain";
 import { writeMailConfig } from "../src/cli/mail-config";
-import { setupMail } from "../src/cli/setup-mail";
+import { ADAPTERS, setupMail } from "../src/cli/setup-mail";
 import { setup } from "../src/cli/setup";
 import { harness, HOME, KEY, LIBEXEC, PREFIX, stackDir, writtenText } from "./fixtures/setup";
 
@@ -14,7 +14,7 @@ const config = join(HOME, ".config", "threva", "mail-accounts.json");
 const stack = join(stackDir, "stacks", "threva.yaml");
 const calendar = join(PREFIX, "var", "threva", "bin", "desk-calendar-mac");
 const name = "personal";
-const service = `threva-mail-${name}`;
+const service = `threva-mail-${name}-fixture`;
 const address = "newcomer@example.org";
 const login = "fixture-login";
 const good = "synthetic mail password";
@@ -29,7 +29,8 @@ const answers = (account: string, passwords: string[], report = "", auth = login
 
 function installed(options: Parameters<typeof harness>[0]) {
   const h = harness(options);
-  for (const bin of ["desk-imap", "desk-mail-move", "desk-mail-trash", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"]) {
+  h.deps.mailServiceId = () => "fixture";
+  for (const bin of ADAPTERS) {
     h.files.set(join(adapterDir, `${bin}.ts`), "");
   }
   const security = h.deps.security;
@@ -253,4 +254,16 @@ test("rejects passwords the pinned adapter cannot read back and preserves intern
   expect(await setup([], h.deps)).toBe(0);
   expect(probed).toEqual([good]);
   expect(h.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
+});
+
+test("keeps an existing account whose name has capital letters", async () => {
+  const h = installed({ answers: [""] });
+  h.files.set(config, JSON.stringify({ accounts: { Work: configAccount("keychain:threva-mail-Work") } }));
+  const result = await setupMail(LIBEXEC, HOME, h.deps);
+  expect(result.ok && result.plan.sources.map(source => source.id)).toEqual(["mail-Work"]);
+});
+
+test("asks again for a From address wrapped in angle brackets", async () => {
+  const h = installed({ answers: ["personal", `<${address}>`, ...answers(name, [good]).slice(1)] });
+  expect(await setupMail(LIBEXEC, HOME, h.deps)).toMatchObject({ ok: true });
 });

@@ -38,3 +38,10 @@ test("declining Reminders access keeps the granted calendar source and writer", 
   expect(config.sources).toEqual([{ id: "calendar", command: [calendar, "--days", "5"] }]);
   expect(config.ask?.writers).toEqual({ calendar: [calendar, "--create"] });
 });
+
+test("a probe error other than declined access keeps the calendar configured", async () => {
+  const { messages, config } = await configure(1);
+  expect(messages.join(" ")).toContain("could not check access");
+  expect(config.sources).toEqual([{ id: "calendar", command: [calendar, "--days", "5"] }]);
+  expect(config.ask?.writers).toEqual({ calendar: [calendar, "--create"], reminder: [reminders] });
+});
