@@ -1,24 +1,17 @@
 #!/usr/bin/env bun
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { doctor, launch, type LaunchDeps } from "./launch";
+import { storeMailPassword } from "./mail-keychain";
+import { writeMailConfig } from "./mail-config";
+import { runCapture, runOrReport } from "./run";
 import { ntfy } from "./ntfy";
 import { setup, type SetupDeps } from "./setup";
 import { errorMessage } from "./text";
 
 function readOrNull(path: string): string | null {
   return existsSync(path) ? readFileSync(path, "utf8") : null;
-}
-
-async function runCapture(command: string[]): Promise<{ status: number; stdout: string; stderr: string }> {
-  const proc = Bun.spawn(command, { stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, status] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { status, stdout, stderr };
 }
 
 const deps: LaunchDeps = {
@@ -79,16 +72,6 @@ async function ask(question: string, options?: { secret?: boolean }): Promise<st
 
 const INTERRUPTED = 130;
 
-const COMMAND_NOT_RUN = 127;
-
-async function runOrReport(command: string[]): Promise<{ status: number; stdout: string; stderr: string }> {
-  try {
-    return await runCapture(command);
-  } catch (err) {
-    return { status: COMMAND_NOT_RUN, stdout: "", stderr: `${command[0] ?? ""} could not run: ${errorMessage(err)}` };
-  }
-}
-
 function setupDeps(): SetupDeps {
   return {
     home: process.env.HOME ?? homedir(),
@@ -106,6 +89,19 @@ function setupDeps(): SetupDeps {
     mkdir: (path) => {
       mkdirSync(path, { recursive: true });
     },
+    mailProbe: async (command, text, env) => {
+      const dir = mkdtempSync(join(tmpdir(), "threva-imap-"));
+      try {
+        const config = join(dir, "mail.json");
+        writeFileSync(config, text, { mode: 0o600 });
+        return await runOrReport(command(config), { ...process.env, ...env });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    storeMailPassword,
+    writeMailConfig,
+    adapter: runOrReport,
     security: (args) => runOrReport(["security", ...args]),
     brew: (args) => runOrReport(["brew", ...args]),
     git: (args, cwd) => runOrReport(["git", "-C", cwd, ...args]),
