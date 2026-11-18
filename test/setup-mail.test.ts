@@ -139,14 +139,15 @@ test("the mail step writes just Keychain references to a real private config", a
 test("replacing a named account preserves other accounts and replaces its IMAP and SMTP identity", async () => {
   const h = installed({ existing: true, answers: ["1", KEY, "", ...answers(name, [good], "", "next-login")] });
   const previous = JSON.parse(existing);
-  h.files.set(config, existing);
-  existingKeychain(h);
+  const oldService = "threva-mail-personal-previous";
+  h.files.set(config, JSON.stringify({ ...previous, accounts: { ...previous.accounts, personal: configAccount(`keychain:${oldService}`) } }));
   expect(await setup(["--reconfigure"], h.deps)).toBe(0);
   const next = JSON.parse(h.files.get(config) ?? "");
   expect(next.defaultAccount).toBe("other");
   expect(next.accounts.other).toEqual(previous.accounts.other);
   expect(next.accounts.personal).toEqual(configAccount(`keychain:${service}`, "next-login"));
-  expect(h.mailKeychainInput).toEqual([mailKeychainInput(service, name, good, true) ?? ""]);
+  expect(JSON.stringify(next)).not.toContain(oldService);
+  expect(h.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
   expect(JSON.parse(h.files.get(stack) ?? "").mc.desk.sources).toContainEqual(mailSource("other"));
 });
 
@@ -265,5 +266,14 @@ test("keeps an existing account whose name has capital letters", async () => {
 
 test("asks again for a From address wrapped in angle brackets", async () => {
   const h = installed({ answers: ["personal", `<${address}>`, ...answers(name, [good]).slice(1)] });
+  const prompts: string[] = [];
+  const ask = h.deps.ask;
+  h.deps.ask = async (question, ...rest) => {
+    prompts.push(question);
+    return ask(question, ...rest);
+  };
   expect(await setupMail(LIBEXEC, HOME, h.deps)).toMatchObject({ ok: true });
+  const from = prompts.filter(question => question === "Mail address: ");
+  expect(from.length).toBe(2);
+  expect(JSON.parse(h.files.get(config) ?? "").accounts.personal.from.email).toBe(address);
 });
