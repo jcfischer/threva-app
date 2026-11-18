@@ -46,7 +46,7 @@ describe("bar rendering", () => {
   const render = (state: BarState, locale: "en" | "de" = "en") =>
     renderToStaticMarkup(
       <I18nProvider value={createI18n(locale)}>
-        <BarView state={state} send={() => {}} onSubmit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} />
+        <BarView state={state} send={() => {}} onSubmit={() => {}} onSearch={() => {}} onNote={() => {}} onOpenHit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} />
       </I18nProvider>,
     );
 

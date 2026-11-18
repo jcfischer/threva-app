@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import manifest from "../package.json";
 import { checkCortexMinimum, MIN_CORTEX_TAG } from "../scripts/dev-stack-lib";
 
 const dirs: string[] = [];
@@ -58,5 +59,23 @@ describe("checkCortexMinimum", () => {
 
   test("declares a release tag", () => {
     expect(MIN_CORTEX_TAG).toMatch(/^v\d+\.\d+\.\d+$/);
+  });
+
+  test("pins the verified published Cortex v6.34.0 release with Desk search", () => {
+    expect(manifest.devDependencies["@the-metafactory/cortex"]).toBe("github:the-metafactory/cortex#v6.34.0");
+    expect(MIN_CORTEX_TAG).toBe("v6.34.0");
+  });
+
+  test("the default minimum refuses the older checkout and accepts the required tag", () => {
+    const dir = repo();
+    git(dir, "init", "-q");
+    commit(dir, "before-search");
+    git(dir, "tag", "v6.33.0");
+    commit(dir, "with-search");
+    git(dir, "tag", "v6.34.0");
+    git(dir, "checkout", "-q", "v6.33.0");
+    expect(checkCortexMinimum(dir).ok).toBe(false);
+    git(dir, "checkout", "-q", "v6.34.0");
+    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: "v6.34.0" });
   });
 });

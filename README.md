@@ -9,6 +9,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 - Threva talks to Cortex only over Cortex's local HTTP and WebSocket API. It never imports Cortex modules. Cortex is AGPL-3.0 and not published as a package, and its internals carry no contract.
 - A Cortex stack serves the built Threva UI from a configured directory, so the UI and the API share one origin and Cortex's Host and Origin checks apply unchanged.
 - The product ships as one bundle: an installer that pins a Cortex release, the adapters it needs and this UI, writes a minimal stack config and registers a local service.
+- The bundle pins `cortex-desk-adapters` `v0.2.0`, the first tagged release whose portable mail commands read a mail account file with `--config`. [The adapter release note](docs/desk-mail-adapters.md) holds the tarball sha256 the formula takes and the file contract that `threva setup` writes (node #185, prerequisite for node #146).
 
 ## Layout
 
@@ -47,6 +48,10 @@ bun run dev:stack stop
 ```
 
 The stack refuses to start when `CORTEX_DIR`'s `HEAD` does not contain the Cortex release tag in `MIN_CORTEX_TAG` (`scripts/dev-stack-lib.ts`), and it fails closed when that tag is not fetched there. A Threva change that relies on newer Cortex behaviour raises `MIN_CORTEX_TAG` in the same pull request. `bun run probe:ui` starts the stack, so it fails the same way.
+
+The minimum is Cortex `v6.34.0`, which ships Desk HTTP search over captures, notes, cards and threads. See [the search API handoff](docs/desk-search.md) for the released contract and how to open a hit (node #149, prerequisite for node #145).
+
+Cortex v6.34.0 also supplies the after-meeting card for node #175. Read the `meeting-after` item from `GET /api/desk` and send its key with the `meeting.dismiss` action to `POST /api/desk/action`. Cortex stores the dismissal and omits the card from later Desk reads. [Cortex v6.34.0](https://github.com/the-metafactory/cortex/releases/tag/v6.34.0) · [After-meeting API](https://github.com/the-metafactory/cortex/pull/3803)
 
 The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus and no Discord, and it runs Ranger only when a parser-routing file names it (see below). `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
 

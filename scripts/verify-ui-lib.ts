@@ -22,6 +22,32 @@ async function loaded(page: Page, loadingText: string): Promise<void> {
 }
 
 export const journeys = {
+  search: async (page, shot) => {
+    await showsThreva(page);
+    await loaded(page, "Loading your cards…");
+    const bar = page.getByRole("textbox", { name: "Capture, or ask", exact: true });
+    const word = `Zephyr${Date.now()}`;
+    const note = `${word} is the workshop code`;
+    await bar.fill(`note ${note}`);
+    await bar.press("Enter");
+    const created = page.waitForResponse(response => response.url().endsWith("/api/desk/create") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Keep", exact: true }).click();
+    const creation = await created;
+    if (!creation.ok()) throw new Error(`Note capture refused: ${await creation.text()}`);
+    await bar.waitFor();
+    await bar.fill(word);
+    await page.getByRole("option", { name: `Search for ${word}` }).click();
+    await page.getByRole("button", { name: note, exact: true }).click();
+    await page.getByRole("button", { name: "Close result", exact: true }).waitFor();
+    await page.locator(".bar1 .bar-note-text").getByText(note, { exact: true }).waitFor();
+    await shot("opened-note");
+    const absent = `Absent${Date.now()}`;
+    await bar.fill(absent);
+    await page.getByRole("option", { name: `Search for ${absent}` }).click();
+    await page.getByText("Nothing matched.", { exact: true }).waitFor();
+    if (await bar.inputValue() !== absent) throw new Error("Search cleared the words after an empty result.");
+    await shot("no-matches");
+  },
   day: async (page, shot) => {
     await showsThreva(page);
     await loaded(page, "Loading your cards…");
@@ -196,9 +222,47 @@ export const journeys = {
     await switchView(page, "Day");
     await shot("back-to-day");
   },
+  "after-meeting": async (page, shot) => {
+    await showsThreva(page);
+    await loaded(page, "Loading your cards…");
+    await page.route("**/api/desk", async route => {
+      const response = await route.fetch();
+      const desk = await response.json() as DeskView;
+      await route.fulfill({ response, json: { ...desk, items: desk.items.filter(item => item.kind === "meeting-after") } });
+    });
+    await page.reload({ waitUntil: "networkidle" });
+    const queue = page.getByRole("region", { name: "Cards" });
+    const card = queue.locator(".card[data-item-key]", { has: page.getByText("Meeting over", { exact: true }) }).first();
+    await card.waitFor();
+    const key = await card.getAttribute("data-item-key");
+    if (!key) throw new Error("The after-meeting card has no item key.");
+    const dismissed = queue.locator(`[data-item-key=${JSON.stringify(key)}]`);
+    await shot("before-dismiss");
+    const posted = page.waitForResponse(response => response.url().endsWith("/api/desk/action") && response.request().method() === "POST");
+    await card.getByRole("button", { name: "Nothing to note", exact: true }).click();
+    const response = await posted;
+    if (!response.ok()) throw new Error(`Dismiss refused: ${await response.text()}`);
+    const action: unknown = response.request().postDataJSON();
+    if (!action || typeof action !== "object" || !("action" in action) || action.action !== "meeting.dismiss" || !("key" in action) || action.key !== key) throw new Error("The dismissal did not target the visible after-meeting card.");
+    await dismissed.waitFor({ state: "hidden" });
+    const browser = page.context().browser();
+    if (!browser) throw new Error("The journey requires a new browser context.");
+    const second = await browser.newContext();
+    try {
+      const stored = await second.request.get(new URL("/api/desk", page.url()).href);
+      if (!stored.ok()) throw new Error("The second browser could not read the Desk.");
+      const desk = await stored.json() as DeskView;
+      if (desk.items.some(item => item.key === key)) throw new Error("The dismissed card returned in a second browser.");
+    } finally {
+      await second.close();
+    }
+    await shot("dismissed");
+  },
 } satisfies Record<string, Journey>;
 
 export type JourneyName = keyof typeof journeys;
+
+const OPT_IN = new Set<JourneyName>(["after-meeting"]);
 
 export interface VerifyArgs {
   url: string;
@@ -223,5 +287,5 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     } else if (isJourney(arg)) names.push(arg);
     else return { ok: false, error: `Unknown journey "${arg}". Journeys: ${Object.keys(journeys).join(", ")}.` };
   }
-  return { ok: true, value: { url, out, names: names.length > 0 ? names : (Object.keys(journeys) as JourneyName[]) } };
+  return { ok: true, value: { url, out, names: names.length > 0 ? names : Object.keys(journeys).filter(isJourney).filter(name => !OPT_IN.has(name)) } };
 }

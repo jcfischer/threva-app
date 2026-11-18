@@ -20,7 +20,6 @@ export function interruptionReasonMessage(code: string): TextKey | undefined {
 export type WhyNow =
   | { kind: "cortex"; text: string }
   | { kind: "interrupt"; reason: InterruptReason; text: string }
-  | { kind: "after"; title: string }
   | { kind: "thread" }
   | { kind: "task" };
 
@@ -49,6 +48,7 @@ export function whyNow(entry: Entry): WhyNow | null {
     case "mail":
     case "rule":
     case "soon":
+    case "after":
       if (entry.item.interrupt?.reason) {
         const reason = entry.item.interrupt.reason;
         if (!interruptionReasonMessage(reason.code) && !entry.item.why) return null;
@@ -57,8 +57,6 @@ export function whyNow(entry: Entry): WhyNow | null {
       return entry.item.why ? { kind: "cortex", text: entry.item.why } : null;
     case "sweep":
       return entry.sweep.why ? { kind: "cortex", text: entry.sweep.why } : null;
-    case "after":
-      return { kind: "after", title: entry.event.title };
     case "thread":
       return entry.waits ? { kind: "thread" } : null;
     case "task":
@@ -73,11 +71,10 @@ export function entryTitle(entry: Entry): string {
     case "mail":
     case "rule":
     case "soon":
+    case "after":
       return entry.item.title;
     case "sweep":
       return entry.sweep.title || entry.sweep.label;
-    case "after":
-      return entry.event.title;
     case "thread":
       return entry.thread.question;
     case "task":
@@ -98,7 +95,7 @@ export function around(queue: readonly Entry[]): Around {
 }
 
 export function meetingCard(queue: readonly Entry[], eventKey: string): Entry | undefined {
-  return queue.find((e) => (e.type === "soon" && e.item.eventKey === eventKey) || (e.type === "after" && e.event.key === eventKey));
+  return queue.find((e) => (e.type === "soon" || e.type === "after") && e.item.eventKey === eventKey);
 }
 
 export function inboxCard(queue: readonly Entry[]): Entry | undefined {
