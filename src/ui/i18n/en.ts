@@ -67,6 +67,8 @@ export const en = {
   "everything.out": "Out",
   "everything.into": "Into",
   "everything.chooseParent": "Choose a row…",
+  "everything.remove": "Delete",
+  "everything.removeConfirm": "Delete “{title}”? This cannot be undone.",
   "everything.addTo": "Add to {title}",
   "everything.addPlaceholder": "A new row",
   "everything.add": "Add",
