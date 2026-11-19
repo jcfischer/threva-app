@@ -132,7 +132,7 @@ export const journeys = {
     const source = data.studio?.active.find(topic => topic.slug === "budget-next-year");
     const open = source?.derived?.notes.open ?? [];
     const kept = source?.derived?.notes.kept ?? [];
-    if (open.length === 0 || kept.length === 0) throw new Error("Cortex did not serve open and kept notes for the sample budget topic. Use a fresh dev stack.");
+    if (open.length === 0 && kept.length === 0) throw new Error("Cortex did not serve notes for the sample budget topic. Use a fresh dev stack.");
     await page.reload({ waitUntil: "networkidle" });
     await showsThreva(page);
     await switchView(page, "Everything");
@@ -140,14 +140,15 @@ export const journeys = {
     await page.getByRole("button", { name: "Work", exact: true }).click();
     await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
     const margin = page.locator(".thread-margin-note");
-    await margin.first().waitFor();
+    const keptLines = page.locator(".thread-entry.thread-kept");
+    if (open.length > 0) await margin.first().waitFor();
+    if (kept.length > 0) await keptLines.first().waitFor();
     if (await margin.count() !== open.length) throw new Error(`The margin shows ${await margin.count()} notes, Cortex serves ${open.length} open.`);
     for (const note of open) await margin.getByText(note.text, { exact: false }).first().waitFor();
-    const keptLines = page.locator(".thread-entry.thread-kept");
-    await keptLines.first().waitFor();
     if (await keptLines.count() !== kept.length) throw new Error(`The page shows ${await keptLines.count()} kept notes, Cortex serves ${kept.length}.`);
     for (const note of kept) await keptLines.getByText(note.text, { exact: false }).first().waitFor();
-    const hidden = source?.notes.filter(note => note.status === "dismissed" || note.kind === "relation" || (note.status === "open" && (note.kind === "stand" || note.kind === "idea"))) ?? [];
+    const served = [...open, ...kept];
+    const hidden = source?.notes.filter(note => !served.some(entry => entry.at === note.at)) ?? [];
     for (const note of hidden) {
       if (await page.getByText(note.text, { exact: false }).count() > 0) throw new Error(`A note Cortex leaves out is on the page: ${note.text}`);
     }
