@@ -21,12 +21,14 @@ describe("buildQueue", () => {
   });
 
   test("orders waiting agents, waiting threads, fresh items, other items, then today's list", () => {
-    const queue = buildQueue(desk, studio(thread("s1", "open", false), thread("s2", "open", true)), EMPTY_SESSION, NOW);
+    const queue = buildQueue(desk, studio(thread("s1", true), thread("s2", false, true)), EMPTY_SESSION, NOW);
     expect(queue.map((e) => e.k)).toEqual(["i:agent", "t:s1", "i:fresh", "i:old", "d:t1"]);
   });
 
-  test("a thread waits only while its latest note is open and unanswered", () => {
-    const queue = buildQueue(view(), studio(thread("a", "open", false), thread("b", "kept", false), thread("c", "open", true)), EMPTY_SESSION, NOW);
+  test("a thread joins the queue only when Cortex marks it as waiting", () => {
+    const waiting = thread("a", true);
+    const answered = { ...thread("b", false, true), notes: waiting.notes };
+    const queue = buildQueue(view(), studio(waiting, answered), EMPTY_SESSION, NOW);
     expect(queue.map((e) => e.k)).toEqual(["t:a"]);
   });
 
@@ -38,7 +40,7 @@ describe("buildQueue", () => {
   });
 
   test("a pull brings the card in front of the Studio thread that was open", () => {
-    const threads = studio(thread("s1", "open", false));
+    const threads = studio(thread("s1", true));
     const opened = openStudio(EMPTY_SESSION, "s1");
     expect(buildQueue(desk, threads, opened, NOW).map((e) => e.k)).toEqual(["t:s1", "i:agent", "i:fresh", "i:old", "d:t1"]);
     const pulled = pin(opened, "i:old");
@@ -47,7 +49,7 @@ describe("buildQueue", () => {
   });
 
   test("a pin and an open thread in one session still put the pin first", () => {
-    const threads = studio(thread("s1", "open", false));
+    const threads = studio(thread("s1", true));
     const queue = buildQueue(desk, threads, { skip: [], pin: "i:old", open: "s1" }, NOW);
     expect(queue.map((e) => e.k)).toEqual(["i:old", "t:s1", "i:agent", "i:fresh", "d:t1"]);
   });

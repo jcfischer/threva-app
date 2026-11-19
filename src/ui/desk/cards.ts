@@ -1,5 +1,6 @@
 import type { StudioList, StudioMaterial, StudioNote, StudioNoteKind, StudioThread } from "@desk/types";
 import { safeHref } from "@desk/safe-link";
+import { servedNotes } from "../studio/served";
 
 export const FAINT_FROM = 5;
 
@@ -45,9 +46,9 @@ export function firstSentence(text: string): string {
   return end === -1 ? flat : flat.slice(0, end + 1);
 }
 
-export function noteCards(notes: readonly StudioNote[]): Extract<DeskCard, { side: "right" }>[] {
-  return notes
-    .filter((note) => note.status !== "dismissed")
+export function noteCards(thread: StudioThread): Extract<DeskCard, { side: "right" }>[] {
+  const { open, kept } = servedNotes(thread);
+  return [...open, ...kept]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .map((note, index) => ({
       side: "right" as const,
@@ -65,7 +66,7 @@ export function materialCards(material: readonly StudioMaterial[]): Extract<Desk
 
 /** The small cards of a desk: material on the left, notes on the right, newest first. */
 export function deskCards(thread: StudioThread): DeskCard[] {
-  return [...materialCards(thread.material ?? []), ...noteCards(thread.notes)];
+  return [...materialCards(thread.material ?? []), ...noteCards(thread)];
 }
 
 /** The thing a parked card stands for, or null when it has left the desk since the click. */

@@ -1,4 +1,5 @@
 import type { StudioNote, StudioThread } from "@desk/types";
+import { newestNote, servedNotes } from "./served";
 
 /** The lines a waiting note takes on the Day card before "Show all" offers the rest. */
 export const NOTE_LINES = 6;
@@ -26,9 +27,7 @@ export interface DayCard {
 }
 
 export function newestOpenNote(thread: StudioThread): StudioNote | null {
-  return thread.notes
-    .filter((note) => note.status === "open")
-    .reduce<StudioNote | null>((newest, note) => (!newest || Date.parse(note.at) >= Date.parse(newest.at) ? note : newest), null);
+  return newestNote(servedNotes(thread).open);
 }
 
 export function noteIsLong(text: string, lines: number = NOTE_LINES): boolean {

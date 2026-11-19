@@ -23,7 +23,7 @@ const render = (data: DeskView, key?: string, locale: "en" | "de" = "en") => ren
 );
 
 describe("front card key map", () => {
-  const queue = buildQueue(desk, studio(thread("waiting", "open", false)), EMPTY_SESSION, NOW);
+  const queue = buildQueue(desk, studio(thread("waiting", true)), EMPTY_SESSION, NOW);
 
   test("Enter completes a task and lets a sweep go with the same Desk requests as their buttons", () => {
     expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", myDay: { op: "done", id: "todo" } });

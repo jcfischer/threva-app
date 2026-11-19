@@ -110,7 +110,7 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now, onOpe
   const name = t("studio.assistant");
   const stand = standLine(thread);
   const material = materialCards(thread.material ?? []);
-  const notes = noteCards(thread.notes);
+  const notes = noteCards(thread);
   const topic = open.left?.kind === "topic" ? findThread(studio, open.left.slug) : undefined;
   const left = open.left?.kind === "material" ? openThing(thread, open.left.id) : null;
   const topicId = topic ? leftId(open.left) : null;

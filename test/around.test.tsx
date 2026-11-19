@@ -53,7 +53,7 @@ describe("around", () => {
   test("takes Cortex’s reason for an after-meeting card and catalog reasons for a waiting thread and a task", () => {
     const ended = view({ items: [afterMeeting("e0", "Board call")] });
     expect(around(buildQueue(ended, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "cortex", text: "It ended 5 minutes ago." });
-    expect(around(buildQueue(view(), studio(thread("s1", "open", false)), EMPTY_SESSION, NOW)).why).toEqual({ kind: "thread" });
+    expect(around(buildQueue(view(), studio(thread("s1", true)), EMPTY_SESSION, NOW)).why).toEqual({ kind: "thread" });
     const task = view({ myDay: { date: DAY, items: [{ task: { id: "t1", title: "Write the report" }, areaTitle: "Work" }] } });
     expect(around(buildQueue(task, null, EMPTY_SESSION, NOW)).why).toEqual({ kind: "task" });
   });
@@ -109,7 +109,7 @@ describe("the lines around the card", () => {
   });
 
   test("a waiting topic says why it is there: the assistant delivered a note", () => {
-    const waiting = studio(thread("s1", "open", false));
+    const waiting = studio(thread("s1", true));
     const html = render(view(), { studio: waiting });
     expect(html).toContain("<b>Why now:</b> The assistant left you a note on this topic.");
     expect(html).not.toContain("Your turn");

@@ -8,7 +8,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { DiscussNote, ExchangeView, SessionView, TalkItThrough } from "../src/ui/studio/conversation";
 import { StudioOpen } from "../src/ui/studio/card";
 import { mountDom, type MountedDom } from "./fixtures/dom";
-import { budgetThread } from "./fixtures/studio";
+import { budgetThread, served } from "./fixtures/studio";
 
 const meta = { id: "c1", title: "What goes into next year's budget?", activity: { lastAt: "2026-11-14T08:00:00Z", status: "idle" as const } };
 const entries = [
@@ -86,9 +86,10 @@ describe("discussing a note", () => {
   });
 
   test("an open note offers Discuss, now live", () => {
+    const proposal = { ...budgetThread.notes[2], status: "open" as const };
     const html = wrap(
       <QueueContext.Provider value={{ client: createMemoryClient(), refresh: () => {} }}>
-        <StudioOpen thread={budgetThread} waits onHide={() => {}} />
+        <StudioOpen thread={{ ...budgetThread, notes: [proposal], derived: served([proposal]) }} waits onHide={() => {}} />
       </QueueContext.Provider>,
     );
     expect(html).toContain(">Discuss<");

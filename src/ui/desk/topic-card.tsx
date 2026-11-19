@@ -11,7 +11,7 @@ export function TopicCard({ topic, now, onClose, onOpenDesk }: {
 }) {
   const i18n = useI18n();
   const { t } = i18n;
-  const latest = noteCards(topic.notes).at(0);
+  const latest = noteCards(topic).at(0);
   return <div className="desk-opened-body">
     <span className="eyebrow">{t(`desk.topic.type.${threadType(topic)}`)}</span>
     <b>{topic.question}</b>
