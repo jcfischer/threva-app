@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { deployConfig, deskApiServes, parseDeskApiVersion, scriptsOf } from "../scripts/deploy-local-lib";
+import { deployConfig, deskApiServes, parseDeskApiVersion, scriptsOf, stampOf } from "../scripts/deploy-local-lib";
 
 test("defaults deploy into ~/.local/share/threva against the local Cortex", () => {
   expect(deployConfig({}, [], "/home/someone")).toEqual({
@@ -33,4 +33,8 @@ test("a Cortex serves a build when the major matches and it is not older", () =>
 
 test("lists the scripts a page loads, relative to its directory", () => {
   expect(scriptsOf('<script type="module" crossorigin src="./chunk-163bmv3t.js"></script><script src="/other.js"></script>')).toEqual(["chunk-163bmv3t.js", "other.js"]);
+});
+
+test("the served stamp names the deployed commit", () => {
+  expect(stampOf("6626c78")).toBe('export const THREVA_BUILD = "6626c78";\n');
 });

@@ -44,6 +44,10 @@ export function deskApiServes(found: string, needs: string): boolean {
   return havePatch >= wantPatch;
 }
 
+export const STAMP = "version.js";
+
+export const stampOf = (sha: string): string => `export const THREVA_BUILD = ${JSON.stringify(sha)};\n`;
+
 export function scriptsOf(html: string): string[] {
   return [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].flatMap(match => match[1] ? [match[1].replace(/^\.?\//, "")] : []);
 }

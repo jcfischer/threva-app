@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { deployConfig, deskApiServes, parseDeskApiVersion, scriptsOf, type DeployConfig, type DeployOutcome } from "./deploy-local-lib";
+import { STAMP, deployConfig, deskApiServes, parseDeskApiVersion, scriptsOf, stampOf, type DeployConfig, type DeployOutcome } from "./deploy-local-lib";
 
 class DeployError extends Error {}
 
@@ -45,7 +45,9 @@ async function servedDeskApi(config: DeployConfig): Promise<string | null> {
   }
 }
 
-async function served(config: DeployConfig, uiDir: string): Promise<boolean> {
+async function served(config: DeployConfig, uiDir: string, sha: string): Promise<boolean> {
+  const stamp = await fetch(`${config.cortexUrl}/${STAMP}`).then(response => response.ok ? response.text() : null).catch(() => null);
+  if (stamp !== stampOf(sha)) return false;
   const index = await readText(join(uiDir, "index.html"));
   if (!index) return false;
   const page = await fetch(`${config.cortexUrl}/`).then(response => response.ok ? response.text() : null).catch(() => null);
@@ -57,22 +59,47 @@ async function served(config: DeployConfig, uiDir: string): Promise<boolean> {
   return true;
 }
 
-async function swap(config: DeployConfig, built: string, sha: string): Promise<() => Promise<void>> {
+interface Swapped {
+  replaced: boolean;
+  undo: () => Promise<void>;
+}
+
+async function swap(config: DeployConfig, built: string, sha: string): Promise<Swapped> {
   const next = `${config.uiDir}.next`;
   const previous = `${config.uiDir}.prev`;
   await rm(next, { recursive: true, force: true });
   await mkdir(dirname(config.uiDir), { recursive: true });
   await cp(built, next, { recursive: true });
   await writeFile(join(next, "VERSION"), `${sha}\n`);
+  await writeFile(join(next, STAMP), stampOf(sha));
   await rm(previous, { recursive: true, force: true });
-  const hadCurrent = existsSync(config.uiDir);
-  if (hadCurrent) await rename(config.uiDir, previous);
-  await rename(next, config.uiDir);
-  return async () => {
-    if (!hadCurrent) return;
-    await rm(config.uiDir, { recursive: true, force: true });
-    await rename(previous, config.uiDir);
+  const replaced = existsSync(config.uiDir);
+  if (replaced) await rename(config.uiDir, previous);
+  try {
+    await rename(next, config.uiDir);
+  } catch (error) {
+    if (replaced) await rename(previous, config.uiDir);
+    throw error;
+  }
+  return {
+    replaced,
+    undo: async () => {
+      await rm(config.uiDir, { recursive: true, force: true });
+      if (replaced) await rename(previous, config.uiDir);
+    },
   };
+}
+
+async function builtDeskApi(config: DeployConfig): Promise<string | null> {
+  const packageDir = join(config.sourceDir, "node_modules/@the-metafactory/cortex");
+  const manifest = JSON.parse(await readText(join(packageDir, "package.json")) ?? "{}") as { exports?: Record<string, { types?: unknown } | undefined> };
+  const types = manifest.exports?.["./desk-api"]?.types;
+  if (typeof types !== "string") return null;
+  return parseDeskApiVersion(await readText(join(packageDir, types)) ?? "");
+}
+
+function refusal(config: DeployConfig, found: string | null, needs: string): string {
+  return found === null ? `Cortex at ${config.cortexUrl} did not report its Desk API version.` : `Cortex serves Desk API ${found}; this build needs ${needs}.`;
 }
 
 async function deploy(config: DeployConfig): Promise<DeployOutcome> {
@@ -83,16 +110,15 @@ async function deploy(config: DeployConfig): Promise<DeployOutcome> {
     const current = recorded === "" ? null : recorded;
     if (current === sha && !config.force) return { status: "current", sha };
     build(config, sha);
-    const needs = parseDeskApiVersion(await readText(join(config.sourceDir, "node_modules/@the-metafactory/cortex/src/desk-api/api-version.ts")) ?? "");
+    const needs = await builtDeskApi(config);
     if (!needs) return { status: "failed", sha, reason: "The build has no Desk API version to check Cortex against." };
     const found = await servedDeskApi(config);
-    if (!found || !deskApiServes(found, needs)) {
-      return { status: "refused", sha, needs, found, reason: found ? `Cortex serves Desk API ${found}; this build needs ${needs}.` : `Cortex at ${config.cortexUrl} did not report its Desk API version.` };
-    }
-    const rollback = await swap(config, join(config.sourceDir, "dist/ui"), sha);
-    if (!(await served(config, config.uiDir))) {
-      await rollback();
-      return { status: "failed", sha, reason: `Cortex at ${config.cortexUrl} did not serve the new build; the previous UI is back.` };
+    if (!found || !deskApiServes(found, needs)) return { status: "refused", sha, needs, found, reason: refusal(config, found, needs) };
+    const swapped = await swap(config, join(config.sourceDir, "dist/ui"), sha);
+    if (!(await served(config, config.uiDir, sha))) {
+      await swapped.undo();
+      const after = swapped.replaced ? "the previous UI is back" : "the new UI was removed";
+      return { status: "failed", sha, reason: `Cortex at ${config.cortexUrl} did not serve the new build; ${after}.` };
     }
     return { status: "deployed", sha, from: current, deskApi: found };
   } catch (error) {

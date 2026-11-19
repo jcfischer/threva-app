@@ -85,7 +85,7 @@ With either file, the command runs `cortex config validate` on the generated con
 
 `bun run deploy:local` puts the latest `main` in front of the Cortex that serves Threva on this machine. It keeps its own clone in `~/.local/share/threva/src`, builds `origin/main` there from a clean tree, and replaces `~/.local/share/threva/ui`, the directory that Cortex's `mc.ui.dir` names. Cortex reads that directory on every request, so it serves the new build without a restart; an open page shows it after a reload.
 
-The command does nothing when `ui/VERSION` already names the `main` commit; `--force` rebuilds anyway. It refuses when the Cortex at `THREVA_CORTEX_URL` (default `http://127.0.0.1:8767`) serves an older Desk API than the build needs, and it puts the previous UI back when Cortex does not serve the new one. The previous UI stays in `ui.prev`. It prints one JSON line and exits non-zero on a refusal or failure. `THREVA_UI_DIR`, `THREVA_DEPLOY_SOURCE` and `THREVA_REPO_URL` change the paths.
+The command does nothing when `ui/VERSION` already names the `main` commit; `--force` rebuilds anyway. It refuses when the Cortex at `THREVA_CORTEX_URL` (default `http://127.0.0.1:8767`) serves an older Desk API than the build needs, and it puts the previous UI back, or removes the new one when there was none, unless Cortex serves the new build's `version.js` stamp. The previous UI stays in `ui.prev`. It prints one JSON line and exits non-zero on a refusal or failure. `THREVA_UI_DIR`, `THREVA_DEPLOY_SOURCE` and `THREVA_REPO_URL` change the paths.
 
 ## Licence
 
