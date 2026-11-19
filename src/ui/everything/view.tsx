@@ -259,6 +259,9 @@ export function EverythingView({ client, active = true, initialDay = null, openR
             const target = pathTo(root, event.target.value)?.at(-1);
             if (target) move(row.id, moveTo(root, row.id, target.id, target.children.length));
           }}><option value="">{t("everything.chooseParent")}</option>{options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
+          {!project && <button type="button" className="btn quiet" disabled={busy} onClick={() => {
+            if (window.confirm(t("everything.removeConfirm", { title: row.title }))) void change(day, { op: "outline-remove", revision: day.revision, id: row.id, confirm: true });
+          }}>{t("everything.remove")}</button>}
         </div>
       </details>}
       <OutlineTitle title={row.title} openLabel={t("everything.openRow")} onOpen={() => openRow(row.id)} />

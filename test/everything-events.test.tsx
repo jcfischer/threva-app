@@ -47,6 +47,9 @@ function memoryClient(seed: MyDayOutline = outlineFixture()) {
       const moving = path.at(-1)!;
       parent.children = parent.children.filter(child => child.id !== command.id);
       pathTo(saved.outline, command.parent)!.at(-1)!.children.splice(command.index, 0, moving);
+    } else if (command.op === "outline-remove") {
+      const parent = pathTo(saved.outline, command.id)!.at(-2)!;
+      parent.children = parent.children.filter(child => child.id !== command.id);
     } else {
       const node = pathTo(saved.outline, command.id)!.at(-1)!;
       node.done = command.op === "outline-complete";
@@ -184,6 +187,23 @@ test("a row with children can be finished and reopened both in the outline and o
   expect(pageAction().textContent).toBe("Done");
   expect(commands.map(command => command.op)).toEqual(["outline-complete", "outline-reopen", "outline-complete", "outline-reopen"]);
   expect(commands.every(command => "id" in command && command.id === "project")).toBe(true);
+}));
+
+test("Delete in the row menu asks first, then removes the row", async () => surface(async (container, render) => {
+  const { client, commands } = memoryClient();
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work"); await click(container, "Exercise");
+  const asked: string[] = [];
+  let answer = false;
+  window.confirm = (message?: string) => { asked.push(message ?? ""); return answer; };
+  await click(container.querySelector('[data-row="plain"]')!, "Delete");
+  expect(commands).toEqual([]);
+  expect(container.querySelector('[data-row="plain"]')).not.toBeNull();
+  answer = true;
+  await click(container.querySelector('[data-row="plain"]')!, "Delete");
+  expect(asked).toHaveLength(2);
+  expect(commands).toEqual([{ op: "outline-remove", id: "plain", confirm: true, revision: 12 }]);
+  expect(container.querySelector('[data-row="plain"]')).toBeNull();
 }));
 
 test("drag moves send the source snapshot's revision and drop index", async () => surface(async (container, render) => {
