@@ -195,15 +195,41 @@ test("Delete in the row menu asks first, then removes the row", async () => surf
   await click(container, "Work"); await click(container, "Exercise");
   const asked: string[] = [];
   let answer = false;
+  const original = window.confirm;
   window.confirm = (message?: string) => { asked.push(message ?? ""); return answer; };
-  await click(container.querySelector('[data-row="plain"]')!, "Delete");
-  expect(commands).toEqual([]);
-  expect(container.querySelector('[data-row="plain"]')).not.toBeNull();
-  answer = true;
-  await click(container.querySelector('[data-row="plain"]')!, "Delete");
-  expect(asked).toHaveLength(2);
-  expect(commands).toEqual([{ op: "outline-remove", id: "plain", confirm: true, revision: 12 }]);
-  expect(container.querySelector('[data-row="plain"]')).toBeNull();
+  try {
+    await click(container.querySelector('[data-row="plain"]')!, "Delete");
+    expect(commands).toEqual([]);
+    expect(container.querySelector('[data-row="plain"]')).not.toBeNull();
+    answer = true;
+    await click(container.querySelector('[data-row="plain"]')!, "Delete");
+    expect(asked).toHaveLength(2);
+    expect(commands).toEqual([{ op: "outline-remove", id: "plain", confirm: true, revision: 12 }]);
+    expect(container.querySelector('[data-row="plain"]')).toBeNull();
+  } finally {
+    window.confirm = original;
+  }
+}));
+
+test("a Delete that Cortex refuses shows its message and keeps the row", async () => surface(async (container, render) => {
+  const sent: OutlineCommand[] = [];
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(outlineFixture());
+    sent.push((JSON.parse(init.body as string) as { command: OutlineCommand }).command);
+    return Response.json({ error: "Only empty items without source links or completion history can be removed." }, { status: 409 });
+  });
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work");
+  const original = window.confirm;
+  window.confirm = () => true;
+  try {
+    await click(container.querySelector('[data-row="project"]')!, "Delete");
+  } finally {
+    window.confirm = original;
+  }
+  expect(sent).toEqual([{ op: "outline-remove", id: "project", confirm: true, revision: 12 }]);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Only empty items without source links or completion history can be removed.");
+  expect(container.querySelector('[data-row="project"]')).not.toBeNull();
 }));
 
 test("drag moves send the source snapshot's revision and drop index", async () => surface(async (container, render) => {
