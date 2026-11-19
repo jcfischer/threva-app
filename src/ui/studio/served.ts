@@ -10,6 +10,11 @@ export function servedNotes(thread: Served): ServedNotes {
   return thread.derived?.notes ?? NO_NOTES;
 }
 
+export function visibleNotes(thread: Served): StudioNote[] {
+  const { open, kept } = servedNotes(thread);
+  return [...open, ...kept];
+}
+
 export function waitsOnYou(thread: Served): boolean {
   return thread.derived?.waitsOnYou === true;
 }

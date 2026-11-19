@@ -51,7 +51,7 @@ The stack refuses to start when `CORTEX_DIR`'s `HEAD` does not contain the Corte
 
 The minimum is Cortex `v6.35.0`, which ships Desk HTTP search over captures, notes, cards and threads. See [the search API handoff](docs/desk-search.md) for the released contract and how to open a hit (node #149, prerequisite for node #145).
 
-Cortex v6.35.0 also serves each Studio thread's derived facts on `GET /api/desk/studio`: `derived.waitsOnYou` and `derived.notes.open` / `derived.notes.kept`. Threva reads what waits on you and which of a topic's notes show from those fields and computes neither itself (node #173). Open notes sit in the margin, kept notes on the page, and the notes Cortex leaves out — open stand and idea proposals, relation notes and dismissed notes — render nowhere. A Cortex that does not serve the fields leaves no topic waiting and every notes area empty.
+Cortex v6.35.0 also serves each Studio thread's derived facts on `GET /api/desk/studio`: `derived.waitsOnYou` and `derived.notes.open` / `derived.notes.kept`. Threva reads what waits on you and which of a topic's notes show from those fields (node #173). Open notes sit in the margin, kept notes on the page, and the notes Cortex leaves out of those fields — open stand and idea proposals, relation notes and dismissed notes — appear on neither the thread page nor the desk's notes rail. The desk's history strip below it is the topic's record, so it still lists every note Cortex files, except relation notes. A Cortex that does not serve the fields leaves no topic waiting and every notes area empty.
 
 Cortex v6.34.0 also supplies the after-meeting card for node #175. Read the `meeting-after` item from `GET /api/desk` and send its key with the `meeting.dismiss` action to `POST /api/desk/action`. Cortex stores the dismissal and omits the card from later Desk reads. [Cortex v6.34.0](https://github.com/the-metafactory/cortex/releases/tag/v6.34.0) · [After-meeting API](https://github.com/the-metafactory/cortex/pull/3803)
 
@@ -59,7 +59,7 @@ The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/t
 
 To prove a UI change in a real browser, start a second stack with its own `THREVA_DEV_DIR` and `THREVA_DEV_PORT`, then run `bun run verify:ui` (scripted journeys with screenshots) and `bun run explore:ui` (Bombadil property exploration). `.claude/skills/verify-threva` has the steps.
 
-The sample budget topic includes a relation note to the offsite topic. Cortex leaves relation notes out of a thread's served notes, so the desk and the thread page do not show it; the `notes` journey reads the served open and kept notes and checks the margin, the page and the desk's notes rail against them. For a dev stack seeded before the served notes landed, use a fresh `THREVA_DEV_DIR` for verification.
+The sample budget topic includes a relation note to the offsite topic. Cortex leaves relation notes out of a thread's served notes, so no surface shows it; the desk's relation-follow machinery belonged to the note shape Cortex no longer serves and needs a new node against `GET /api/desk/studio/relations`. The `notes` journey reads the served open and kept notes and checks the margin, the page and the desk's notes rail against them. For a dev stack seeded before the served notes landed, use a fresh `THREVA_DEV_DIR` for verification.
 
 ### Conversations and the parser
 

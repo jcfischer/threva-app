@@ -9,7 +9,7 @@ import { useStudioAct } from "./act";
 import { CloseTopicForm } from "./close";
 import { DiscussNote, TalkItThrough } from "./conversation";
 import { dayCard, type DayCardNote } from "./day-card";
-import { servedNotes } from "./served";
+import { visibleNotes } from "./served";
 import { Sparring } from "./sparring";
 
 type Run = ReturnType<typeof useStudioAct>["run"];
@@ -17,8 +17,7 @@ type Run = ReturnType<typeof useStudioAct>["run"];
 export type TimelineEntry = { at: string; note: StudioNote } | { at: string; response: StudioResponse };
 
 export function timeline(thread: StudioThread): TimelineEntry[] {
-  const { open, kept } = servedNotes(thread);
-  const notes = [...open, ...kept].map((note) => ({ at: note.at, note }));
+  const notes = visibleNotes(thread).map((note) => ({ at: note.at, note }));
   const responses = thread.responses.map((response) => ({ at: response.at, response }));
   return [...notes, ...responses].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }

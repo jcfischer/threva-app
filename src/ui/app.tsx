@@ -74,14 +74,14 @@ export function App({ client, notifier: givenNotifier }: { client?: DeskClient; 
         {view === "week" && <WeekView client={api} state={state} onOpenRow={id => { setOpenEverythingRow(current => ({ id, request: (current?.request ?? 0) + 1 })); setOpenedEverything(true); setView("everything"); }} />}
         {openedEverything && <div hidden={view !== "everything"}><EverythingView client={api} openRow={openEverythingRow} active={view === "everything" && desk === null} shares={state.view?.mirror?.balance?.areas} assistantName={state.view?.assistantName} onChange={state.refresh} onOpenDesk={slug => { setDesk({ slug, from: "everything" }); }} /></div>}
       </div>
-      {desk && <DeskScreen client={api} slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => { setDesk(null); }} onOpenDesk={slug => { setDesk({ ...desk, slug }); }} />}
+      {desk && <DeskScreen client={api} slug={desk.slug} from={desk.from} state={state} now={now} onBack={() => { setDesk(null); }} />}
     </main>
   );
 }
 
-function DeskScreen({ client, slug, from, state, now, onBack, onOpenDesk }: { client: DeskClient; slug: string; from: Place; state: DeskState & { refresh: () => void }; now: number; onBack: () => void; onOpenDesk: (slug: string) => void }) {
+function DeskScreen({ client, slug, from, state, now, onBack }: { client: DeskClient; slug: string; from: Place; state: DeskState & { refresh: () => void }; now: number; onBack: () => void }) {
   const { t } = useI18n();
-  return <Desk client={client} refresh={state.refresh} studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} onOpenDesk={onOpenDesk} />;
+  return <Desk client={client} refresh={state.refresh} studio={state.studio} slug={slug} loading={state.view === null && state.error === null} backLabel={t(from === "day" ? "desk.back.day" : "desk.back.everything")} onBack={onBack} now={now} />;
 }
 
 export function DayView({ client, state, session, setSession, now, queue: given, onOpenDesk }: {

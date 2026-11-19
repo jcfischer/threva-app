@@ -1,6 +1,5 @@
 import type { StudioList, StudioMaterial, StudioNote, StudioNoteKind, StudioThread } from "@desk/types";
-import { safeHref } from "@desk/safe-link";
-import { servedNotes } from "../studio/served";
+import { visibleNotes } from "../studio/served";
 
 export const FAINT_FROM = 5;
 
@@ -18,25 +17,9 @@ export type OpenThing =
   | { side: "left"; id: string; material: StudioMaterial }
   | { side: "right"; id: string; note: StudioNote };
 
-export type RelationTarget =
-  | { kind: "topic"; topic: StudioThread }
-  | { kind: "text"; label: string }
-  | { kind: "link"; label: string; href: string };
-
 export function findThread(studio: StudioList | null, slug: string): StudioThread | undefined {
   const data = studio?.studio;
   return data ? [...data.active, ...(data.parked ?? []), ...(data.closed ?? [])].find((thread) => thread.slug === slug) : undefined;
-}
-
-export function relationTarget(note: StudioNote, studio: StudioList | null): RelationTarget | null {
-  if (note.kind !== "relation" || !note.relates) return null;
-  const { kind, label, href } = note.relates;
-  if (kind === "thread") {
-    const topic = findThread(studio, label);
-    if (topic) return { kind: "topic", topic };
-  }
-  const safe = kind === "link" ? safeHref(href) : undefined;
-  return safe ? { kind: "link", label, href: safe } : { kind: "text", label };
 }
 
 /** The text up to its first sentence end, or all of it when it has none. */
@@ -47,8 +30,7 @@ export function firstSentence(text: string): string {
 }
 
 export function noteCards(thread: StudioThread): Extract<DeskCard, { side: "right" }>[] {
-  const { open, kept } = servedNotes(thread);
-  return [...open, ...kept]
+  return visibleNotes(thread)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .map((note, index) => ({
       side: "right" as const,

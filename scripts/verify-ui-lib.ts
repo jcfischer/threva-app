@@ -140,9 +140,11 @@ export const journeys = {
     await page.getByRole("button", { name: "Work", exact: true }).click();
     await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
     const margin = page.locator(".thread-margin-note");
+    await margin.first().waitFor();
     if (await margin.count() !== open.length) throw new Error(`The margin shows ${await margin.count()} notes, Cortex serves ${open.length} open.`);
     for (const note of open) await margin.getByText(note.text, { exact: false }).first().waitFor();
     const keptLines = page.locator(".thread-entry.thread-kept");
+    await keptLines.first().waitFor();
     if (await keptLines.count() !== kept.length) throw new Error(`The page shows ${await keptLines.count()} kept notes, Cortex serves ${kept.length}.`);
     for (const note of kept) await keptLines.getByText(note.text, { exact: false }).first().waitFor();
     const hidden = source?.notes.filter(note => note.status === "dismissed" || note.kind === "relation" || (note.status === "open" && (note.kind === "stand" || note.kind === "idea"))) ?? [];
