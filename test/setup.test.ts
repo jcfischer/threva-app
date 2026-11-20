@@ -147,6 +147,13 @@ describe("threva setup", () => {
     expect(h.said).toContain("Threva uses the NATS server at nats://127.0.0.1:4333. Setup does not start one for it.");
   });
 
+  test("--reconfigure without --nats keeps the NATS URL the stack already has", async () => {
+    const h = harness({ answers: ["1", KEY, ""], existing: true, writtenNats: "nats://127.0.0.1:4333" });
+    expect(await setup(["--reconfigure"], h.deps)).toBe(0);
+    expect(JSON.parse(h.files.get(join(stackDir, "system", "system.yaml")) ?? "").nats.url).toBe("nats://127.0.0.1:4333");
+    expect(h.calls.some((c) => c.tool === "brew" && c.args.join(" ") === "services start nats-server")).toBe(false);
+  });
+
   test("a Keychain failure stops setup before the stack is written", async () => {
     const h = harness({ answers: ["1", KEY, ""], securityStatus: 1 });
     expect(await setup([], h.deps)).toBe(1);
@@ -176,7 +183,7 @@ describe("setup helpers", () => {
   test("unknown arguments print the usage", () => {
     expect(parseSetupArgs(["--force"]).ok).toBe(false);
     expect(parseSetupArgs(["--port", "80"]).ok).toBe(false);
-    expect(parseSetupArgs(["--cortex", "/x", "--reconfigure"])).toEqual({ ok: true, value: { reconfigure: true, cortex: "/x", ui: null, port: 8767, nats: "nats://127.0.0.1:4222" } });
+    expect(parseSetupArgs(["--cortex", "/x", "--reconfigure"])).toEqual({ ok: true, value: { reconfigure: true, cortex: "/x", ui: null, port: 8767, nats: null } });
   });
 
   test("--nats takes only a nats:// URL without credentials or a path", () => {

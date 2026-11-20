@@ -70,7 +70,7 @@ export interface SetupArgs {
   cortex: string | null;
   ui: string | null;
   port: number;
-  nats: string;
+  nats: string | null;
 }
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -87,7 +87,7 @@ export function isNatsUrl(raw: string): boolean {
 }
 
 export function parseSetupArgs(argv: readonly string[]): Checked<SetupArgs> {
-  const args: SetupArgs = { reconfigure: false, cortex: null, ui: null, port: MC_PORT, nats: NATS_URL };
+  const args: SetupArgs = { reconfigure: false, cortex: null, ui: null, port: MC_PORT, nats: null };
   for (let i = 0; i < argv.length; i++) {
     const name = argv[i];
     const value = argv[i + 1];
@@ -278,6 +278,16 @@ function firstLine(result: RunResult): string {
   return (result.stderr || result.stdout).trim().split("\n")[0] ?? "";
 }
 
+export function writtenNats(systemText: string | null): string | null {
+  if (systemText === null) return null;
+  try {
+    const url = (JSON.parse(systemText) as { nats?: { url?: unknown } }).nats?.url;
+    return typeof url === "string" && isNatsUrl(url) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function writtenPort(stackText: string | null): number | null {
   if (stackText === null) return null;
   try {
@@ -337,7 +347,8 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     deps.say(`A Threva stack already exists at ${paths.dir}. Setup changed nothing. Run threva setup --reconfigure to set it up again.`);
     return 0;
   }
-  const { port, nats } = parsed.value;
+  const { port } = parsed.value;
+  const nats = parsed.value.nats ?? (written ? writtenNats(deps.readFile(join(paths.dir, "system", "system.yaml"))) : null) ?? NATS_URL;
   const ownServicePort = written ? writtenPort(deps.readFile(join(paths.dir, "stacks", `${STACK_SLUG}.yaml`))) : null;
   if (ownServicePort !== port && (await answersOn(deps, port))) {
     deps.say(`Another program already answers on port ${port}, perhaps another Cortex. Stop it, or run threva setup --port <port> with a free port.`);

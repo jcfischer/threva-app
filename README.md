@@ -37,7 +37,7 @@ Setup checks that the inbox can be read and asks for the password again if the c
 
 Setup also requests access to macOS Calendars and Reminders. Mail arrivals and calendar events appear in Day once their sources are connected. If you skip mail or deny a macOS permission, you can run setup again with `--reconfigure`.
 
-Setup points the stack at NATS on `nats://127.0.0.1:4222` and starts Homebrew's `nats-server` for it. To run Threva beside another Cortex stack that already uses that NATS and port 8767, give it its own: `threva setup --nats nats://127.0.0.1:4333 --port 8795`. With `--nats`, setup writes that URL to the stack and does not start a NATS server; one must already listen there.
+Setup points the stack at NATS on `nats://127.0.0.1:4222` and starts Homebrew's `nats-server` for it. To run Threva beside another Cortex stack that already uses that NATS and port 8767, give it its own: `threva setup --nats nats://127.0.0.1:4333 --port 8795`. With `--nats`, setup writes that URL to the stack and does not start a NATS server; one must already listen there. A later `threva setup --reconfigure` keeps the URL the stack has unless `--nats` is given again.
 
 ## Run it locally
 
