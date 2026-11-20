@@ -155,6 +155,12 @@ const opened = (container: HTMLElement, side: "left" | "right") => container.que
 const button = (container: HTMLElement, side: "left" | "right", label: string) =>
   Array.from(opened(container, side)!.querySelectorAll("button")).find((candidate) => candidate.textContent === label)!;
 const studioActs = (client: MemoryClient) => client.calls.filter((call) => call.name === "studio.act");
+const kept = budgetThread.notes[1];
+const openHistory = async (container: HTMLElement, text: string) => {
+  const block = [...container.querySelectorAll<HTMLButtonElement>('[data-history="note"]')].find((candidate) => candidate.getAttribute("aria-label")?.includes(text));
+  if (!block) throw new Error(`no history block for ${text}`);
+  await act(async () => { block.click(); });
+};
 
 describe("a click on a parked card", () => {
   test("opens the card at full size outside its column and dims the parked card in place", async () => {
@@ -172,12 +178,12 @@ describe("a click on a parked card", () => {
 
   test("a second click, Put back and Escape each close it", async () => {
     await withDesk(async (container, click) => {
-      await click(stand.at);
+      await click(kept.at);
       expect(opened(container, "right")).not.toBeNull();
-      await click(stand.at);
+      await click(kept.at);
       expect(opened(container, "right")).toBeNull();
 
-      await click(stand.at);
+      await click(kept.at);
       const putBack = button(container, "right", "Put back");
       await act(async () => { putBack.click(); });
       expect(opened(container, "right")).toBeNull();
@@ -191,9 +197,9 @@ describe("a click on a parked card", () => {
   test("one card is open per side, and opening another puts the first back", async () => {
     await withDesk(async (container, click) => {
       await click(note.at);
-      await click(stand.at);
+      await click(kept.at);
       expect(container.querySelectorAll("[data-desk-opened]")).toHaveLength(1);
-      expect(opened(container, "right")!.textContent).toContain("Hire one now, the second in summer.");
+      expect(opened(container, "right")!.textContent).toContain("Ask Ada which hire matters most.");
       expect((container.querySelector(`[data-desk-card="${note.at}"]`)!).getAttribute("aria-expanded")).toBe("false");
       await click("m0");
       expect(container.querySelectorAll("[data-desk-opened]")).toHaveLength(2);
@@ -224,8 +230,8 @@ describe("a click on a parked card", () => {
 
 describe("acts on an opened note", () => {
   test("Keep sends keep and closes the card, and the desk refreshes", async () => {
-    const wired = await withDesk(async (container, click) => {
-      await click(stand.at);
+    const wired = await withDesk(async (container) => {
+      await openHistory(container, "Hire one now");
       const keep = button(container, "right", "Take it as my stand");
       await act(async () => { keep.click(); });
       expect(opened(container, "right")).toBeNull();
@@ -238,8 +244,8 @@ describe("acts on an opened note", () => {
   });
 
   test("Dismiss sends dismiss", async () => {
-    const wired = await withDesk(async (container, click) => {
-      await click(stand.at);
+    const wired = await withDesk(async (container) => {
+      await openHistory(container, "Hire one now");
       const dismiss = button(container, "right", "Dismiss");
       await act(async () => { dismiss.click(); });
       expect(opened(container, "right")).toBeNull();
@@ -251,7 +257,7 @@ describe("acts on an opened note", () => {
     let release!: (value: Result<unknown>) => void;
     const pending = new Promise<Result<unknown>>((resolve) => { release = resolve; });
     await withDesk(async (container, click) => {
-      await click(stand.at);
+      await openHistory(container, "Hire one now");
       const keep = button(container, "right", "Take it as my stand");
       await act(async () => { keep.click(); });
 

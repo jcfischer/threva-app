@@ -1,5 +1,5 @@
 import type { StudioList, StudioMaterial, StudioNote, StudioNoteKind, StudioThread } from "@desk/types";
-import { safeHref } from "@desk/safe-link";
+import { visibleNotes } from "../studio/served";
 
 export const FAINT_FROM = 5;
 
@@ -17,25 +17,9 @@ export type OpenThing =
   | { side: "left"; id: string; material: StudioMaterial }
   | { side: "right"; id: string; note: StudioNote };
 
-export type RelationTarget =
-  | { kind: "topic"; topic: StudioThread }
-  | { kind: "text"; label: string }
-  | { kind: "link"; label: string; href: string };
-
 export function findThread(studio: StudioList | null, slug: string): StudioThread | undefined {
   const data = studio?.studio;
   return data ? [...data.active, ...(data.parked ?? []), ...(data.closed ?? [])].find((thread) => thread.slug === slug) : undefined;
-}
-
-export function relationTarget(note: StudioNote, studio: StudioList | null): RelationTarget | null {
-  if (note.kind !== "relation" || !note.relates) return null;
-  const { kind, label, href } = note.relates;
-  if (kind === "thread") {
-    const topic = findThread(studio, label);
-    if (topic) return { kind: "topic", topic };
-  }
-  const safe = kind === "link" ? safeHref(href) : undefined;
-  return safe ? { kind: "link", label, href: safe } : { kind: "text", label };
 }
 
 /** The text up to its first sentence end, or all of it when it has none. */
@@ -45,9 +29,8 @@ export function firstSentence(text: string): string {
   return end === -1 ? flat : flat.slice(0, end + 1);
 }
 
-export function noteCards(notes: readonly StudioNote[]): Extract<DeskCard, { side: "right" }>[] {
-  return notes
-    .filter((note) => note.status !== "dismissed")
+export function noteCards(thread: StudioThread): Extract<DeskCard, { side: "right" }>[] {
+  return visibleNotes(thread)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .map((note, index) => ({
       side: "right" as const,
@@ -65,7 +48,7 @@ export function materialCards(material: readonly StudioMaterial[]): Extract<Desk
 
 /** The small cards of a desk: material on the left, notes on the right, newest first. */
 export function deskCards(thread: StudioThread): DeskCard[] {
-  return [...materialCards(thread.material ?? []), ...noteCards(thread.notes)];
+  return [...materialCards(thread.material ?? []), ...noteCards(thread)];
 }
 
 /** The thing a parked card stands for, or null when it has left the desk since the click. */

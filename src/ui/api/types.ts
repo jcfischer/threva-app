@@ -7,6 +7,7 @@ import type {
   DeskInterruptReason,
   DeskItem as CortexDeskItem,
   DeskLink as CortexDeskLink,
+  DeskStudioThread,
   DeskView as CortexDeskView,
   MailRuleView,
   MailSweepView,
@@ -119,9 +120,17 @@ export type StudioNote =
   Pick<AssistantNote, "at" | "kind" | "status" | "because" | "relates" | "text"> &
   Partial<Pick<AssistantNote, "trigger" | "model" | "mode" | "run">>;
 
+type ServedThread = DeskStudioThread["derived"];
+
+export interface StudioDerived {
+  waitsOnYou: ServedThread["waitsOnYou"];
+  notes: Record<keyof ServedThread["notes"], StudioNote[]>;
+}
+
 export type StudioThread = Pick<StudioThreadView, "slug" | "question" | "stand" | "responses"> &
   Partial<Pick<StudioThreadView, "type" | "state" | "closed" | "outcome" | "outcomeText" | "thinkTonight" | "log" | "material" | "thinking">> & {
     notes: StudioNote[];
+    derived?: StudioDerived;
   };
 
 export interface StudioList {

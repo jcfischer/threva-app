@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderStudioThreads, seedStudio, STUDIO_AREA, type Git } from "../scripts/dev-stack-studio";
 import type { StudioNote } from "@desk/types";
-import { threadWaits } from "../src/ui/queue/order";
 
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
 const SECTIONS = new Set(["question", "where i stand", "ivy's notes", "material", "log", "outcome", "responses"]);
@@ -80,9 +79,10 @@ describe("renderStudioThreads", () => {
     }
   });
 
-  test("one thread waits on the user, the other is answered", () => {
-    expect(threads.map((t) => threadWaits(t.thread))).toEqual([true, false]);
-    const answered = threads[1]?.thread;
+  test("one sample thread leaves a note open, the other answers its note", () => {
+    const [waiting, answered] = threads.map(({ thread }) => thread);
+    expect(waiting?.notes[0]?.status).toBe("open");
+    expect(waiting?.responses).toEqual([]);
     expect(answered?.responses[0]?.re).toBe(answered?.notes[0]?.at);
   });
 

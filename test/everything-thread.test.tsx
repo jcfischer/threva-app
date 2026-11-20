@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { EditorView } from "@codemirror/view";
 import { createClient } from "@desk/client";
 import { createMemoryClient } from "@desk/memory-client";
-import type { MyDayOutline, StudioAct, StudioProject, StudioThread } from "@desk/types";
+import type { MyDayOutline, StudioAct, StudioNote, StudioProject, StudioThread } from "@desk/types";
 import { addressedText } from "../src/ui/everything/addressed";
 import { orderedThreadEntries, ThreadPage } from "../src/ui/everything/thread-page";
 import { EverythingView } from "../src/ui/everything/view";
@@ -27,15 +27,13 @@ function day(): MyDayOutline {
   ] };
 }
 
-test("the thread's pure page seam orders responses and kept notes, excluding open and dismissed notes", () => {
-  const thread: StudioThread = { ...budgetThread, notes: [...budgetThread.notes,
-    { at: "2026-11-14T10:00:00Z", kind: "relation", status: "kept", text: "A kept relation" },
-    { at: "2026-11-11T10:00:00Z", kind: "idea", status: "dismissed", text: "Dismissed" },
-  ] };
-  expect(orderedThreadEntries(thread)).toEqual([
+test("the thread's pure page seam shows the notes Cortex serves as kept, after the responses", () => {
+  expect(orderedThreadEntries(budgetThread)).toEqual([
     { at: "2026-11-12T03:12:00Z", author: "assistant", text: "Ask Ada which hire matters most." },
     { at: "2026-11-12T09:40:00Z", author: "you", text: "Ada says the designer first." },
-    { at: "2026-11-14T10:00:00Z", author: "assistant", text: "A kept relation" },
+  ]);
+  expect(orderedThreadEntries({ ...budgetThread, derived: undefined })).toEqual([
+    { at: "2026-11-12T09:40:00Z", author: "you", text: "Ada says the designer first." },
   ]);
 });
 
@@ -48,13 +46,22 @@ test("the recorded Studio fixture reads as one authored page and an open-note ma
   expect(html).toContain("Mira,");
   expect(html).toContain("You,");
   const margin = html.slice(html.indexOf("<aside"));
-  for (const note of budgetThread.notes.filter(note => note.status === "open")) expect(margin).toContain(note.text.replaceAll("'", "&#x27;"));
-  expect(margin).toContain("Why: Travel was a third of last year&#x27;s spend.");
-  expect(margin).toContain("Relation");
-  expect(margin.match(/>Keep</g)).toHaveLength(3);
-  expect(margin.match(/>Dismiss</g)).toHaveLength(3);
+  expect(margin).toContain("Ada&#x27;s draft adds two hires.");
+  expect(margin).not.toContain("Hire one now, the second in summer.");
+  expect(margin).not.toContain("This relates to the March offsite.");
+  expect(margin).not.toContain("Why: Travel was a third of last year&#x27;s spend.");
+  expect(margin).not.toContain("Relation");
+  expect(margin.match(/>Keep</g)).toHaveLength(1);
+  expect(margin.match(/>Dismiss</g)).toHaveLength(1);
   expect(html).toContain("Add to the topic");
   expect(html).not.toContain("Close with an outcome");
+});
+
+test("an older Cortex without the served notes leaves the margin empty and the page to the responses", () => {
+  const html = renderToStaticMarkup(<ThreadPage client={createClient()} project={mapping} initialStudio={studioList([{ ...budgetThread, derived: undefined }])} assistantName="Mira" onChange={noop} />);
+  expect(html).not.toContain("thread-margin-note");
+  expect(html).not.toContain("thread-entry thread-kept");
+  expect(html).toContain("Ada says the designer first.");
 });
 
 test("closed, absent and unreadable Studio data have no editor; neutral assistant wording is catalog-backed", () => {
@@ -93,8 +100,9 @@ async function type(container: Element, text: string) {
   await inputText(field, text);
   return field;
 }
-function studioClient() {
+function studioClient(extraOpen: readonly StudioNote[] = []) {
   const thread = structuredClone(budgetThread);
+  thread.derived!.notes.open.push(...structuredClone([...extraOpen]));
   const outline = day();
   const acts: StudioAct[] = [];
   let refusal: string | null = null;
@@ -107,7 +115,11 @@ function studioClient() {
     acts.push(body);
     if (refusal) return { ok: false, message: refusal, status: 409 };
     if (body.act === "keep" || body.act === "dismiss") {
-      thread.notes.find(note => note.at === body.note)!.status = body.act === "keep" ? "kept" : "dismissed";
+      const note = thread.derived!.notes.open.find(open => open.at === body.note) ?? thread.notes.find(entry => entry.at === body.note)!;
+      note.status = body.act === "keep" ? "kept" : "dismissed";
+      const served = thread.derived!.notes;
+      served.open = served.open.filter(open => open.at !== note.at);
+      served.kept = body.act === "keep" ? [...served.kept, note] : served.kept;
       outline.studioProjects![0]!.openNotes!--;
     }
     if (body.act === "respond") thread.responses.push({ at: "2026-11-14T11:00:00Z", text: body.text });
@@ -158,22 +170,23 @@ test("a missing mapping state stops rendering instead of guessing from done", ()
 });
 
 test("Keep and Dismiss use the Studio act client and reload the page and outline count; refusals sit by their buttons", async () => surface(async (container, render) => {
-  const memory = studioClient();
+  const memory = studioClient([{ at: "2026-11-13T21:00:00Z", kind: "note", status: "open", text: "The offsite and the budget share a decision." }]);
   await render(<EverythingView client={memory.client} initialDay={day()} assistantName="Mira" />);
   await click(container, "Work"); await click(container, budgetThread.question);
-  const proposal = () => [...container.querySelectorAll(".thread-margin-note")].find(note => note.textContent!.includes("Hire one now"))!;
-  memory.refuse("The proposal changed. Read it again.");
-  await click(proposal(), "Keep");
-  expect(proposal().querySelector('[role="alert"]')?.textContent).toBe("The proposal changed. Read it again.");
+  const waiting = () => [...container.querySelectorAll(".thread-margin-note")].find(note => note.textContent!.includes("Ada's draft"))!;
+  const second = () => [...container.querySelectorAll(".thread-margin-note")].find(note => note.textContent!.includes("share a decision"))!;
+  memory.refuse("The note changed. Read it again.");
+  await click(waiting(), "Keep");
+  expect(waiting().querySelector('[role="alert"]')?.textContent).toBe("The note changed. Read it again.");
   memory.refuse(null);
-  await click(proposal(), "Keep");
-  expect(container.querySelector(".thread-main")?.textContent).toContain("Hire one now, the second in summer.");
-  expect(container.querySelector(".thread-margin")?.textContent).not.toContain("Hire one now");
-  await click([...container.querySelectorAll(".thread-margin-note")].find(note => note.textContent!.includes("March offsite"))!, "Dismiss");
-  expect(container.querySelector(".thread-margin")?.textContent).not.toContain("March offsite");
-  expect(container.querySelector(".thread-main")?.textContent).not.toContain("March offsite");
+  await click(waiting(), "Keep");
+  expect(container.querySelector(".thread-main")?.textContent).toContain("Ada's draft adds two hires.");
+  expect(container.querySelector(".thread-margin")?.textContent).not.toContain("Ada's draft");
+  await click(second(), "Dismiss");
+  expect(container.querySelector(".thread-margin")?.textContent).not.toContain("share a decision");
+  expect(container.querySelector(".thread-main")?.textContent).not.toContain("share a decision");
   expect(memory.acts.map(act => act.act)).toEqual(["keep", "keep", "dismiss"]);
-  expect(memory.acts[1]).toEqual({ act: "keep", thread: mapping.slug, note: "2026-11-13T03:14:00Z" });
+  expect(memory.acts[1]).toEqual({ act: "keep", thread: mapping.slug, note: "2026-11-13T20:48:41Z" });
   await click(container, "‹ Work");
   expect(container.querySelector('[data-row="thread"]')!.textContent).toContain("1 note open");
 }));

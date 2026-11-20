@@ -10,7 +10,7 @@ import { StudioCard, StudioOpen, timeline } from "../src/ui/studio/card";
 import { dayCard, newestOpenNote, noteIsLong } from "../src/ui/studio/day-card";
 import { item, NOW as DESK_NOW, view } from "./fixtures/desk";
 import { mountDom, inputText, type MountedDom } from "./fixtures/dom";
-import { budgetThread, studioList } from "./fixtures/studio";
+import { budgetThread, served, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
 const noop = () => {};
@@ -27,7 +27,7 @@ const open = (thread: StudioThread = budgetThread, locale: "en" | "de" = "en", p
   renderToStaticMarkup(wrap(<StudioOpen thread={thread} waits onHide={noop} personas={personas} />, locale));
 
 const note = (overrides: Partial<StudioNote> = {}): StudioNote => ({ at: "2026-11-13T20:48:41Z", kind: "note", status: "open", text: "One hire waits until summer.", ...overrides });
-const withNotes = (notes: StudioNote[], type: StudioThread["type"] = "question"): StudioThread => ({ ...budgetThread, type, notes });
+const withNotes = (open: StudioNote[], type: StudioThread["type"] = "question"): StudioThread => ({ ...budgetThread, type, notes: open, derived: served(open) });
 
 describe("dayCard", () => {
   test("shows the newest open note, its age and the answer act", () => {
@@ -37,18 +37,20 @@ describe("dayCard", () => {
     expect(shown.reason).toBe("delivered");
   });
 
-  test("a stand, an idea or a relation is kept or dismissed instead of answered", () => {
-    for (const kind of ["stand", "idea", "relation"] as const) expect(dayCard(withNotes([note({ kind })])).acts).toEqual(["keep", "dismiss"]);
+  test("an open stand or an open idea is kept or dismissed instead of answered", () => {
+    for (const kind of ["stand", "idea"] as const) expect(dayCard(withNotes([note({ kind })])).acts).toEqual(["keep", "dismiss"]);
   });
 
-  test("only the newest open note counts, and kept ones stay out", () => {
-    const notes = [note({ at: "2026-11-10T08:00:00Z", text: "Old and dismissed.", status: "dismissed" }), note({ at: "2026-11-12T08:00:00Z", text: "Older open." }), note({ at: "2026-11-13T08:00:00Z", text: "Newest open." })];
-    expect(dayCard(withNotes(notes)).note?.text).toBe("Newest open.");
-    expect(newestOpenNote(withNotes([note({ status: "kept" })]))).toBeNull();
+  test("the newest served open note is the one that waits, and kept notes stay out", () => {
+    const open = [note({ at: "2026-11-12T08:00:00Z", text: "Older open." }), note({ at: "2026-11-13T08:00:00Z", text: "Newest open." })];
+    expect(dayCard(withNotes(open)).note?.text).toBe("Newest open.");
+    const kept = note({ status: "kept" });
+    expect(newestOpenNote({ ...budgetThread, notes: [kept], derived: served([], [kept]) })).toBeNull();
   });
 
   test("a topic with nothing open shows no note, no act and no reason", () => {
-    expect(dayCard(withNotes([note({ status: "kept" })]))).toMatchObject({ note: null, acts: [], reason: null, long: false });
+    expect(dayCard(withNotes([]))).toMatchObject({ note: null, acts: [], reason: null, long: false });
+    expect(dayCard({ ...budgetThread, derived: undefined })).toMatchObject({ note: null, acts: [], reason: null, long: false });
   });
 
   test("the stand is one line on a question topic and nowhere else", () => {
@@ -190,12 +192,20 @@ describe("the acts on the card", () => {
 });
 
 describe("the card in the queue", () => {
-  const answered = { ...budgetThread, responses: [...budgetThread.responses, { at: "2026-11-13T21:00:00Z", text: "One hire waits." }] };
+  const answered = { ...budgetThread, derived: served([budgetThread.notes[0]], [budgetThread.notes[1]], false), responses: [...budgetThread.responses, { at: "2026-11-13T21:00:00Z", text: "One hire waits." }] };
 
   test("a waiting topic comes before fresh items, and leaves once it is answered", () => {
     const desk = view({ items: [item({ key: "fresh", kind: "sensor", score: 1, since: DESK_NOW })] });
     expect(buildQueue(desk, studioList([budgetThread]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["t:budget-next-year", "i:fresh"]);
     expect(buildQueue(desk, studioList([answered]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["i:fresh"]);
+  });
+
+  test("a Studio response without the served fields marks no thread as waiting", () => {
+    const older = { ...budgetThread, derived: undefined };
+    const desk = view({ items: [item({ key: "fresh", kind: "sensor", score: 1, since: DESK_NOW })] });
+    expect(buildQueue(desk, studioList([older]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["i:fresh"]);
+    expect(card(older)).toContain("What goes into next year&#x27;s budget?");
+    expect(card(older)).not.toContain('aria-label="Your answer"');
   });
 
   test("the open view is no longer reachable from the queue, and the session still holds a topic first", () => {
@@ -209,45 +219,43 @@ describe("the card in the queue", () => {
 });
 
 describe("the open view", () => {
-  test("shows the stand, the notes and responses in time order, and the material in the rail", () => {
+  test("shows the stand, the served notes and responses in time order, and the material in the rail", () => {
     const html = open();
     expect(html).toContain("Keep the team as it is and cut travel.");
-    const order = ["Ask Ada which hire matters most.", "Ada says the designer first.", "Hire one now, the second in summer.", "Ada&#x27;s draft adds two hires."];
+    const order = ["Ask Ada which hire matters most.", "Ada says the designer first.", "Ada&#x27;s draft adds two hires."];
     const at = order.map((text) => html.indexOf(text));
     expect(at.every((i) => i > 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
-    expect(html).toContain("Proposal for your stand");
-    expect(html).toContain("Why: Travel was a third of last year&#x27;s spend.");
     expect(html).toContain(">kept<");
     expect(html).toContain(">open<");
-    expect(html).toContain("Take it as my stand");
+    expect(html).not.toContain("Hire one now, the second in summer.");
+    expect(html).not.toContain("This relates to the March offsite.");
     const rail = html.slice(html.indexOf('class="stside"'));
     expect(rail).toContain("Ada Lovelace");
     expect(rail).toContain('href="https://example.org/brief"');
     expect(html.indexOf('class="stmain"')).toBeLessThan(html.indexOf('class="stside"'));
   });
 
-  test("an open stand, idea or relation offers keep, discuss and dismiss; a plain note or a kept one does not", () => {
-    expect(open().match(/>Dismiss</g)?.length).toBe(2);
-    const idea = { ...budgetThread, notes: budgetThread.notes.map((n) => (n.kind === "idea" ? { ...n, status: "open" as const } : n)) };
-    const html = open(idea);
-    expect(html.match(/>Dismiss</g)?.length).toBe(3);
-    expect(html.match(/>Keep</g)?.length).toBe(2);
-    expect(html).toContain("Discuss");
+  test("a served open stand offers keep, discuss and dismiss; a plain note does not", () => {
+    expect(open().match(/>Dismiss</g)).toBeNull();
+    expect(open().match(/>Keep</g)).toBeNull();
+    const proposal = withNotes([note({ kind: "stand", text: "Hire one now, the second in summer." })]);
+    expect(open(proposal).match(/>Dismiss</g)?.length).toBe(1);
+    expect(open(proposal)).toContain("Take it as my stand");
+    expect(open(proposal)).toContain("Discuss");
   });
 
-  test("relation notes appear with their own catalog kind", () => {
-    expect(open()).toContain("This relates to the March offsite.");
-    expect(open()).toContain("Relation");
-    expect(open(undefined, "de")).toContain("Bezug");
-    expect(timeline(budgetThread).some((e) => "note" in e && e.note.kind === "relation")).toBe(true);
+  test("the raw notes Cortex does not serve as visible notes never render", () => {
+    expect(timeline(budgetThread).some((e) => "note" in e && e.note.kind === "relation")).toBe(false);
+    expect(timeline(budgetThread).some((e) => "note" in e && e.note.status === "dismissed")).toBe(false);
+    expect(open({ ...budgetThread, derived: undefined })).not.toContain("Ada&#x27;s draft adds two hires.");
   });
 
   test("it offers the response field and the thread acts, in German too", () => {
     const en = open();
     for (const label of ["Your answer to the assistant", "Think it over tonight", "Close with an outcome", ">Park<"]) expect(en).toContain(label);
     const de = open(undefined, "de");
-    for (const label of ["Wo ich stehe", "Deine Antwort an den Assistenten", "Heute Nacht durchdenken", "Parken", "Als Standpunkt übernehmen"]) expect(de).toContain(label);
+    for (const label of ["Wo ich stehe", "Deine Antwort an den Assistenten", "Heute Nacht durchdenken", "Parken", "Mit einem Ergebnis abschliessen"]) expect(de).toContain(label);
   });
 
   test("its rail offers sparring, with a question per persona Cortex lists and without one when it lists none", () => {

@@ -8,7 +8,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { ExchangeView, SessionView } from "../src/ui/studio/conversation";
 import { StudioOpen } from "../src/ui/studio/card";
 import { mountDom, type MountedDom } from "./fixtures/dom";
-import { budgetThread } from "./fixtures/studio";
+import { budgetThread, served } from "./fixtures/studio";
 
 function emptyConversations() {
   const client = createMemoryClient();
@@ -87,7 +87,8 @@ describe("assistant text as Markdown", () => {
   });
 
   test("a Studio note renders as Markdown", async () => {
-    const thread = { ...budgetThread, notes: [{ ...budgetThread.notes[0]!, text: REPLY }] };
+    const note = { ...budgetThread.notes[0]!, text: REPLY };
+    const thread = { ...budgetThread, notes: [note], derived: served([note]) };
     const container = await render(<StudioOpen thread={thread} waits onHide={() => {}} personas={[]} />);
     expectFormatted(container);
   });

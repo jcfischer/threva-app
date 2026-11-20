@@ -1,5 +1,6 @@
 import type { DeskEvent, DeskItem, DeskItemKind, DeskView, MailSweep, StudioList, StudioThread, TodayTask } from "@desk/types";
 import { isRuleOffer } from "../arrivals/outcomes";
+import { waitsOnYou } from "../studio/served";
 
 export type Entry =
   | { k: string; type: "agent"; item: DeskItem }
@@ -44,16 +45,6 @@ export function isAgentItem(item: DeskItem): boolean {
   return AGENT_KINDS.has(item.kind);
 }
 
-export function threadWaits(thread: StudioThread): boolean {
-  const latest = thread.notes.reduce<StudioThread["notes"][number] | null>(
-    (last, note) => (!last || Date.parse(note.at) >= Date.parse(last.at) ? note : last),
-    null,
-  );
-  if (!latest || latest.status !== "open") return false;
-  const noteAt = Date.parse(latest.at);
-  return !thread.responses.some((r) => Date.parse(r.at) >= noteAt);
-}
-
 export function buildQueue(
   view: DeskView,
   studio: StudioList | null,
@@ -73,7 +64,7 @@ export function buildQueue(
     ...[...(view.mailSweeps ?? []), ...(view.mailDigests ?? [])].map((sweep): Entry => ({ k: `s:${sweep.id}`, type: "sweep", sweep })),
     ...items.filter(isMailItem).map((item): Entry => ({ k: `i:${item.key}`, type: "mail", item, learning })),
     ...items.filter(isRuleOffer).map((item): Entry => ({ k: `i:${item.key}`, type: "rule", item })),
-    ...(studio?.studio?.active ?? []).filter(threadWaits).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread, waits: true })),
+    ...(studio?.studio?.active ?? []).filter(waitsOnYou).map((thread): Entry => ({ k: `t:${thread.slug}`, type: "thread", thread, waits: true })),
     ...items.filter((i) => other(i) && isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: true })),
     ...items.filter((i) => other(i) && !isFresh(i)).map((item): Entry => ({ k: `i:${item.key}`, type: "item", item, fresh: false })),
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
@@ -82,7 +73,7 @@ export function buildQueue(
   const held = openThread(studio, session.open);
   const withHeld: Entry[] = !held
     ? queue
-    : [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: threadWaits(held) }, ...queue.filter((e) => e.k !== `t:${held.slug}`)];
+    : [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: waitsOnYou(held) }, ...queue.filter((e) => e.k !== `t:${held.slug}`)];
   return promoteInterruptions(applySession(withHeld, session), view.items, session.pin);
 }
 

@@ -8,7 +8,7 @@ describe("verify:ui arguments", () => {
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.value.url).toBe("http://127.0.0.1:8791/");
     expect(parsed.value.out).toBe("out");
-    expect(parsed.value.names).toEqual(["search", "day", "desk", "relations", "week", "everything"]);
+    expect(parsed.value.names).toEqual(["search", "day", "desk", "notes", "week", "everything"]);
   });
 
   test("runs the after-meeting dismissal only when explicitly named", () => {
@@ -23,7 +23,7 @@ describe("verify:ui arguments", () => {
   });
 
   test("refuses an unknown journey and a flag without a value", () => {
-    expect(parseArgs(["mail"], {})).toEqual({ ok: false, error: `Unknown journey "mail". Journeys: ${Object.keys(journeys).join(", ")}.` });
+    for (const name of ["mail", "relations"]) expect(parseArgs([name], {})).toEqual({ ok: false, error: `Unknown journey "${name}". Journeys: ${Object.keys(journeys).join(", ")}.` });
     expect(parseArgs(["--out"], {})).toEqual({ ok: false, error: "--out needs a value." });
   });
 });
