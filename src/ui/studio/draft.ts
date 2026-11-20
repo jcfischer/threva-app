@@ -1,4 +1,4 @@
-import type { DeskClient } from "@desk/client";
+import type { DeskClient, Result } from "@desk/client";
 import type { StudioAct } from "@desk/types";
 
 type RevisionAct = Extract<StudioAct, { act: "park" | "close" }>;
@@ -10,6 +10,13 @@ export const carriesDraftRevision = (act: StudioAct): act is RevisionAct => act.
 export async function readDraftRevision(client: DeskClient, thread: string): Promise<string | null> {
   const read = await client.studio.draft(thread);
   return read.ok && typeof read.data.revision === "string" ? read.data.revision : null;
+}
+
+/** The draft revision Cortex serves with a refused park or close, so the retry carries the draft the user is now shown. */
+export function refusedRevision(result: Result<unknown>): string | null {
+  if (result.ok || typeof result.body !== "object" || result.body === null) return null;
+  const revision = (result.body as { revision?: unknown }).revision;
+  return typeof revision === "string" ? revision : null;
 }
 
 /** The act carrying the revision Threva read with the topic, so an edit made since then answers 409 instead of passing silently. */

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { StudioAct } from "@desk/types";
 import { useDeskAct } from "../act/use-act";
 import { useQueue } from "../cards/act";
-import { readDraftRevision, withDraftRevision } from "./draft";
+import { readDraftRevision, refusedRevision, withDraftRevision } from "./draft";
 
 /** The Studio acts, carrying the draft revision of the topic whose slug is given, read once when that topic loads. */
 export function useStudioAct(thread: string | null = null) {
@@ -12,6 +12,11 @@ export function useStudioAct(thread: string | null = null) {
   useEffect(() => {
     revision.current = thread === null ? Promise.resolve(null) : readDraftRevision(client, thread);
   }, [client, thread]);
-  const run = (studio: StudioAct) => act(studio, async (requestId) => client.studio.act(withDraftRevision(studio, await revision.current), requestId));
+  const run = async (studio: StudioAct) => {
+    const result = await act(studio, async (requestId) => client.studio.act(withDraftRevision(studio, await revision.current), requestId));
+    const next = result.ok ? null : refusedRevision(result);
+    if (next !== null) revision.current = Promise.resolve(next);
+    return result;
+  };
   return { busy, error, run };
 }

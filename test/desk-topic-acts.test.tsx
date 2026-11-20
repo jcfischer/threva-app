@@ -164,7 +164,7 @@ interface Wired {
 
 const neverEdited: Result<unknown> = { ok: true, data: { text: "", revision: "legacy-1", editable: true } };
 
-async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }, draft: Answer = neverEdited): Promise<Wired> {
+async function mount(thread: StudioThread, reply: Answer = { ok: true, data: { message: "Done." } }, draft: Answer = neverEdited): Promise<Wired> {
   const dom = mountDom();
   let refreshed = 0;
   const client = createMemoryClient();
@@ -420,6 +420,23 @@ describe("parking and finishing under Desk API 2", () => {
       expect(shown?.textContent).toContain("Draft revision draft-9");
       expect(wired.container.textContent).not.toContain("Parked.");
       expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a park refused for a stale revision parks on the next try with the revision Cortex served", async () => {
+    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "A newer draft, saved elsewhere.", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
+    const answers: Result<unknown>[] = [conflict, { ok: true, data: { message: "Parked." } }];
+    const wired = await mount(budgetThread, () => answers.shift() ?? conflict, savedDraft);
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
+      expect(wired.container.querySelector("[data-desk-draft]")?.textContent).toContain("Draft revision draft-9");
+      await wired.click("Park");
+      expect(wired.writes[1]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-9" });
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.refreshed()).toBe(1);
     } finally {
       await wired.cleanup();
     }

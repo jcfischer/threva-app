@@ -22,6 +22,12 @@ export function phraseText(phrase: DeskPhrase, i18n: I18n): string | null {
   }
 }
 
+const servedPhrase = (labelPhrase: DeskPhrase | undefined, i18n: I18n): string | null =>
+  labelPhrase === undefined ? null : phraseText(labelPhrase, i18n);
+
+const catalogKey = <K extends string>(map: Partial<Record<K, TextKey>>, code: K): TextKey | undefined =>
+  Object.hasOwn(map, code) ? map[code] : undefined;
+
 const LINK_TEXT: Partial<Record<DeskLink["kind"], TextKey>> = {
   mail: "link.mail",
   issue: "link.issue",
@@ -35,9 +41,7 @@ const LINK_TEXT: Partial<Record<DeskLink["kind"], TextKey>> = {
 
 /** A detail link: its label phrase when Cortex sends one, else the wording of its kind. */
 export function linkText(link: DeskLink, i18n: I18n): string {
-  const phrase = link.labelPhrase ? phraseText(link.labelPhrase, i18n) : null;
-  const key = Object.hasOwn(LINK_TEXT, link.kind) ? LINK_TEXT[link.kind] : undefined;
-  return phrase ?? i18n.t(key ?? "action.open", { url: link.url });
+  return servedPhrase(link.labelPhrase, i18n) ?? i18n.t(catalogKey(LINK_TEXT, link.kind) ?? "action.open", { url: link.url });
 }
 
 const SWEEP_TEXT: Partial<Record<MailSweep["kind"], Partial<Record<MailSweep["basis"], TextKey>>>> = {
@@ -48,9 +52,8 @@ const SWEEP_TEXT: Partial<Record<MailSweep["kind"], Partial<Record<MailSweep["ba
 
 /** What a group of mail has in common: its category phrase when Cortex sends one, else its kind and basis. */
 export function sweepText(sweep: Pick<MailSweep, "kind" | "basis" | "labelPhrase">, i18n: I18n): string {
-  const phrase = sweep.labelPhrase ? phraseText(sweep.labelPhrase, i18n) : null;
   const key = SWEEP_TEXT[sweep.kind]?.[sweep.basis];
-  return phrase ?? (key === undefined ? "" : i18n.t(key));
+  return servedPhrase(sweep.labelPhrase, i18n) ?? (key === undefined ? "" : i18n.t(key));
 }
 
 const ACTION_TEXT: Partial<Record<string, TextKey>> = {
@@ -65,7 +68,6 @@ const ACTION_TEXT: Partial<Record<string, TextKey>> = {
 
 /** An action's wording: an adapter's own content, else its label phrase, else its code, else the code itself. */
 export function actionText(action: Pick<DeskAction, "id" | "labelPhrase" | "content">, i18n: I18n): string {
-  const phrase = action.labelPhrase ? phraseText(action.labelPhrase, i18n) : null;
-  const key = Object.hasOwn(ACTION_TEXT, action.id) ? ACTION_TEXT[action.id] : undefined;
-  return action.content ?? phrase ?? (key === undefined ? action.id : i18n.t(key));
+  const key = catalogKey(ACTION_TEXT, action.id);
+  return action.content ?? servedPhrase(action.labelPhrase, i18n) ?? (key === undefined ? action.id : i18n.t(key));
 }
