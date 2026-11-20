@@ -45,7 +45,7 @@ export function seededApp(client: MemoryClient, {
 }
 
 export function sweep(overrides: Partial<MailSweep> = {}): MailSweep {
-  return { id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [], ...overrides };
+  return { id: "news", kind: "sweep", basis: "sender", target: "archive", labelPhrase: { code: "mail.sweep-category", params: { category: "Newsletters" } }, title: "Weekly news", why: "Unread.", mails: [], ...overrides };
 }
 
 export function thread(slug: string, waitsOnYou: boolean, answered = false): StudioThread {

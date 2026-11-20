@@ -44,7 +44,7 @@ describe("client", () => {
   test("returns Cortex's error text on a failed write", async () => {
     const fetchStub: Fetch = async () => new Response(JSON.stringify({ ok: false, error: "Ranger actions are not set up on this stack." }), { status: 409 });
     const result = await createClient(fetchStub).queue.action("ranger.approve", "k");
-    expect(result).toEqual({ ok: false, message: "Ranger actions are not set up on this stack.", status: 409 });
+    expect(result).toMatchObject({ ok: false, message: "Ranger actions are not set up on this stack.", status: 409 });
   });
 
   test("reports a network failure without a message", async () => {
@@ -92,7 +92,7 @@ describe("queue rendering", () => {
             key: "a",
             kind: "decision",
             title: "Which database?",
-            actions: [{ id: "ranger.rule", label: "Give your ruling", role: "primary", wired: true }],
+            actions: [{ id: "ranger.rule", role: "primary", wired: true }],
             explanation: { sentence: "The agent needs a database choice.", choices: [{ label: "SQLite", consequence: "Simple, local.", ruling: "Use SQLite." }] },
           }),
         ],
@@ -114,7 +114,7 @@ describe("queue rendering", () => {
             key: "handoff:h1",
             kind: "task-handoff",
             title: "Codex finished “Draft the memo”",
-            actions: [{ id: "task.done", label: "Done", role: "primary", wired: true }],
+            actions: [{ id: "task.done", role: "primary", wired: true }],
             handoff: { id: "h1", state: "ready", line: "Done", since: NOW, result: "The memo." },
           }),
         ],

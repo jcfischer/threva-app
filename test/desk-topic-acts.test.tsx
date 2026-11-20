@@ -158,15 +158,20 @@ interface Wired {
   button: (label: string) => HTMLButtonElement;
   click: (label: string) => Promise<void>;
   writes: { body: Record<string, unknown> }[];
+  reads: string[];
   refreshed: () => number;
 }
 
-async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }): Promise<Wired> {
+const neverEdited: Result<unknown> = { ok: true, data: { text: "", revision: "legacy-1", editable: true } };
+
+async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }, draft: Result<unknown> = neverEdited): Promise<Wired> {
   const dom = mountDom();
   let refreshed = 0;
   const client = createMemoryClient();
   client.seed("studio.act", reply);
+  client.seed("studio.draft", draft);
   const writes = { get value() { return client.calls.filter((call) => call.name === "studio.act").map((call) => ({ body: call.args[0] as Record<string, unknown> })); } };
+  const reads = { get value() { return client.calls.filter((call) => call.name === "studio.draft").map((call) => String(call.args[0])); } };
   await act(async () => {
     dom.root.render(
       <I18nProvider value={createI18n("en")}>
@@ -182,7 +187,7 @@ async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, 
   const click = async (label: string) => {
     await act(async () => { button(label).click(); });
   };
-  return { container: dom.container, cleanup: dom.cleanup, button, click, get writes() { return writes.value; }, refreshed: () => refreshed };
+  return { container: dom.container, cleanup: dom.cleanup, button, click, get writes() { return writes.value; }, get reads() { return reads.value; }, refreshed: () => refreshed };
 }
 
 const field = (wired: Wired, selector: string): HTMLInputElement | HTMLTextAreaElement => {
@@ -332,6 +337,91 @@ describe("the acts through the Studio act client", () => {
       await inputText(field(wired, 'input[type="date"]'), "2020-01-01");
       await wired.click("Close the topic");
       expect(wired.container.textContent).toContain(refused);
+      expect(field(wired, 'textarea[aria-label="The decision"]').value).toBe("We keep the team.");
+      expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+});
+
+const savedDraft: Result<unknown> = { ok: true, data: { text: "Two days, no talks, one walk.", revision: "draft-7", editable: true } };
+
+describe("parking and finishing under Desk API 2", () => {
+  test("a saved draft's revision travels with the park", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, savedDraft);
+    try {
+      await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a saved draft's revision travels with the close", async () => {
+    const wired = await mount(asTopic, { ok: true, data: { message: "Closed." } }, savedDraft);
+    try {
+      await wired.click("Finish");
+      await chooseOutcome(wired, "Dropped");
+      await inputText(field(wired, 'textarea[aria-label="Why it is dropped"]'), "The question answered itself.");
+      await wired.click("Close the topic");
+      expect(wired.writes[0]?.body).toMatchObject({ act: "close", thread: budgetThread.slug, outcome: "dropped", draftRevision: "draft-7" });
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a never-edited topic parks with the legacy revision Cortex computed, so every park carries one", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, neverEdited);
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "legacy-1" });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a topic whose draft Cortex cannot read parks without a revision, as today", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, { ok: false, message: null, status: 0 });
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a stale revision shows the draft as Cortex has it now and reports no success", async () => {
+    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "A newer draft, saved elsewhere.", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
+    const wired = await mount(budgetThread, conflict, savedDraft);
+    try {
+      await wired.click("Park");
+      const shown = wired.container.querySelector("[data-desk-draft]");
+      expect(shown?.getAttribute("data-desk-draft")).toBe("changed");
+      expect(shown?.textContent).toContain("The draft changed since Threva read it");
+      expect(shown?.textContent).toContain("A newer draft, saved elsewhere.");
+      expect(shown?.textContent).toContain("Draft revision draft-9");
+      expect(wired.container.textContent).not.toContain("Parked.");
+      expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a stale revision on the close form shows the draft under the form and keeps what was typed", async () => {
+    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
+    const wired = await mount(asQuestion, conflict, savedDraft);
+    try {
+      await wired.click("Finish");
+      await inputText(field(wired, 'textarea[aria-label="The decision"]'), "We keep the team.");
+      await inputText(field(wired, 'input[aria-label="What you expect to see if it was right"]'), "A lighter year.");
+      await inputText(field(wired, 'input[type="date"]'), "2026-12-15");
+      await wired.click("Close the topic");
+      expect(wired.container.querySelector("[data-desk-draft]")?.textContent).toContain("The draft is empty.");
       expect(field(wired, 'textarea[aria-label="The decision"]').value).toBe("We keep the team.");
       expect(wired.refreshed()).toBe(0);
     } finally {

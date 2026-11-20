@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { newRequestId, type Result } from "@desk/client";
 
-export type ActError = { message: string | null } | null;
+export type ActError = { message: string | null; body?: unknown } | null;
 
 export type ActCall<T> = (requestId: string) => Promise<Result<T>>;
 
@@ -32,7 +32,7 @@ export function useDeskAct(refresh?: () => void) {
     }
     last.current = mayHaveBeenWritten(result) ? { key, id } : null;
     if (result.ok) refresh?.();
-    else setError({ message: result.message });
+    else setError({ message: result.message, body: result.body });
     return result;
   }
   return { busy, error, act, isInFlight: () => inFlight.current };

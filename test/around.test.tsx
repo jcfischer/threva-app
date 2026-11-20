@@ -14,8 +14,9 @@ const MIN = 60 * 1000;
 const newsletters: MailSweep = {
   id: "sw1",
   kind: "sweep",
+  basis: "sender",
   target: "archive",
-  label: "Newsletters",
+  labelPhrase: { code: "mail.sweep-category", params: { category: "Newsletters" } },
   title: "Three newsletters from this week",
   why: "You let mail like this go before.",
   mails: [
@@ -47,7 +48,7 @@ describe("around", () => {
   test("takes Cortex's why for the current card and lists up to three next titles", () => {
     const result = around(buildQueue(busyDesk, null, EMPTY_SESSION, NOW));
     expect(result.why).toEqual({ kind: "cortex", text: "Starts in 10 minutes." });
-    expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", label: "Newsletters", count: 3, archive: true }] });
+    expect(result.then).toEqual({ titles: [{ k: "i:m0", title: "Invoice" }, { k: "i:m1", title: "Workshop dates" }, { k: "i:m2", title: "Lunch Friday" }], more: 1, sweeps: [{ k: "s:sw1", group: newsletters, count: 3, archive: true }] });
   });
 
   test("takes Cortex’s reason for an after-meeting card and catalog reasons for a waiting thread and a task", () => {
@@ -93,6 +94,11 @@ describe("the lines around the card", () => {
     expect(html).toContain("Newsletters: archive 3?");
     expect(html.indexOf("Why now:")).toBeLessThan(html.indexOf("Team standup"));
     expect(html.indexOf("Team standup")).toBeLessThan(html.indexOf('class="nextline"'));
+  });
+
+  test("a group without a category phrase is worded by what its mails share", () => {
+    const html = render({ ...busyDesk, mailSweeps: [{ ...newsletters, basis: "list", labelPhrase: undefined }] });
+    expect(html).toContain("mailing list: archive 3?");
   });
 
   test("a sweep to Trash keeps its wording in the Then line", () => {

@@ -10,10 +10,10 @@ import { EntryCard } from "../src/ui/queue/queue-view";
 import { item, NOW, sweep } from "./fixtures/desk";
 import { mountDom, type MountedDom } from "./fixtures/dom";
 
-const action = (id: string, label: string, wired = true): DeskAction => ({ id, label, role: "secondary", wired });
+const action = (id: string, wired = true): DeskAction => ({ id, role: "secondary", wired });
 
 const mail = (actions: DeskAction[], overrides: Partial<DeskItem> = {}): DeskItem =>
-  item({ key: "mail:1", kind: "mail", actions, detail: { summary: "", links: [{ label: "Open", url: "message:%3Cid%3E" }] }, ...overrides });
+  item({ key: "mail:1", kind: "mail", actions, detail: { summary: "", links: [{ kind: "mail", url: "message:%3Cid%3E" }] }, ...overrides });
 
 let dom: MountedDom;
 let client: MemoryClient;
@@ -69,7 +69,7 @@ describe("the archive outcome", () => {
 });
 
 describe("the mail actions Cortex lists", () => {
-  const listed = [action("mail.archive", "Archive"), action("mail.spam", "Spam"), action("mail.trash", "Delete"), action("invite.accept", "Accept"), action("invite.decline", "Decline")];
+  const listed = [action("mail.archive"), action("mail.spam"), action("mail.trash"), action("invite.accept"), action("invite.decline")];
 
   test("appear as quiet buttons after Open in Mail, labelled from the catalog", async () => {
     await mount(<MailCard item={mail(listed)} />);
@@ -82,8 +82,8 @@ describe("the mail actions Cortex lists", () => {
   });
 
   test("actions Cortex lists under more are found too", async () => {
-    const it = mail([action("mail.archive", "Archive"), action("mail.trash", "Delete")], {
-      more: [action("vip.add", "Always show mail from Vera"), action("mail.spam", "Spam"), action("mail.unimportant", "Unimportant"), action("mail.snooze", "Snooze")],
+    const it = mail([action("mail.archive"), action("mail.trash")], {
+      more: [action("vip.add"), action("mail.spam"), action("mail.unimportant"), action("mail.snooze")],
     });
     await mount(<MailCard item={it} />);
     expect(buttons()).toEqual(["Archive", "Attach", "Draft a reply", "Ask me", "Spam", "Delete"]);
@@ -92,7 +92,7 @@ describe("the mail actions Cortex lists", () => {
   });
 
   test("unlisted and unwired actions are not shown", async () => {
-    await mount(<MailCard item={mail([action("mail.spam", "Spam", false), action("invite.accept", "Accept")])} />);
+    await mount(<MailCard item={mail([action("mail.spam", false), action("invite.accept")])} />);
     expect(buttons()).toEqual(["Archive", "Attach", "Draft a reply", "Ask me", "Accept"]);
   });
 
@@ -198,7 +198,7 @@ describe("a mail waiting for an answer", () => {
 
   test("offers the waiting actions Cortex lists and posts them", async () => {
     client.seed("mail.send", ok({ message: "The Desk stopped waiting for an answer." }));
-    const it = waiting([action("mail.draft", "Draft a nudge"), action("waiting.snooze", "Wait 2 more days"), action("waiting.done", "Done"), { ...action("open", "Open in Mail"), url: "message:%3Cid%3E" }]);
+    const it = waiting([action("mail.draft"), action("waiting.snooze"), action("waiting.done"), { ...action("open"), url: "message:%3Cid%3E" }]);
     await mount(entry(it));
     expect(buttons()).toEqual(["Wait longer", "Done"]);
     expect(dom.container.textContent).toContain("Open in Mail");
@@ -212,7 +212,7 @@ describe("a mail waiting for an answer", () => {
   });
 
   test("leaves out waiting actions that are unlisted or unwired", async () => {
-    await mount(entry({ ...waiting([action("waiting.snooze", "Wait 2 more days", false)]), more: [action("waiting.done", "Done", false)] }));
+    await mount(entry({ ...waiting([action("waiting.snooze", false)]), more: [action("waiting.done", false)] }));
     expect(buttons()).toEqual([]);
   });
 });

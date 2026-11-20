@@ -23,7 +23,7 @@ const GROUPS = {
   outline: ["ask"],
 } as const;
 
-const CALLABLE_GROUPS = { myDay: ["outline", "change"], studio: ["list", "act"] } as const;
+const CALLABLE_GROUPS = { myDay: ["outline", "change"], studio: ["list", "draft", "act"] } as const;
 const FLAT = ["desk", "rules", "changeMyDay", "contract", "search"] as const;
 
 export function createMemoryClient(): MemoryClient {

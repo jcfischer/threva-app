@@ -2,6 +2,7 @@ import { safeHref } from "@desk/safe-link";
 import { useState } from "react";
 import type { DeskItem, TodayTask } from "@desk/types";
 import { useI18n, type TextKey } from "../i18n";
+import { actionText, linkText } from "../i18n/served";
 import { taskDone } from "../queue/keys";
 import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton, Mentioned } from "./parts";
@@ -12,7 +13,8 @@ const RANGER_ACTION_LABEL: Partial<Record<string, TextKey>> = {
 };
 
 export function AgentCard({ item }: { item: DeskItem }) {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const card = useAct();
   const { client } = useQueue();
   const { busy, error, act } = card;
@@ -22,7 +24,7 @@ export function AgentCard({ item }: { item: DeskItem }) {
   const wired = item.actions.filter((a) => a.wired);
   const rules = wired.some((a) => a.id === "ranger.rule");
   const choices = rules ? (item.explanation?.choices ?? []) : [];
-  const links = item.detail.links.flatMap((l) => { const url = safeHref(l.url); return url ? [{ label: l.label, url }] : []; });
+  const links = item.detail.links.flatMap((l) => { const url = safeHref(l.url); return url ? [{ label: linkText(l, i18n), url }] : []; });
   const opens = wired.flatMap((a) => { const url = a.id === "open" ? safeHref(a.url) : undefined; return url && !links.some((l) => l.url === url) ? [{ id: a.id, url }] : []; });
   const sends = wired.flatMap((a) => { const label = RANGER_ACTION_LABEL[a.id]; return label && !a.url ? [{ ...a, label }] : []; });
   const [own, ...related] = item.detail.refs ?? [];
@@ -84,7 +86,8 @@ export function AgentCard({ item }: { item: DeskItem }) {
 }
 
 export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const card = useAct();
   const plan = card.offersTask(item);
   const links = item.actions.flatMap((a) => { const url = safeHref(a.url); return url ? [{ ...a, url }] : []; });
@@ -97,7 +100,7 @@ export function ItemCard({ item, fresh }: { item: DeskItem; fresh: boolean }) {
           <MakeTaskButton item={item} act={card} />
           {links.map((a) => (
             <a key={a.id} className="btn quiet" href={a.url} target="_blank" rel="noreferrer">
-              {a.label}
+              {actionText(a, i18n)}
             </a>
           ))}
         </div>

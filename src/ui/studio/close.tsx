@@ -4,6 +4,7 @@ import type { StudioAct, StudioOutcome, StudioThread, StudioThreadType } from "@
 import type { ActError } from "../cards/act";
 import { ErrorLine } from "../cards/parts";
 import { useI18n, type TextKey } from "../i18n";
+import { DraftChanged } from "./conflict";
 
 export type RunAct = (act: StudioAct) => Promise<Result<{ message?: string }>>;
 
@@ -76,7 +77,7 @@ export function CloseTopicForm({ thread, busy, run, onCancel }: CloseTopicFormPr
     setError(null);
     const result = await run(act);
     if (result.ok) onCancel();
-    else setError({ message: result.message });
+    else setError({ message: result.message, body: result.body });
   };
   const textLabel = t(CLOSE_TEXT[outcome]);
   return (
@@ -108,6 +109,7 @@ export function CloseTopicForm({ thread, busy, run, onCancel }: CloseTopicFormPr
         </button>
       </div>
       <ErrorLine error={error} />
+      <DraftChanged error={error} />
     </div>
   );
 }

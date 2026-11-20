@@ -10,9 +10,9 @@ import { item } from "./fixtures/desk";
 import { mountDom } from "./fixtures/dom";
 
 const ISSUE = "https://github.com/the-metafactory/cortex/issues/3475";
-const action = (id: string, label: string, role: DeskAction["role"], wired: boolean): DeskAction => ({ id, label, role, wired });
-const DETAIL = action("detail", "Look first", "secondary", true);
-const SNOOZE = action("snooze", "Not now", "secondary", true);
+const action = (id: string, role: DeskAction["role"], wired: boolean): DeskAction => ({ id, role, wired });
+const DETAIL = action("detail", "secondary", true);
+const SNOOZE = action("snooze", "secondary", true);
 
 // Shapes as Cortex v6.29.0 sends them on the Desk.
 const blocked = (overrides: Partial<DeskItem> = {}) =>
@@ -22,8 +22,8 @@ const blocked = (overrides: Partial<DeskItem> = {}) =>
     source: "ranger",
     title: '"Desk: the agent card" waits for your ruling.',
     why: "The agent in cortex cannot go on without a decision from you.",
-    actions: [action("ranger.rule", "Give your ruling", "primary", true), DETAIL, SNOOZE],
-    detail: { summary: "blocked: which store?", history: ["Stopped 2 hours ago"], refs: ["the-metafactory/cortex#3475", "the-metafactory/cortex#2770"], links: [{ label: "Issue", url: ISSUE }] },
+    actions: [action("ranger.rule", "primary", true), DETAIL, SNOOZE],
+    detail: { summary: "blocked: which store?", history: ["Stopped 2 hours ago"], refs: ["the-metafactory/cortex#3475", "the-metafactory/cortex#2770"], links: [{ kind: "issue", url: ISSUE }] },
     question: { condition: null, reason: "Which store should the agent use?" },
     explanation: {
       sentence: "The agent needs a store before it can go on.",
@@ -42,8 +42,8 @@ const failed = (overrides: Partial<DeskItem> = {}) =>
     source: "ranger",
     title: 'An agent failed on "Desk: mail sort".',
     why: "The question is unavailable. Open the source to see what is needed.",
-    actions: [action("ranger.retry", "Let it retry", "primary", true), DETAIL, action("ranger.park", "Park it", "secondary", false)],
-    detail: { summary: "failed: the build broke on a type error.", history: [], refs: ["the-metafactory/cortex#3500", "the-metafactory/cortex#3500"], links: [{ label: "Issue", url: "https://github.com/the-metafactory/cortex/issues/3500" }] },
+    actions: [action("ranger.retry", "primary", true), DETAIL, action("ranger.park", "secondary", false)],
+    detail: { summary: "failed: the build broke on a type error.", history: [], refs: ["the-metafactory/cortex#3500", "the-metafactory/cortex#3500"], links: [{ kind: "issue", url: "https://github.com/the-metafactory/cortex/issues/3500" }] },
     ...overrides,
   });
 
@@ -54,8 +54,8 @@ const escalation = (overrides: Partial<DeskItem> = {}) =>
     source: "vigil",
     title: '"Desk: digest wording" needs you.',
     why: "Should the digest name the sender? In cortex.",
-    actions: [action("detail", "Look first", "primary", true), SNOOZE],
-    detail: { summary: "Should the digest name the sender?", history: [], refs: ["the-metafactory/cortex#3600"], links: [{ label: "Issue", url: "https://github.com/the-metafactory/cortex/issues/3600" }] },
+    actions: [action("detail", "primary", true), SNOOZE],
+    detail: { summary: "Should the digest name the sender?", history: [], refs: ["the-metafactory/cortex#3600"], links: [{ kind: "issue", url: "https://github.com/the-metafactory/cortex/issues/3600" }] },
     ...overrides,
   });
 
@@ -154,7 +154,7 @@ describe("the agent card", () => {
   });
 
   test("a failed card without a wired retry offers no buttons, even if park were wired", async () => {
-    await render(failed({ actions: [action("ranger.retry", "Let it retry", "primary", false), DETAIL, action("ranger.park", "Park it", "secondary", true)] }));
+    await render(failed({ actions: [action("ranger.retry", "primary", false), DETAIL, action("ranger.park", "secondary", true)] }));
     expect(buttons()).toEqual([]);
   });
 
@@ -173,14 +173,14 @@ describe("the agent card", () => {
   });
 
   test("an unwired or unknown action gets no button, and an open action links to its URL", async () => {
-    const open = { ...action("open", "Give your ruling", "primary", true), url: "https://github.com/the-metafactory/cortex/pull/1" };
-    await render(blocked({ actions: [action("ranger.rule", "Give your ruling", "primary", false), action("ranger.mystery", "Mystery", "secondary", true), open] }));
+    const open = { ...action("open", "primary", true), url: "https://github.com/the-metafactory/cortex/pull/1" };
+    await render(blocked({ actions: [action("ranger.rule", "primary", false), action("ranger.mystery", "secondary", true), open] }));
     expect(buttons()).toEqual([]);
     expect(links()).toEqual([["Open the source", "https://github.com/the-metafactory/cortex/pull/1"], ["Issue", ISSUE]]);
   });
 
   test("unsafe links are dropped", async () => {
-    await render(escalation({ detail: { summary: "", links: [{ label: "Bad", url: "javascript:alert(1)" }] }, mentions: [{ text: "digest", url: "javascript:alert(1)" }] }));
+    await render(escalation({ detail: { summary: "", links: [{ kind: "issue", url: "javascript:alert(1)" }] }, mentions: [{ text: "digest", url: "javascript:alert(1)" }] }));
     expect(links()).toEqual([]);
   });
 

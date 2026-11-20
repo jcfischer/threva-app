@@ -16,19 +16,19 @@ const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
     </I18nProvider>,
   );
 
-const act = (id: string, label: string, role: DeskAction["role"] = "secondary"): DeskAction => ({ id, label, role, wired: true });
+const act = (id: string, role: DeskAction["role"] = "secondary"): DeskAction => ({ id, role, wired: true });
 
 // Mail items shaped the way Cortex's rank.ts composes them for each classifier outcome.
 const mail = (key: string, overrides: Partial<DeskItem> = {}) =>
-  item({ key: `mail:${key}`, kind: "mail", title: `Ada wrote: "${key}"`, attention: "action", actions: [act("open", "Open in Mail", "primary"), act("mail.snooze", "Snooze")], ...overrides });
+  item({ key: `mail:${key}`, kind: "mail", title: `Ada wrote: "${key}"`, attention: "action", actions: [act("open", "primary"), act("mail.snooze")], ...overrides });
 
 const fixtures = {
   unclassified: mail("plain"),
-  fyi: mail("fyi", { outcome: "archive", attention: "update", actions: [act("mail.seen", "Seen, delete", "primary"), act("open", "Open in Mail")] }),
-  archive: mail("archive", { outcome: "archive", actions: [act("mail.archive", "Archive", "primary"), act("open", "Open in Mail")], suggestion: undefined }),
-  meeting: mail("meeting", { eventKey: "ev1", outcome: "attach", actions: [act("meeting.show", "Show on the meeting", "primary"), act("open", "Open in Mail")] }),
-  reply: mail("reply", { suggestion: "Suggested: reply", outcome: "draft", actions: [act("mail.draft", "Draft a reply", "primary"), act("open", "Open in Mail")] }),
-  replyNotFirst: mail("reply2", { actions: [act("open", "Open in Mail", "primary"), act("mail.draft", "Draft a reply")] }),
+  fyi: mail("fyi", { outcome: "archive", attention: "update", actions: [act("mail.seen", "primary"), act("open")] }),
+  archive: mail("archive", { outcome: "archive", actions: [act("mail.archive", "primary"), act("open")], suggestion: undefined }),
+  meeting: mail("meeting", { eventKey: "ev1", outcome: "attach", actions: [act("meeting.show", "primary"), act("open")] }),
+  reply: mail("reply", { suggestion: "Suggested: reply", outcome: "draft", actions: [act("mail.draft", "primary"), act("open")] }),
+  replyNotFirst: mail("reply2", { actions: [act("open", "primary"), act("mail.draft")] }),
 };
 
 const offer = item({
@@ -36,9 +36,9 @@ const offer = item({
   kind: "mail-rule",
   title: "Archive mail from news@example.com on its own?",
   why: "You archived the last 3 and never did anything else with one. Nothing changes until you approve.",
-  actions: [act("mailrule.approve", "Approve", "primary"), act("mailrule.later", "Not now"), act("mailrule.never", "Never")],
+  actions: [act("mailrule.approve", "primary"), act("mailrule.later"), act("mailrule.never")],
 });
-const held = item({ key: "mailrule:held:r1", kind: "mail-rule", actions: [act("mailrule.release", "Handle all 40", "primary"), act("mailrule.stop", "Stop this rule")] });
+const held = item({ key: "mailrule:held:r1", kind: "mail-rule", actions: [act("mailrule.release", "primary"), act("mailrule.stop")] });
 
 describe("learning phase", () => {
   const entries = (mailLearning?: boolean) =>

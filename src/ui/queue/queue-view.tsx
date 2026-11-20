@@ -9,6 +9,7 @@ import { AfterMeetingCard, MeetingSoonCard } from "../cards/meeting-cards";
 import { AgentCard, ItemCard, TaskCard } from "../cards/queue-cards";
 import { StudioCard } from "../studio/card";
 import { useI18n, type I18n } from "../i18n";
+import { sweepText } from "../i18n/served";
 import { around, interruptionReasonMessage, type ThenLine, type WhyNow } from "./around";
 import { allowsCardKey, keyMap } from "./keys";
 import { buildQueue, pin, skip, type Entry, type Session } from "./order";
@@ -76,13 +77,14 @@ function WhyNowText({ why }: { why: WhyNow }) {
 }
 
 function ThenLineView({ then, onPull }: { then: ThenLine; onPull: (k: string) => void }) {
-  const { t, tn } = useI18n();
+  const i18n = useI18n();
+  const { t, tn } = i18n;
   const parts: ReactNode[] = [
     ...then.titles.map(({ k, title }) => <button key={k} type="button" className="lk" onClick={() => onPull(k)}>{title}</button>),
     ...(then.more > 0 ? [<span key="more" className="faint">{tn("queue.then.more", then.more)}</span>] : []),
     ...then.sweeps.map((s) => (
       <button key={s.k} type="button" className="lk" onClick={() => onPull(s.k)}>
-        {tn(s.archive ? "queue.then.sweepArchive" : "queue.then.sweep", s.count, { label: s.label })}
+        {tn(s.archive ? "queue.then.sweepArchive" : "queue.then.sweep", s.count, { label: sweepText(s.group, i18n) })}
       </button>
     )),
   ];

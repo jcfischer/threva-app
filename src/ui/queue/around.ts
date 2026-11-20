@@ -1,4 +1,4 @@
-import type { InterruptReason } from "@desk/types";
+import type { InterruptReason, MailSweep } from "@desk/types";
 import type { TextKey } from "../i18n";
 import type { Entry } from "./order";
 
@@ -25,7 +25,7 @@ export type WhyNow =
 
 export interface SweepLink {
   k: string;
-  label: string;
+  group: Pick<MailSweep, "kind" | "basis" | "labelPhrase">;
   count: number;
   archive: boolean;
 }
@@ -74,7 +74,7 @@ export function entryTitle(entry: Entry): string {
     case "after":
       return entry.item.title;
     case "sweep":
-      return entry.sweep.title || entry.sweep.label;
+      return entry.sweep.title;
     case "thread":
       return entry.thread.question;
     case "task":
@@ -87,7 +87,7 @@ export function around(queue: readonly Entry[]): Around {
   if (!first) return { why: null, then: null };
   if (rest.length === 0) return { why: whyNow(first), then: null };
   const cards = rest.filter((e) => e.type !== "sweep");
-  const sweeps = rest.flatMap((e): SweepLink[] => (e.type === "sweep" ? [{ k: e.k, label: e.sweep.label || e.sweep.title, count: e.sweep.mails.length, archive: e.sweep.target === "archive" }] : []));
+  const sweeps = rest.flatMap((e): SweepLink[] => (e.type === "sweep" ? [{ k: e.k, group: e.sweep, count: e.sweep.mails.length, archive: e.sweep.target === "archive" }] : []));
   return {
     why: whyNow(first),
     then: { titles: cards.slice(0, THEN_TITLES).map((e) => ({ k: e.k, title: entryTitle(e) })), more: Math.max(0, cards.length - THEN_TITLES), sweeps },

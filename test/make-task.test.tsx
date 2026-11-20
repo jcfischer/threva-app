@@ -97,7 +97,7 @@ describe("Make it a task on a mail card", () => {
 
 describe("Make it a task on other cards", () => {
   test("an item card offers it next to its links and sends the same envelope", async () => {
-    await mount(<EntryCard entry={{ k: "i:sensor:1", type: "item", item: sensor({ actions: [{ id: "open", label: "Open", role: "primary", wired: true, url: "https://example.com/" }] }), fresh: false }} onDismissMeeting={() => {}} />);
+    await mount(<EntryCard entry={{ k: "i:sensor:1", type: "item", item: sensor({ actions: [{ id: "open", role: "primary", wired: true, url: "https://example.com/" }] }), fresh: false }} onDismissMeeting={() => {}} />);
     expect(buttons()).toEqual(["Make it a task"]);
     await click("Make it a task");
     expect(client.calls).toEqual([todo("sensor:1")]);

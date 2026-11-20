@@ -18,8 +18,9 @@ const wrap = (node: React.ReactNode, locale: "en" | "de" = "en") =>
 const sweep: MailSweep = {
   id: "sw1",
   kind: "sweep",
+  basis: "sender",
   target: "archive",
-  label: "Newsletters",
+  labelPhrase: { code: "mail.sweep-category", params: { category: "Newsletters" } },
   title: "Four newsletters from this week",
   why: "You let mail like this go before.",
   mails: [
@@ -52,7 +53,7 @@ describe("mail in the queue", () => {
           excerpt: "Can we talk about the budget?",
           why: "It arrived today.",
           todoFingerprint: "a".repeat(64),
-          detail: { summary: "", links: [{ label: "Open", url: "message:%3Cid%3E" }] },
+          detail: { summary: "", links: [{ kind: "mail", url: "message:%3Cid%3E" }] },
         })}
       />,
     );
@@ -70,6 +71,11 @@ describe("mail in the queue", () => {
   test("a sweep card that archives asks to archive the group, in German too", () => {
     expect(wrap(<SweepCard sweep={sweep} />)).toContain("Archive all 2?");
     expect(wrap(<SweepCard sweep={sweep} />, "de")).toContain("Alle 2 archivieren?");
+  });
+
+  test("a group without a title is worded from its category phrase, and from its kind and basis without one", () => {
+    expect(wrap(<SweepCard sweep={{ ...sweep, title: "" }} />)).toContain(">Newsletters</span>");
+    expect(wrap(<SweepCard sweep={{ ...sweep, title: "", labelPhrase: undefined, basis: "list" }} />)).toContain(">mailing list</span>");
   });
 
   test("a sweep card to Trash asks to let the group go", () => {
