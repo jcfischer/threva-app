@@ -22,7 +22,7 @@ export function phraseText(phrase: DeskPhrase, i18n: I18n): string | null {
   }
 }
 
-const LINK_TEXT: Record<DeskLink["kind"], TextKey> = {
+const LINK_TEXT: Partial<Record<DeskLink["kind"], TextKey>> = {
   mail: "link.mail",
   issue: "link.issue",
   report: "link.report",
@@ -36,10 +36,11 @@ const LINK_TEXT: Record<DeskLink["kind"], TextKey> = {
 /** A detail link: its label phrase when Cortex sends one, else the wording of its kind. */
 export function linkText(link: DeskLink, i18n: I18n): string {
   const phrase = link.labelPhrase ? phraseText(link.labelPhrase, i18n) : null;
-  return phrase ?? i18n.t(LINK_TEXT[link.kind], { url: link.url });
+  const key = Object.hasOwn(LINK_TEXT, link.kind) ? LINK_TEXT[link.kind] : undefined;
+  return phrase ?? i18n.t(key ?? "action.open", { url: link.url });
 }
 
-const SWEEP_TEXT: Record<MailSweep["kind"], Partial<Record<MailSweep["basis"], TextKey>>> = {
+const SWEEP_TEXT: Partial<Record<MailSweep["kind"], Partial<Record<MailSweep["basis"], TextKey>>>> = {
   bundle: { list: "sweep.bundle.list", sender: "sweep.bundle.sender", similar: "sweep.bundle.similar" },
   sweep: { list: "sweep.sweep.list", sender: "sweep.sweep.sender", age: "sweep.sweep.age" },
   digest: { day: "sweep.digest.day" },
@@ -48,7 +49,7 @@ const SWEEP_TEXT: Record<MailSweep["kind"], Partial<Record<MailSweep["basis"], T
 /** What a group of mail has in common: its category phrase when Cortex sends one, else its kind and basis. */
 export function sweepText(sweep: Pick<MailSweep, "kind" | "basis" | "labelPhrase">, i18n: I18n): string {
   const phrase = sweep.labelPhrase ? phraseText(sweep.labelPhrase, i18n) : null;
-  const key = SWEEP_TEXT[sweep.kind][sweep.basis];
+  const key = SWEEP_TEXT[sweep.kind]?.[sweep.basis];
   return phrase ?? (key === undefined ? "" : i18n.t(key));
 }
 

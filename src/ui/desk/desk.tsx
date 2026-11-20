@@ -48,8 +48,8 @@ function DeskBody({ studio, slug, loading = false, backLabel, onBack, now }: {
 }) {
   const i18n = useI18n();
   const { t } = i18n;
-  const { busy, run } = useStudioAct();
   const thread = findThread(studio, slug);
+  const { busy, run } = useStudioAct(thread?.slug ?? null);
   const [open, setOpen] = useState<Open>(CLOSED);
   const [placement, setPlacement] = useState<Partial<Record<string, OpenPlacement>>>({});
   const grid = useRef<HTMLDivElement | null>(null);

@@ -163,8 +163,6 @@ export const journeys = {
     await loaded(page, "Loading your outline…");
     await page.getByRole("button", { name: "Work", exact: true }).click();
     await page.getByRole("button", { name: "What is the March offsite for?", exact: true }).click();
-    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
-    await page.locator('[data-desk="middle"]').waitFor();
     const draftUrl = new URL("/api/desk/studio/offsite-in-march/draft", page.url()).href;
     const read = await page.request.get(draftUrl);
     if (!read.ok()) throw new Error(`The topic's draft could not be read: ${await read.text()}`);
@@ -172,6 +170,8 @@ export const journeys = {
     const saved = await page.request.put(draftUrl, { data: { text: `Two days to plan the year. No talks.\n\n${draft.text}`, revision: draft.revision, requestId: crypto.randomUUID() } });
     if (!saved.ok()) throw new Error(`The topic's draft could not be saved: ${await saved.text()}`);
     const revision = (await saved.json() as { revision: string }).revision;
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    await page.locator('[data-desk="middle"]').waitFor();
     const act = async (name: string, button: string): Promise<{ act?: string; draftRevision?: string }> => {
       const posted = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
       await page.getByRole("button", { name: button, exact: true }).click();

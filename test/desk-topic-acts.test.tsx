@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Result } from "@desk/client";
-import { createMemoryClient } from "@desk/memory-client";
+import { createMemoryClient, type Answer } from "@desk/memory-client";
 import type { StudioThread } from "@desk/types";
 import { Desk } from "../src/ui/desk/desk";
 import { standLine } from "../src/ui/desk/topic-menu";
@@ -164,7 +164,7 @@ interface Wired {
 
 const neverEdited: Result<unknown> = { ok: true, data: { text: "", revision: "legacy-1", editable: true } };
 
-async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }, draft: Result<unknown> = neverEdited): Promise<Wired> {
+async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }, draft: Answer = neverEdited): Promise<Wired> {
   const dom = mountDom();
   let refreshed = 0;
   const client = createMemoryClient();
@@ -390,6 +390,19 @@ describe("parking and finishing under Desk API 2", () => {
       await wired.click("Park");
       expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug });
       expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a park carries the revision Threva read with the topic, not the one Cortex serves at the moment of the act", async () => {
+    const later: Result<unknown> = { ok: true, data: { text: "A newer draft, saved elsewhere.", revision: "draft-9", editable: true } };
+    let served = 0;
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, () => (served++ === 0 ? savedDraft : later));
+    try {
+      await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
     } finally {
       await wired.cleanup();
     }

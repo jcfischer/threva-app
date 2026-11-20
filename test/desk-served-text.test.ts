@@ -27,6 +27,10 @@ describe("detail links", () => {
     expect(linkText(link({ kind: "unsubscribe-page", url: "https://lists.example.org/u/1" }), en)).toBe("Unsubscribe page: https://lists.example.org/u/1");
   });
 
+  test("a kind from a later Desk API minor falls back to a plain open, as Cortex's own Desk does", () => {
+    expect(linkText(link({ kind: "attachment" as DeskLink["kind"] }), en)).toBe("Open");
+  });
+
   test("a task identifier comes from its label phrase", () => {
     expect(linkText(link({ kind: "task", labelPhrase: { code: "task.link", params: { id: "todo-7f3a" } } }), en)).toBe("Task todo-7f3a");
   });
@@ -56,6 +60,10 @@ describe("mail groups", () => {
 
   test("a basis this catalog does not carry has no wording rather than a made-up one", () => {
     expect(sweepText(sweep({ kind: "digest", basis: "sender" }), en)).toBe("");
+  });
+
+  test("a kind or basis from a later Desk API minor leaves a gap instead of throwing", () => {
+    expect(sweepText({ kind: "thread" as MailSweep["kind"], basis: "list" }, en)).toBe("");
   });
 });
 

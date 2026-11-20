@@ -1,18 +1,18 @@
 import type { DeskClient } from "@desk/client";
-import type { StudioAct, StudioDraft } from "@desk/types";
+import type { StudioAct } from "@desk/types";
 
 type RevisionAct = Extract<StudioAct, { act: "park" | "close" }>;
 
-/** Every act that Cortex 2 refuses without the revision of the draft it parks or closes. */
+/** The acts that park or close a topic, which Desk API 2 answers only for the draft revision the user was shown. */
 export const carriesDraftRevision = (act: StudioAct): act is RevisionAct => act.act === "park" || act.act === "close";
 
-export async function servedDraft(client: DeskClient, thread: string): Promise<StudioDraft | null> {
+/** A topic's draft revision as Cortex serves it, or null when Cortex serves no readable draft. */
+export async function readDraftRevision(client: DeskClient, thread: string): Promise<string | null> {
   const read = await client.studio.draft(thread);
-  return read.ok ? read.data : null;
+  return read.ok && typeof read.data.revision === "string" ? read.data.revision : null;
 }
 
-export async function withDraftRevision(client: DeskClient, act: StudioAct): Promise<StudioAct> {
-  if (!carriesDraftRevision(act)) return act;
-  const draft = await servedDraft(client, act.thread);
-  return draft ? { ...act, draftRevision: draft.revision } : act;
+/** The act carrying the revision Threva read with the topic, so an edit made since then answers 409 instead of passing silently. */
+export function withDraftRevision(act: StudioAct, revision: string | null): StudioAct {
+  return carriesDraftRevision(act) && revision !== null ? { ...act, draftRevision: revision } : act;
 }

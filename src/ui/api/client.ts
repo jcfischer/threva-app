@@ -173,7 +173,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     },
     studio: Object.assign(list, {
       list,
-      draft: (thread: string) => read<StudioDraft>(`${PATHS.studio}/${thread}/draft`),
+      draft: (thread: string) => read<StudioDraft>(`${PATHS.studio}/${encodeURIComponent(thread)}/draft`),
       act: (act: StudioAct, requestId: string = newRequestId()) => write<{ message?: string }>(PATHS.studioAct, { ...act, requestId }),
     }),
     conversations: {

@@ -41,6 +41,7 @@ const reads: Case[] = [
   ["studio", (c) => c.studio(), "GET", "/api/desk/studio", undefined],
   ["studio.list", (c) => c.studio.list(), "GET", "/api/desk/studio", undefined],
   ["studio.draft", (c) => c.studio.draft("budget-next-year"), "GET", "/api/desk/studio/budget-next-year/draft", undefined],
+  ["studio.draft.escaped", (c) => c.studio.draft("a slug/b?#1"), "GET", "/api/desk/studio/a%20slug%2Fb%3F%231/draft", undefined],
   ["contract", (c) => c.contract(), "GET", "/api/desk/contract", undefined],
 ];
 
