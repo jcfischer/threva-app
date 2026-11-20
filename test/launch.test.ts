@@ -33,7 +33,7 @@ describe("threva launch", () => {
     expect(r.securityCalls[0]).toEqual([
       "find-generic-password", "-s", "ai.meta-factory.cortex.cortex.ANTHROPIC_API_KEY", "-a", "jane", "-w",
     ]);
-    expect(r.execCalls[0]?.command).toEqual(["bun", "/c/src/cortex.ts", "--config", "/s/pointer.yaml"]);
+    expect(r.execCalls[0]?.command).toEqual(["bun", "/c/src/cortex.ts", "start", "--config", "/s/pointer.yaml"]);
     expect(r.execCalls[0]?.env.ANTHROPIC_API_KEY).toBe("sk-secret");
     expect(r.lines.join("\n")).not.toContain("sk-secret");
   });

@@ -16,7 +16,7 @@ interface Harness {
   posts: { url: string; body: string }[];
 }
 
-export function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean; unfinished?: boolean; writtenPort?: number }): Harness {
+export function harness(options: { answers: string[]; claude?: boolean; bun?: string; engines?: string | null; existing?: boolean; securityStatus?: number; validateStatus?: number; portTaken?: boolean; unfinished?: boolean; writtenPort?: number; writtenNats?: string }): Harness {
   const files = new Map<string, string>([
     [`${LIBEXEC}/cortex/src/cortex.ts`, ""],
     [`${LIBEXEC}/ui/index.html`, ""],
@@ -25,6 +25,7 @@ export function harness(options: { answers: string[]; claude?: boolean; bun?: st
   if (options.existing || options.unfinished) {
     files.set(stackPaths(HOME).pointer, "# old\n");
     files.set(join(stackPaths(HOME).dir, "stacks", "threva.yaml"), JSON.stringify({ mc: { port: options.writtenPort ?? 8767 } }));
+    if (options.writtenNats) files.set(join(stackPaths(HOME).dir, "system", "system.yaml"), JSON.stringify({ nats: { url: options.writtenNats } }));
   }
   if (options.existing) files.set(stackPaths(HOME).finished, "2026-11-16T00:00:00.000Z\n");
   const mailKeychainInput: string[] = [];

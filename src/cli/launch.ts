@@ -145,7 +145,7 @@ export async function launch(argv: readonly string[], deps: LaunchDeps): Promise
 
   record(deps, log, OK_MARK);
   try {
-    deps.exec(["bun", `${cortex}/src/cortex.ts`, "--config", config], childEnv);
+    deps.exec(["bun", `${cortex}/src/cortex.ts`, "start", "--config", config], childEnv);
   } catch {
     record(deps, log, "Cortex could not be started. Check the Bun executable and --cortex directory.");
     return 1;
