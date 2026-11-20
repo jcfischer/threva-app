@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { renderStudioThreads, seedStudio, STUDIO_AREA, type Git } from "../scripts/dev-stack-studio";
-import type { StudioNote } from "../src/ui/api/types";
+import type { StudioNote } from "@desk/types";
 import { threadWaits } from "../src/ui/queue/order";
 
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -84,6 +84,16 @@ describe("renderStudioThreads", () => {
     expect(threads.map((t) => threadWaits(t.thread))).toEqual([true, false]);
     const answered = threads[1]?.thread;
     expect(answered?.responses[0]?.re).toBe(answered?.notes[0]?.at);
+  });
+
+  test("the budget topic proposes a relation to the other sample topic on disk", () => {
+    const source = threads[0];
+    const target = threads[1];
+    const notes = entries(source?.parsed.sections.get("ivy's notes") ?? "", NOTE_META);
+    const relation = notes.find((note) => note.meta.kind === "relation");
+    expect(relation?.meta.relates).toBe(`thread: ${target?.thread.slug}`);
+    expect(relation?.text).toBe("The offsite and the budget share a decision.");
+    expect(Date.parse(relation?.at ?? "")).toBeLessThan(Date.parse(source?.thread.notes[0]?.at ?? ""));
   });
 });
 

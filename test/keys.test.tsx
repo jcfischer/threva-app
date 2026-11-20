@@ -1,18 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
-import type { DeskView } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { DeskView } from "@desk/types";
 import { I18nProvider, createI18n } from "../src/ui/i18n";
 import { keyMap } from "../src/ui/queue/keys";
 import { buildQueue, EMPTY_SESSION, pin } from "../src/ui/queue/order";
-import { DAY, NOW, item, studio, sweep, thread, view } from "./fixtures/desk";
+import { afterMeeting, DAY, NOW, item, studio, sweep, thread, view } from "./fixtures/desk";
 
 const group = sweep({ mails: [{ key: "m1", from: "News", subject: "Issue" }] });
 const task = { task: { id: "todo", title: "Write the report" }, areaTitle: "Work" };
 const ended = { key: "ended", kind: "meeting" as const, title: "Board call", at: NOW - 60 * 60_000, end: NOW - 5 * 60_000 };
 const desk = view({
-  items: [item({ key: "soon", kind: "meeting" }), item({ key: "agent", kind: "decision" }), item({ key: "mail", kind: "mail" }), item({ key: "item", kind: "sensor" })],
+  items: [afterMeeting("ended", "Board call"), item({ key: "soon", kind: "meeting" }), item({ key: "agent", kind: "decision" }), item({ key: "mail", kind: "mail" }), item({ key: "item", kind: "sensor" })],
   today: [ended], mailSweeps: [group], myDay: { date: DAY, items: [task] },
 });
 
@@ -27,7 +27,7 @@ describe("front card key map", () => {
 
   test("Enter completes a task and lets a sweep go with the same Desk requests as their buttons", () => {
     expect(keyMap(queue.find((e) => e.type === "task"))?.enter).toEqual({ label: "card.task.done", myDay: { op: "done", id: "todo" } });
-    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", path: "/api/desk/mail", body: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
+    expect(keyMap(queue.find((e) => e.type === "sweep"))?.enter).toEqual({ label: "card.sweep.archive", mail: { action: "sweep", sweep: "news", keys: ["m1"], target: "archive" } });
   });
 
   test("all other cards have no Enter act; Esc skips except for after-meeting dismissal", () => {
@@ -47,7 +47,7 @@ describe("key hints under the front card", () => {
     expect(taskHtml).toContain('<div class="keyhint"><span><kbd>Enter</kbd> Done</span><span><kbd>Esc</kbd> Not now</span></div>');
     expect(taskHtml.indexOf('class="keyhint"')).toBeGreaterThan(taskHtml.indexOf("Write the report"));
     expect(render(desk, "s:news")).toContain("<kbd>Enter</kbd> Archive all");
-    expect(render(desk, "a:ended")).toContain('<div class="keyhint"><span><kbd>Esc</kbd> Nothing to note</span></div>');
+    expect(render(desk, "i:after-ended")).toContain('<div class="keyhint"><span><kbd>Esc</kbd> Nothing to note</span></div>');
     expect(render(desk, "d:todo", "de")).toContain("<kbd>Enter</kbd> Erledigt");
   });
 

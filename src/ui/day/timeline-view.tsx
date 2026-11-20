@@ -1,4 +1,4 @@
-import type { DeskView, StudioList, StudioOutcome, TodayTask } from "../api/types";
+import type { DeskView, StudioList, StudioOutcome, TodayTask } from "@desk/types";
 import { useI18n, type I18n, type TextKey } from "../i18n";
 import { meetingCard } from "../queue/around";
 import type { Entry } from "../queue/order";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, type ReactNode } from "react";
-import { createClient } from "../src/ui/api/client";
+import { createMemoryClient } from "@desk/memory-client";
 import { QueueContext } from "../src/ui/cards/act";
 import { AssistantMargin, Margin } from "../src/ui/everything/margin";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
@@ -30,7 +30,7 @@ async function render(node: ReactNode): Promise<HTMLElement> {
   await act(async () => {
     root.render(
       <I18nProvider value={createI18n("en")}>
-        <QueueContext.Provider value={{ client: createClient(async () => Response.json({ ok: true, conversations: [] })), refresh: () => {} }}>{node}</QueueContext.Provider>
+        <QueueContext.Provider value={{ client: createMemoryClient(), refresh: () => {} }}>{node}</QueueContext.Provider>
       </I18nProvider>,
     );
   });

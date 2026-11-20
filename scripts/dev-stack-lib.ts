@@ -1,8 +1,24 @@
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { renderDeskExtras, type DeskExtras } from "./dev-stack-lanes";
 import { STUDIO_AREA } from "./dev-stack-studio";
 
 export const DEFAULT_PORT = 8790;
+
+export const MIN_CORTEX_TAG = "v6.34.0";
+
+export function checkCortexMinimum(cortexDir: string, minTag: string = MIN_CORTEX_TAG): Checked<string> {
+  const git = (...args: string[]) => spawnSync("git", ["-C", cortexDir, ...args], { encoding: "utf8" });
+  const describe = git("describe", "--tags", "--always");
+  const found = describe.status === 0 ? describe.stdout.trim() : "an unknown version";
+  if (git("rev-parse", "--verify", "--quiet", `refs/tags/${minTag}^{commit}`).status !== 0) {
+    return { ok: false, error: `CORTEX_DIR (${found}) has no tag ${minTag}, so its version is unknown: fetch tags in CORTEX_DIR (git -C ${cortexDir} fetch --tags).` };
+  }
+  if (git("merge-base", "--is-ancestor", minTag, "HEAD").status !== 0) {
+    return { ok: false, error: `CORTEX_DIR is at ${found} but Threva needs ${minTag}: update CORTEX_DIR to ${minTag} or later.` };
+  }
+  return { ok: true, value: found };
+}
 
 export interface DevStackPaths {
   cortexDir: string;

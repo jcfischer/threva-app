@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import { type Root } from "react-dom/client";
 import { DayView } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { EMPTY_SESSION, pin } from "../src/ui/queue/order";
 import { DAY, NOW, item, sweep, view } from "./fixtures/desk";
 import { mountDom } from "./fixtures/dom";

@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
+import { cortexImportRules } from "./eslint/cortex-imports.ts";
 import { threva } from "./eslint/no-comments.ts";
 
 const testCarveOut = Object.fromEntries(
@@ -47,6 +48,7 @@ export default defineConfig(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true, allowBoolean: true }],
+      ...cortexImportRules,
     },
   },
   { files: ["test/**/*.ts", "test/**/*.tsx"], rules: testCarveOut },

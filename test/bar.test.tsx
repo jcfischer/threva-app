@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Proposal } from "../src/ui/api/capture";
+import type { Proposal } from "@desk/capture";
 import { BarView } from "../src/ui/bar/bar";
 import { barReducer, INITIAL, looksLikeQuestion, type BarState } from "../src/ui/bar/state";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
@@ -46,7 +46,7 @@ describe("bar rendering", () => {
   const render = (state: BarState, locale: "en" | "de" = "en") =>
     renderToStaticMarkup(
       <I18nProvider value={createI18n(locale)}>
-        <BarView state={state} send={() => {}} onSubmit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} />
+        <BarView state={state} send={() => {}} onSubmit={() => {}} onSearch={() => {}} onNote={() => {}} onOpenHit={() => {}} onKeep={() => {}} onAsk={() => {}} onUndo={() => {}} />
       </I18nProvider>,
     );
 

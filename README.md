@@ -9,6 +9,7 @@ Threva is one product for a local user: a workspace that keeps the thread of a p
 - Threva talks to Cortex only over Cortex's local HTTP and WebSocket API. It never imports Cortex modules. Cortex is AGPL-3.0 and not published as a package, and its internals carry no contract.
 - A Cortex stack serves the built Threva UI from a configured directory, so the UI and the API share one origin and Cortex's Host and Origin checks apply unchanged.
 - The product ships as one bundle: an installer that pins a Cortex release, the adapters it needs and this UI, writes a minimal stack config and registers a local service.
+- The bundle pins `cortex-desk-adapters` `v0.2.0`, the first tagged release whose portable mail commands read a mail account file with `--config`. [The adapter release note](docs/desk-mail-adapters.md) holds the tarball sha256 the formula takes and the file contract that `threva setup` writes (node #185, prerequisite for node #146).
 
 ## Layout
 
@@ -28,6 +29,14 @@ bun run check
 
 The route lives on the work graph: the map root issue in this repository, labelled `orienteer:map`. Cortex-side work for Threva lives on a map in `the-metafactory/cortex`. Reference nodes in commits and pull requests with `Refs #N`, never a closing keyword.
 
+## Connect mail and calendar after installation
+
+Run `threva setup` from a terminal after installing the bundle. Enter an account name, mail address, IMAP and SMTP settings, and the mail server login and password. IMAP uses implicit TLS (port 993 by default). SMTP supports STARTTLS (port 587) or implicit TLS (port 465). You can also enter an address for phishing reports.
+
+Setup checks that the inbox can be read and asks for the password again if the check fails. The bundled adapter reads passwords through macOS Security, which hex-encodes nonprintable bytes, and trims the output. Setup accepts printable ASCII passwords with internal spaces and rejects leading or trailing whitespace rather than changing the password. A successful connection stores the password in the macOS Keychain and writes its reference to `~/.config/threva/mail-accounts.json`. To change settings, run `threva setup --reconfigure` and enter the existing account name, or leave the name empty to keep the current accounts.
+
+Setup also requests access to macOS Calendars and Reminders. Mail arrivals and calendar events appear in Day once their sources are connected. If you skip mail or deny a macOS permission, you can run setup again with `--reconfigure`.
+
 ## Run it locally
 
 `bun run dev:stack` starts a separate development Cortex stack that serves the built UI with sample calendar and mail data. It needs a Cortex checkout that supports `mc.ui.dir` and a `cortex-desk-adapters` checkout:
@@ -38,9 +47,17 @@ bun run dev:stack          # builds dist/ui, starts Cortex on http://127.0.0.1:8
 bun run dev:stack stop
 ```
 
+The stack refuses to start when `CORTEX_DIR`'s `HEAD` does not contain the Cortex release tag in `MIN_CORTEX_TAG` (`scripts/dev-stack-lib.ts`), and it fails closed when that tag is not fetched there. A Threva change that relies on newer Cortex behaviour raises `MIN_CORTEX_TAG` in the same pull request. `bun run probe:ui` starts the stack, so it fails the same way.
+
+The minimum is Cortex `v6.34.0`, which ships Desk HTTP search over captures, notes, cards and threads. See [the search API handoff](docs/desk-search.md) for the released contract and how to open a hit (node #149, prerequisite for node #145).
+
+Cortex v6.34.0 also supplies the after-meeting card for node #175. Read the `meeting-after` item from `GET /api/desk` and send its key with the `meeting.dismiss` action to `POST /api/desk/action`. Cortex stores the dismissal and omits the card from later Desk reads. [Cortex v6.34.0](https://github.com/the-metafactory/cortex/releases/tag/v6.34.0) · [After-meeting API](https://github.com/the-metafactory/cortex/pull/3803)
+
 The stack keeps its config, data and logs in `THREVA_DEV_DIR` (default `~/work/threva-dev`) and points `HOME` and Cortex's directories there, so it doesn't read or change another Cortex stack on the machine. It has no NATS bus and no Discord, and it runs Ranger only when a parser-routing file names it (see below). `THREVA_DEV_PORT` changes the port. The sample calendar is written relative to the start time, with one meeting about to start and one that just ended. The first start also makes `studio/` a git repository with two sample threads, one of which waits on you; later starts leave that repository and its history alone, so delete `studio/` to get the samples back. After changing the UI, `bun run build` is enough, because the stack serves `dist/ui/` as it is.
 
 To prove a UI change in a real browser, start a second stack with its own `THREVA_DEV_DIR` and `THREVA_DEV_PORT`, then run `bun run verify:ui` (scripted journeys with screenshots) and `bun run explore:ui` (Bombadil property exploration). `.claude/skills/verify-threva` has the steps.
+
+The sample budget topic includes a relation note to the offsite topic. The `relations` journey requires Cortex to serve that note's `relates` field from disk. For a dev stack seeded before this sample was added, use a fresh `THREVA_DEV_DIR` for verification.
 
 ### Conversations and the parser
 
@@ -63,6 +80,12 @@ THREVA_DEV_LANES=~/threva-dev/lanes.yaml THREVA_DEV_PARSER_ROUTING=~/threva-dev/
 ```
 
 With either file, the command runs `cortex config validate` on the generated config and stops with Cortex's error if it is refused. A file that is missing or cannot be parsed stops the command before it writes anything.
+
+## Deploy to the local Cortex
+
+`bun run deploy:local` puts the latest `main` in front of the Cortex that serves Threva on this machine. It keeps its own clone in `~/.local/share/threva/src`, builds `origin/main` there from a clean tree, and replaces `~/.local/share/threva/ui`, the directory that Cortex's `mc.ui.dir` names. Cortex reads that directory on every request, so it serves the new build without a restart; an open page shows it after a reload.
+
+The command does nothing when `ui/VERSION` already names the `main` commit; `--force` rebuilds anyway. It refuses when the Cortex at `THREVA_CORTEX_URL` (default `http://127.0.0.1:8767`) serves an older Desk API than the build needs, and it puts the previous UI back, or removes the new one when there was none, unless Cortex serves the new build's `version.js` stamp. The previous UI stays in `ui.prev`. It prints one JSON line and exits non-zero on a refusal or failure. `THREVA_UI_DIR`, `THREVA_DEPLOY_SOURCE` and `THREVA_REPO_URL` change the paths.
 
 ## Licence
 

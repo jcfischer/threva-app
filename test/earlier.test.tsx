@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { DeskEvent, DoneEntry, StudioList, StudioThread, TodayTask } from "../src/ui/api/types";
+import type { DeskEvent, DoneEntry, StudioList, StudioThread, TodayTask } from "@desk/types";
 import { buildEarlier, closedToday, doneToday, winsToday, type EarlierLine } from "../src/ui/day/earlier";
 import { TimelineView } from "../src/ui/day/timeline-view";
 import type { Clock } from "../src/ui/day/timeline";
@@ -200,7 +200,7 @@ describe("the timeline with earlier today", () => {
   });
 });
 
-// Rendered from the thread as `GET /api/desk/studio` sent it, with nothing overridden, so this pins the `closed` day
+// Rendered from the thread as the Studio list sent it, with nothing overridden, so this pins the `closed` day
 // and `outcome` Cortex writes.
 test("the recorded thread closed today renders with its question", () => {
   const clock: Clock = { now: Date.parse("2026-11-14T10:00:00+01:00"), evening: Date.parse("2026-11-14T18:00:00+01:00") };

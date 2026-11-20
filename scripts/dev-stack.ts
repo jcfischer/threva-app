@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } 
 import { join, resolve } from "node:path";
 import { deskExtras, operatorHome, readOperatorFiles, renderHomeWrapper, wrapperPaths, type DeskExtras, type OperatorFiles } from "./dev-stack-lanes";
 import { seedStudio } from "./dev-stack-studio";
-import { devEnv, renderCalendar, renderConfig, renderMail, resolvePaths, type DevStackPaths } from "./dev-stack-lib";
+import { checkCortexMinimum, devEnv, renderCalendar, renderConfig, renderMail, resolvePaths, type DevStackPaths } from "./dev-stack-lib";
 
 const repoDir = resolve(import.meta.dir, "..");
 const resolved = resolvePaths(process.env, repoDir, process.execPath, existsSync);
@@ -77,6 +77,11 @@ async function waitForDesk(port: number, ms: number): Promise<boolean> {
 async function start(): Promise<void> {
   if (existsSync(pidFile)) {
     console.error(`A dev stack may already run (pid file ${pidFile}). Run "bun run dev:stack stop" first.`);
+    process.exit(1);
+  }
+  const minimum = checkCortexMinimum(paths.cortexDir);
+  if (!minimum.ok) {
+    console.error(minimum.error);
     process.exit(1);
   }
   const files = readOperatorFiles(process.env, readable);

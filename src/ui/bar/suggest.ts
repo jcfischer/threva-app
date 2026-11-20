@@ -8,6 +8,7 @@ export const MIN_WORD = 2;
 export type Suggestion =
   | { kind: "note"; text: string }
   | { kind: "ask"; text: string }
+  | { kind: "search"; text: string }
   | { kind: "match"; entry: Entry; title: string; front: boolean };
 
 const WORD = /[\p{L}\p{N}]+/gu;
@@ -35,15 +36,16 @@ export function suggest(text: string, entries: readonly Entry[]): Suggestion[] {
   const hits: Suggestion[] = matchEntries(typed, entries).map(({ entry, index }) => ({ kind: "match", entry, title: entryTitle(entry), front: index === 0 }));
   const note: Suggestion = { kind: "note", text: typed };
   const ask: Suggestion = { kind: "ask", text: typed };
-  if (looksLikeQuestion(typed)) return [ask, ...hits, note];
-  if (hits.length && typedWords(typed).length <= 2) return [...hits, note, ask];
-  return [note, ...hits, ask];
+  const search: Suggestion = { kind: "search", text: typed };
+  if (looksLikeQuestion(typed)) return [ask, ...hits, note, search];
+  if (hits.length && typedWords(typed).length <= 2) return [...hits, note, ask, search];
+  return [note, ...hits, ask, search];
 }
 
-export type BarAct = { kind: "note" } | { kind: "ask" } | { kind: "match"; k: string };
+export type BarAct = { kind: "note" } | { kind: "ask" } | { kind: "search" } | { kind: "match"; k: string };
 
 export function actFor(row: Suggestion | undefined): BarAct {
-  if (row?.kind === "ask") return { kind: "ask" };
+  if (row?.kind === "ask" || row?.kind === "search") return { kind: row.kind };
   if (row?.kind === "match") return { kind: "match", k: row.entry.k };
   return { kind: "note" };
 }

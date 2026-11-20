@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DayView } from "../src/ui/app";
-import { createClient } from "../src/ui/api/client";
-import type { DeskView } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import type { DeskView } from "@desk/types";
 import { inboxCard, meetingCard } from "../src/ui/queue/around";
 import { buildQueue, EMPTY_SESSION, pin, type Session } from "../src/ui/queue/order";
-import { DAY, NOW, item, sweep, view } from "./fixtures/desk";
+import { afterMeeting, DAY, NOW, item, sweep, view } from "./fixtures/desk";
 
 const MIN = 60_000;
 const group = sweep();
 const desk = view({
-  items: [item({ key: "soon-card", kind: "meeting", eventKey: "soon", title: "Team standup" }), item({ key: "mail", kind: "mail", title: "Workshop dates" })],
+  items: [afterMeeting("ended", "Board call"), item({ key: "soon-card", kind: "meeting", eventKey: "soon", title: "Team standup" }), item({ key: "mail", kind: "mail", title: "Workshop dates" })],
   today: [
     { key: "ended", kind: "meeting", title: "Board call", at: NOW - 60 * MIN, end: NOW - 5 * MIN },
     { key: "soon", kind: "meeting", title: "Team standup", at: NOW + 10 * MIN, end: NOW + 40 * MIN },
@@ -20,8 +20,8 @@ const desk = view({
   myDay: { date: DAY, items: [{ task: { id: "task", title: "Write the report" }, areaTitle: "Work" }] },
 });
 
-const render = (data: DeskView = desk, session: Session = EMPTY_SESSION, now = NOW, dismissed: string[] = []) => renderToStaticMarkup(
-  <DayView client={createClient(async () => new Response("{}"))} state={{ view: data, studio: null, error: null, refresh: () => {} }} session={session} setSession={() => {}} now={now} dismissed={dismissed} />,
+const render = (data: DeskView = desk, session: Session = EMPTY_SESSION, now = NOW) => renderToStaticMarkup(
+  <DayView client={createClient(async () => new Response("{}"))} state={{ view: data, studio: null, error: null, refresh: () => {} }} session={session} setSession={() => {}} now={now} />,
 );
 
 describe("the day around the card", () => {
@@ -46,10 +46,10 @@ describe("the day around the card", () => {
     expect(html).toMatch(/<button type="button" class="slot ev past">[^]*?<b>Board call<\/b>[^]*?<\/button>/);
     expect(html).toMatch(/<button type="button" class="slot ev">[^]*?<b>Team standup<\/b>[^]*?<\/button>/);
     expect(html).toMatch(/<div class="slot ev">[^]*?<b>Later meeting<\/b>[^]*?<\/div>/);
-    expect(render(desk, EMPTY_SESSION, NOW, ["ended"])).toMatch(/<div class="slot ev past">[^]*?<b>Board call<\/b>[^]*?<\/div>/);
+    expect(render({ ...desk, items: desk.items.filter(({ kind }) => kind !== "meeting-after") })).toMatch(/<div class="slot ev past">[^]*?<b>Board call<\/b>[^]*?<\/div>/);
     const queue = buildQueue(desk, null, EMPTY_SESSION, NOW);
     expect(meetingCard(queue, "later")).toBeUndefined();
-    for (const [eventKey, expected] of [["soon", "i:soon-card"], ["ended", "a:ended"]]) {
+    for (const [eventKey, expected] of [["soon", "i:soon-card"], ["ended", "i:after-ended"]]) {
       const target = meetingCard(queue, eventKey);
       expect(target?.k).toBe(expected);
       expect(buildQueue(desk, null, pin(EMPTY_SESSION, target!.k), NOW)[0]?.k).toBe(expected);

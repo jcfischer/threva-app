@@ -1,12 +1,12 @@
 import { useState } from "react";
-import type { Result } from "../api/client";
-import type { StudioAct } from "../api/types";
-import { safeHref } from "../api/safe-link";
+import type { Result } from "@desk/client";
+import type { StudioAct } from "@desk/types";
+import { safeHref } from "@desk/safe-link";
 import { ErrorLine } from "../cards/parts";
 import type { ActError } from "../cards/act";
 import { useI18n } from "../i18n";
 import { Markdown } from "../markdown";
-import { ago, type OpenThing } from "./cards";
+import { ago, type OpenThing, type RelationTarget } from "./cards";
 
 /** The narrowest and widest an opened card gets when it opens outwards. */
 export const OPEN_CARD_MIN = 280;
@@ -89,6 +89,8 @@ export interface OpenCardProps {
   onClose: () => void;
   run: OpenAct;
   busy?: boolean;
+  target?: RelationTarget | null;
+  onFollow?: (slug: string) => void;
 }
 
 /**
@@ -97,7 +99,7 @@ export interface OpenCardProps {
  * behind a details toggle, and while it is open the acts the Studio offers: keep, dismiss and a one-line
  * answer. A refused act shows Cortex's own message and keeps what was typed.
  */
-export function OpenCard({ thing, slug, now, onClose, run, busy = false }: OpenCardProps) {
+export function OpenCard({ thing, slug, now, onClose, run, busy = false, target, onFollow }: OpenCardProps) {
   const i18n = useI18n();
   const { t } = i18n;
   const [answer, setAnswer] = useState("");
@@ -128,12 +130,19 @@ export function OpenCard({ thing, slug, now, onClose, run, busy = false }: OpenC
 
   const { note } = thing;
   const open = note.status === "open";
-  const takesKeep = open && (note.kind === "stand" || note.kind === "idea");
+  const takesKeep = open && (note.kind === "stand" || note.kind === "idea" || note.kind === "relation");
   const details = !!note.trigger || !!note.model;
   return (
     <div className="desk-opened-body">
       <span className="eyebrow">{t("studio.assistant")} · {ago(i18n, note.at, now)}</span>
+      {note.kind === "relation" && <span className="eyebrow">{t("studio.kind.relation")}</span>}
       <Markdown text={note.text} />
+      {target?.kind === "topic" && <div className="stack">
+        <b>{target.topic.question}</b>
+        {onFollow && <button type="button" className="btn" onClick={() => { onFollow(target.topic.slug); }}>{t("desk.relation.follow")}</button>}
+      </div>}
+      {target?.kind === "text" && <span>{target.label}</span>}
+      {target?.kind === "link" && <a className="lk" href={target.href} target="_blank" rel="noreferrer">{target.label}</a>}
       {details && (
         <details className="desk-details">
           <summary>{t("desk.card.details")}</summary>

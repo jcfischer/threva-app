@@ -1,4 +1,4 @@
-import type { OutlineRow, StudioProject } from "../api/types";
+import type { OutlineRow, StudioProject } from "@desk/types";
 import { createI18n, type I18n } from "../i18n";
 
 export interface RowTime {

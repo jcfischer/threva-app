@@ -1,15 +1,15 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { safeHref } from "../api/safe-link";
-import type { DeskItem, DeskMention } from "../api/types";
+import { safeHref } from "@desk/safe-link";
+import type { DeskItem, DeskMention } from "@desk/types";
 import { useI18n } from "../i18n";
 import type { ActError, useAct } from "./act";
 
 export const CardFooterContext = createContext<ReactNode>(null);
 
-export function Card({ eyebrow, pill, children }: { eyebrow: string; pill?: ReactNode; children: ReactNode }) {
+export function Card({ eyebrow, pill, children, itemKey }: { eyebrow: string; pill?: ReactNode; children: ReactNode; itemKey?: string }) {
   const footer = useContext(CardFooterContext);
   return (
-    <div className="card">
+    <div className="card" data-item-key={itemKey}>
       <span className="row" style={{ justifyContent: "space-between" }}>
         <span className="eyebrow">{eyebrow}</span>
         {pill}

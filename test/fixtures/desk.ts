@@ -1,4 +1,5 @@
-import type { DeskItem, DeskView, MailSweep, StudioList, StudioThread } from "../../src/ui/api/types";
+import type { MemoryClient } from "@desk/memory-client";
+import type { DeskItem, DeskView, MailRule, MailSweep, MyDayOutline, StudioList, StudioThread } from "@desk/types";
 
 export const NOW = Date.parse("2026-11-13T10:00:00+01:00");
 export const DAY = "2026-11-13";
@@ -6,6 +7,7 @@ export const DAY = "2026-11-13";
 export function item(overrides: Partial<DeskItem> & Pick<DeskItem, "key" | "kind">): DeskItem {
   return {
     source: "test",
+    area: null,
     title: `Item ${overrides.key}`,
     why: "Because.",
     score: 1,
@@ -16,8 +18,30 @@ export function item(overrides: Partial<DeskItem> & Pick<DeskItem, "key" | "kind
   };
 }
 
+export function afterMeeting(key: string, title: string): DeskItem {
+  return item({
+    key: `after-${key}`,
+    kind: "meeting-after",
+    title: `${title} ended.`,
+    why: "It ended 5 minutes ago.",
+    eventKey: key,
+    detail: { summary: title, links: [] },
+  });
+}
+
 export function view(overrides: Partial<DeskView> = {}): DeskView {
   return { generatedAt: NOW, displayName: null, items: [], today: [], ...overrides };
+}
+
+export function seededApp(client: MemoryClient, {
+  desk = view(),
+  myDay = { date: DAY, revision: 1, outline: { id: "root", title: "Everything", ordering: "parallel", weight: 1, children: [] } },
+  rules = [],
+}: { desk?: DeskView | (() => DeskView); myDay?: MyDayOutline; rules?: MailRule[] } = {}): void {
+  client.seed("desk", () => ({ ok: true, data: typeof desk === "function" ? desk() : desk }));
+  client.seed("studio", { ok: true, data: { studio: null } });
+  client.seed("rules", { ok: true, data: { rules } });
+  client.seed("myDay", { ok: true, data: myDay });
 }
 
 export function sweep(overrides: Partial<MailSweep> = {}): MailSweep {

@@ -22,23 +22,9 @@
       "count": 1
     }
   },
-  "src/ui/app.tsx": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 6
-    },
-    "@typescript-eslint/no-empty-function": {
-      "count": 1
-    }
-  },
   "src/ui/bar/bar.tsx": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
-    },
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 9
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 4
     }
   },
   "src/ui/cards/act.ts": {
@@ -51,7 +37,7 @@
       "count": 7
     },
     "@typescript-eslint/no-misused-promises": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 3
@@ -221,14 +207,6 @@
       "count": 1
     }
   },
-  "src/ui/queue/dismissed.ts": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/ui/queue/notifier.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
@@ -241,13 +219,7 @@
   },
   "src/ui/queue/queue-view.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
-      "count": 10
-    },
-    "@typescript-eslint/no-empty-function": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 5
+      "count": 9
     }
   },
   "src/ui/queue/use-desk.ts": {
@@ -256,23 +228,12 @@
     }
   },
   "test/agent-card.test.tsx": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unnecessary-type-conversion": {
-      "count": 1
-    },
     "threva/no-comments": {
       "count": 1
     }
   },
   "test/arrivals.test.tsx": {
     "threva/no-comments": {
-      "count": 1
-    }
-  },
-  "test/bar-flow.test.ts": {
-    "@typescript-eslint/no-base-to-string": {
       "count": 1
     }
   },
@@ -283,7 +244,7 @@
   },
   "test/everything-assistant.test.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 7
+      "count": 6
     }
   },
   "test/everything-editor.test.tsx": {
@@ -344,9 +305,6 @@
     }
   },
   "test/interruptions.test.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 2
     },
@@ -356,11 +314,6 @@
   },
   "test/mail-actions.test.tsx": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
-  "test/make-task.test.tsx": {
-    "threva/no-comments": {
       "count": 1
     }
   },

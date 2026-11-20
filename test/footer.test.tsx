@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { DeskAgents, DeskView, MailSweep } from "../src/ui/api/types";
+import type { DeskAgents, DeskView, MailSweep } from "@desk/types";
 import { Footer } from "../src/ui/day/footer";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";
 import { item, NOW, view } from "./fixtures/desk";
 
 const MIN = 60_000;
 
-const sweep = (id: string): MailSweep => ({ id, kind: "newsletter", target: "archive", label: "Newsletters", title: "Newsletters", why: "Read none.", mails: [] });
+const sweep = (id: string): MailSweep => ({ id, kind: "sweep", target: "archive", label: "Newsletters", title: "Newsletters", why: "Read none.", mails: [] });
 
 const render = (desk: DeskView, opts: { locale?: Locale; open?: boolean } = {}) =>
   renderToStaticMarkup(

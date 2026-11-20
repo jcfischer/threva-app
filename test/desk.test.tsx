@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { deskCards, firstSentence, noteCards } from "../src/ui/desk/cards";
 import { Desk } from "../src/ui/desk/desk";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { StudioCard } from "../src/ui/studio/card";
-import type { StudioNote, StudioThread } from "../src/ui/api/types";
+import type { StudioNote, StudioThread } from "@desk/types";
 import { budgetThread, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
@@ -25,10 +25,11 @@ describe("desk cards", () => {
     expect(firstSentence("Version 1.2 is out. More")).toBe("Version 1.2 is out.");
   });
 
-  test("notes are newest first, open ones at full strength, relations and dismissed notes out", () => {
+  test("notes including relations are newest first, open ones at full strength and dismissed notes out", () => {
     const cards = noteCards([...budgetThread.notes, { at: "2026-11-10T00:00:00Z", kind: "idea", status: "dismissed", text: "Gone." }]);
     expect(cards.map((c) => [c.at, c.strength])).toEqual([
       ["2026-11-13T20:48:41Z", "open"],
+      ["2026-11-13T03:15:00Z", "open"],
       ["2026-11-13T03:14:00Z", "open"],
       ["2026-11-12T03:12:00Z", "dim"],
     ]);
@@ -42,7 +43,7 @@ describe("desk cards", () => {
   test("material goes left, notes right", () => {
     const cards = deskCards(budgetThread);
     expect(cards.filter((c) => c.side === "left").map((c) => c.side === "left" && c.label)).toEqual(["Ada Lovelace", "BRIEF.md"]);
-    expect(cards.filter((c) => c.side === "right")).toHaveLength(3);
+    expect(cards.filter((c) => c.side === "right")).toHaveLength(4);
   });
 });
 
@@ -57,7 +58,8 @@ describe("the desk", () => {
     expect(html).toContain("desk-card desk-open");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain('data-desk-card="m1"');
-    expect(html).not.toContain("March offsite");
+    expect(html).toContain("March offsite");
+    expect(html).toContain("Relation");
   });
 
   test("says so when there is no material", () => {

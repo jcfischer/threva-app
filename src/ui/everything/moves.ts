@@ -1,4 +1,4 @@
-import type { OutlineRow } from "../api/types";
+import type { OutlineRow } from "@desk/types";
 
 export function pathTo(root: OutlineRow, id: string): OutlineRow[] | null {
   if (root.id === id) return [root];

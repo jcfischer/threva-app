@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
-import type { DeskClient } from "../api/client";
-import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { AreaShare, MyDayOutline, OutlineCommand, OutlineRow } from "@desk/types";
 import { useI18n } from "../i18n";
 import { destinations, dropMove, moveTo, pathTo, stepMove, type Move } from "./moves";
 import { detailsOf, keepPlace, keptPlace, NoteSaver, pageLine, type NoteNotice, type PlaceStore } from "./note";
@@ -9,6 +9,8 @@ import { liftSelection } from "./lift";
 import { titleParts } from "./links";
 import { NotePage } from "./page";
 import { ThreadPage } from "./thread-page";
+import { TimeMargin, TimeSection, type SaveTime } from "./time-popover";
+import { timeDetails } from "./time-edit";
 import { projectRowState, relativeDay, rowCounts, rowState, rowTime } from "./time";
 
 const inMemory = (): PlaceStore => {
@@ -155,6 +157,28 @@ export function EverythingView({ client, active = true, initialDay = null, openR
     }
   };
 
+  const saveTime = (row: OutlineRow): SaveTime => async draft => {
+    if (writing.current) return t("error.network");
+    await saver.flush();
+    const snapshot = outline.current;
+    if (!snapshot) return t("error.network");
+    writing.current = true;
+    ++readVersion.current;
+    try {
+      const result = await client.changeMyDay(snapshot.date, { op: "outline-edit", revision: saver.revision, id: row.id, details: timeDetails(row, snapshot.date, draft, row.id in texts ? texts[row.id] : row.note ?? ""), yes: false });
+      if (result.ok) {
+        setDay(result.data.view);
+        onChange();
+        return null;
+      }
+      const newest = await client.myDay();
+      if (newest.ok) setDay(newest.data);
+      return result.message ?? t("error.network");
+    } finally {
+      writing.current = false;
+    }
+  };
+
   const openRow = useCallback((id: string) => {
     void saver.flush();
     setAt(id);
@@ -235,10 +259,13 @@ export function EverythingView({ client, active = true, initialDay = null, openR
             const target = pathTo(root, event.target.value)?.at(-1);
             if (target) move(row.id, moveTo(root, row.id, target.id, target.children.length));
           }}><option value="">{t("everything.chooseParent")}</option>{options.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
+          {!project && <button type="button" className="btn quiet" disabled={busy} onClick={() => {
+            if (window.confirm(t("everything.removeConfirm", { title: row.title }))) void change(day, { op: "outline-remove", revision: day.revision, id: row.id, confirm: true });
+          }}>{t("everything.remove")}</button>}
         </div>
       </details>}
       <OutlineTitle title={row.title} openLabel={t("everything.openRow")} onOpen={() => openRow(row.id)} />
-      {project ? <span className="faint">{t("thread.with", { name })}{project.openNotes !== null && ` · ${tn("thread.openNotes", project.openNotes)}`}</span> : area || row.children.length ? summary(row) : <span className={`outline-margin ${time.warning ? "outline-warning" : "faint"}`}>{time.margin}</span>}
+      {project ? <span className="faint">{t("thread.with", { name })}{project.openNotes !== null && ` · ${tn("thread.openNotes", project.openNotes)}`}</span> : area || row.children.length ? summary(row) : <span className="outline-margin"><TimeMargin row={row} margin={time.margin} className={time.warning ? "outline-warning" : "faint"} onSave={saveTime(row)} /></span>}
       <span className="outline-page">{project ? project.state === "parked" ? t("thread.putAway") : "" : pageLine(row.note, i18n)}</span>
       {!area && !project && <button type="button" className="btn quiet" disabled={busy} onClick={() => { void change(day, { op: row.done ? "outline-reopen" : "outline-complete", revision: day.revision, id: row.id, confirm: true }); }}>{t(row.done ? "everything.reopen" : "everything.done")}</button>}
     </div>;
@@ -254,6 +281,7 @@ export function EverythingView({ client, active = true, initialDay = null, openR
       <span className="faint">{t("everything.importance", { value: current.weight })}</span>
       {share ? <><div className="balbar" aria-hidden="true"><i style={{ width: `${Math.round(share.actualShare * 100)}%` }} /><b style={{ left: `${Math.round(share.targetShare * 100)}%` }} /></div><span className="faint">{t("everything.share", { actual: Math.round(share.actualShare * 100), target: Math.round(share.targetShare * 100) })}</span></> : <span className="faint">{t("everything.shareUnavailable")}</span>}
     </div>}
+    {hasPage && <TimeSection key={`time-${current.id}`} row={current} onSave={saveTime(current)} />}
     {hasPage && <NotePage key={current.id} row={current} text={pageText}
       place={keptPlace(store, current.id, pageText.length)}
       notice={notice?.row === current.id ? notice : null}

@@ -1,6 +1,6 @@
-import type { StudioList, StudioThread, StudioThinking } from "../../src/ui/api/types";
+import type { StudioList, StudioThread, StudioThinking } from "@desk/types";
 
-// Recorded from the dev stack's `GET /api/desk/studio` (thread budget-next-year), with a stand proposal, a kept idea
+// Recorded from the dev stack's Studio list (thread budget-next-year), with a stand proposal, a kept idea
 // and a relation note added in the shape of Cortex's docs/desk-studio.md sample, and the per-thread `thinking`
 // Cortex adds to every thread (cortex#3613) in its open state.
 export const openThinking: Extract<StudioThinking, { kind: "ready" }> = { kind: "ready", budget: "open", reason: null, runs: [] };
@@ -45,6 +45,7 @@ export const budgetThread: StudioThread = {
       model: "sample",
       kind: "relation",
       status: "open",
+      relates: { kind: "thread", label: "offsite-in-march" },
       text: "This relates to the March offsite.",
     },
   ],
@@ -55,7 +56,7 @@ export const budgetThread: StudioThread = {
   ],
 };
 
-// Recorded from the dev stack's `GET /api/desk/studio` after a close act closed the budget thread as dropped, with the
+// Recorded from the dev stack's Studio list after a close act closed the budget thread as dropped, with the
 // fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp.
 export const closedThread: StudioThread = {
   slug: "budget-next-year",

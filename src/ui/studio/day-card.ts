@@ -1,4 +1,4 @@
-import type { StudioNote, StudioThread } from "../api/types";
+import type { StudioNote, StudioThread } from "@desk/types";
 
 /** The lines a waiting note takes on the Day card before "Show all" offers the rest. */
 export const NOTE_LINES = 6;

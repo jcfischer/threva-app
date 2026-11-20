@@ -1,12 +1,14 @@
 import { expect, test } from "bun:test";
 import { act } from "react";
-import { createClient } from "../src/ui/api/client";
-import type { MyDayOutline, OutlineCommand } from "../src/ui/api/types";
+import { createClient } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { MyDayOutline, OutlineCommand } from "@desk/types";
 import { App } from "../src/ui/app";
 import { pathTo } from "../src/ui/everything/moves";
 import { EverythingView } from "../src/ui/everything/view";
 import { DATE, outlineFixture, row } from "./fixtures/outline";
 import { inputText, mountDom } from "./fixtures/dom";
+import { seededApp } from "./fixtures/desk";
 import recorded from "./fixtures/my-day.json";
 
 async function surface(run: (container: HTMLElement, render: (element: React.ReactNode) => Promise<void>) => Promise<void>) {
@@ -24,7 +26,7 @@ const click = async (container: Element, text: string) => {
 };
 
 const input = async (container: Element, value: string) => {
-  const field = container.querySelector("input")!;
+  const field = container.querySelector<HTMLInputElement>(".outline-add input")!;
   await inputText(field, value);
 };
 
@@ -45,6 +47,9 @@ function memoryClient(seed: MyDayOutline = outlineFixture()) {
       const moving = path.at(-1)!;
       parent.children = parent.children.filter(child => child.id !== command.id);
       pathTo(saved.outline, command.parent)!.at(-1)!.children.splice(command.index, 0, moving);
+    } else if (command.op === "outline-remove") {
+      const parent = pathTo(saved.outline, command.id)!.at(-2)!;
+      parent.children = parent.children.filter(child => child.id !== command.id);
     } else {
       const node = pathTo(saved.outline, command.id)!.at(-1)!;
       node.done = command.op === "outline-complete";
@@ -121,10 +126,10 @@ test("add, menu moves, finish and reopen use each returned revision; drafts stay
   await click(container, "‹ Work");
   await input(container, "Area draft");
   await click(container, "Exercise");
-  expect(container.querySelector("input")?.value).toBe("A new task");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("A new task");
   await click(container, "Add");
   expect(commands[0]).toEqual({ op: "outline-add", parent: "project", title: "A new task", revision: 12 });
-  expect(container.querySelector("input")?.value).toBe("");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("");
   let added = container.querySelector('[data-row="new"]')!;
   await click(added, "Up");
   expect(commands[1]).toEqual({ op: "outline-move", id: "new", parent: "project", index: 6, revision: 13 });
@@ -141,7 +146,7 @@ test("add, menu moves, finish and reopen use each returned revision; drafts stay
   await click(container.querySelector('[data-row="new"]')!, "Out");
   expect(commands[5]).toMatchObject({ op: "outline-move", parent: "area:work", index: 1, revision: 17 });
   await click(container, "‹ Work");
-  expect(container.querySelector("input")?.value).toBe("Area draft");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("Area draft");
   const select = container.querySelector<HTMLSelectElement>('[data-row="new"] select')!;
   await act(async () => { select.value = "area:me"; select.dispatchEvent(new window.Event("change", { bubbles: true })); });
   expect(commands[6]).toMatchObject({ op: "outline-move", parent: "area:me", index: 0, revision: 18 });
@@ -163,7 +168,7 @@ test("Cortex refusal is shown verbatim, reloads the outline, and keeps typed tex
   expect(reads).toBe(1); expect(writes).toBe(1);
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Cortex refused this stale outline.");
   expect(container.querySelector("h2")?.textContent).toBe("Work from another window");
-  expect(container.querySelector("input")?.value).toBe("Keep this draft");
+  expect(container.querySelector<HTMLInputElement>(".outline-add input")?.value).toBe("Keep this draft");
 }));
 
 test("a row with children can be finished and reopened both in the outline and on its page", async () => surface(async (container, render) => {
@@ -182,6 +187,49 @@ test("a row with children can be finished and reopened both in the outline and o
   expect(pageAction().textContent).toBe("Done");
   expect(commands.map(command => command.op)).toEqual(["outline-complete", "outline-reopen", "outline-complete", "outline-reopen"]);
   expect(commands.every(command => "id" in command && command.id === "project")).toBe(true);
+}));
+
+test("Delete in the row menu asks first, then removes the row", async () => surface(async (container, render) => {
+  const { client, commands } = memoryClient();
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work"); await click(container, "Exercise");
+  const asked: string[] = [];
+  let answer = false;
+  const original = window.confirm;
+  window.confirm = (message?: string) => { asked.push(message ?? ""); return answer; };
+  try {
+    await click(container.querySelector('[data-row="plain"]')!, "Delete");
+    expect(commands).toEqual([]);
+    expect(container.querySelector('[data-row="plain"]')).not.toBeNull();
+    answer = true;
+    await click(container.querySelector('[data-row="plain"]')!, "Delete");
+    expect(asked).toHaveLength(2);
+    expect(commands).toEqual([{ op: "outline-remove", id: "plain", confirm: true, revision: 12 }]);
+    expect(container.querySelector('[data-row="plain"]')).toBeNull();
+  } finally {
+    window.confirm = original;
+  }
+}));
+
+test("a Delete that Cortex refuses shows its message and keeps the row", async () => surface(async (container, render) => {
+  const sent: OutlineCommand[] = [];
+  const client = createClient(async (_url, init) => {
+    if (!init) return Response.json(outlineFixture());
+    sent.push((JSON.parse(init.body as string) as { command: OutlineCommand }).command);
+    return Response.json({ error: "Only empty items without source links or completion history can be removed." }, { status: 409 });
+  });
+  await render(<EverythingView client={client} initialDay={outlineFixture()} />);
+  await click(container, "Work");
+  const original = window.confirm;
+  window.confirm = () => true;
+  try {
+    await click(container.querySelector('[data-row="project"]')!, "Delete");
+  } finally {
+    window.confirm = original;
+  }
+  expect(sent).toEqual([{ op: "outline-remove", id: "project", confirm: true, revision: 12 }]);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Only empty items without source links or completion history can be removed.");
+  expect(container.querySelector('[data-row="project"]')).not.toBeNull();
 }));
 
 test("drag moves send the source snapshot's revision and drop index", async () => surface(async (container, render) => {
@@ -205,7 +253,8 @@ test("drag moves send the source snapshot's revision and drop index", async () =
 
 test("App switches above the card and keeps the outline draft across Day", async () => surface(async (container, render) => {
   const fixture = outlineFixture();
-  const client = createClient(async url => Response.json(url === "/api/desk/my-day" ? fixture : url === "/api/desk/studio" ? { studio: null } : url === "/api/desk/mail/rules" ? { rules: [] } : { generatedAt: Date.now(), displayName: null, today: [], items: [] }));
+  const client = createMemoryClient();
+  seededApp(client, { myDay: fixture });
   await render(<App client={client} />);
   expect(container.querySelector(".view-switch")!.compareDocumentPosition(container.querySelector(".cards")!) & 4).toBe(4);
   await click(container, "Everything");
@@ -214,5 +263,5 @@ test("App switches above the card and keeps the outline draft across Day", async
   await click(container, "Day");
   expect(container.querySelector(".everything")?.parentElement?.hidden).toBe(true);
   await click(container, "Everything");
-  expect(container.querySelector(".everything input")?.getAttribute("value")).toBe("Still here");
+  expect(container.querySelector(".everything .outline-add input")?.getAttribute("value")).toBe("Still here");
 }));

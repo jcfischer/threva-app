@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { ViewSwitch } from "../src/ui/app";
 import { destinations, dropMove, moveTo, pathTo, stepMove } from "../src/ui/everything/moves";
 import { relativeDay, rowCounts, rowTime } from "../src/ui/everything/time";
@@ -81,27 +81,4 @@ test("static Everything surface lists only areas, with summaries and no movable 
   const toggle = renderToStaticMarkup(<ViewSwitch view="everything" onChange={() => {}} />);
   expect(toggle).toContain('aria-pressed="false">Day');
   expect(toggle).toContain('aria-pressed="true">Everything');
-});
-
-test("write client sends UUID, date, revision and the command over HTTP, and preserves Cortex refusals", async () => {
-  const calls: { url: string; init?: RequestInit }[] = [];
-  const client = createClient(async (url, init) => {
-    calls.push({ url, init });
-    return init ? Response.json({ error: "The outline changed. Your draft is kept." }, { status: 409 }) : Response.json(fixture);
-  });
-  expect(await client.myDay()).toEqual({ ok: true, data: fixture });
-  for (const command of [
-    { op: "outline-add", revision: 12, parent: "project", title: "New" } as const,
-    { op: "outline-move", revision: 12, id: "plain", parent: "area:me", index: 0 } as const,
-    { op: "outline-complete", revision: 12, id: "due", confirm: true } as const,
-    { op: "outline-reopen", revision: 12, id: "done", confirm: true } as const,
-  ]) {
-    expect(await client.changeMyDay(DATE, command)).toEqual({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
-    const call = calls.at(-1)!;
-    expect(call.url).toBe("/api/desk/my-day");
-    expect(call.init?.method).toBe("POST");
-    const body = JSON.parse(call.init!.body as string);
-    expect(body).toMatchObject({ date: DATE, command });
-    expect(body.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  }
 });

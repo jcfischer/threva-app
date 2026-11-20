@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient } from "../src/ui/api/client";
+import { createClient } from "@desk/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { MailCard } from "../src/ui/cards/mail-cards";
 import { MeetingSoonCard } from "../src/ui/cards/meeting-cards";

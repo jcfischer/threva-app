@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { DeskClient } from "../api/client";
-import type { MyDayOutline } from "../api/types";
+import type { DeskClient } from "@desk/client";
+import type { MyDayOutline } from "@desk/types";
 import type { DeskState } from "../queue/use-desk";
 import { useI18n } from "../i18n";
 import { dateInZone, weekColumns, type WeekColumn } from "./columns";

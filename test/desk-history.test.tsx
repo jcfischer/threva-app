@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
-import { createClient, type Fetch } from "../src/ui/api/client";
-import type { StudioThread } from "../src/ui/api/types";
+import { createClient, type Fetch } from "@desk/client";
+import type { StudioThread } from "@desk/types";
 import { Desk } from "../src/ui/desk/desk";
 import { historyBlocks } from "../src/ui/desk/history";
 import { createI18n, I18nProvider } from "../src/ui/i18n";

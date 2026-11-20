@@ -1,18 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
-import type { StudioThread } from "../src/ui/api/types";
+import type { Result } from "@desk/client";
+import { createMemoryClient } from "@desk/memory-client";
+import type { StudioThread } from "@desk/types";
 import { Desk } from "../src/ui/desk/desk";
 import { standLine } from "../src/ui/desk/topic-menu";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
-import { STUDIO_ACT_PATH } from "../src/ui/studio/act";
 import { closeAct, outcomesFor, threadType } from "../src/ui/studio/close";
 import { inputText, mountDom } from "./fixtures/dom";
 import { budgetThread, closedThread, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
-const noFetch: Fetch = async () => new Response("{}");
 
 const asQuestion = { ...budgetThread, type: "question" as const };
 const asMaking: StudioThread = { ...budgetThread, type: "making" };
@@ -21,7 +20,7 @@ const asTopic: StudioThread = { ...budgetThread, type: "topic" };
 const render = (thread: StudioThread = budgetThread, locale: "en" | "de" = "en") =>
   renderToStaticMarkup(
     <I18nProvider value={createI18n(locale)}>
-      <Desk client={createClient(noFetch)} studio={studioList([thread])} slug={thread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
+      <Desk client={createMemoryClient()} studio={studioList([thread])} slug={thread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
     </I18nProvider>,
   );
 
@@ -95,7 +94,7 @@ describe("the menu at the head of the desk", () => {
 
   test("the form does not carry over when the desk switches to another topic", async () => {
     const dom = mountDom();
-    const client = createClient(noFetch);
+    const client = createMemoryClient();
     const desk = (thread: StudioThread) => (
       <I18nProvider value={createI18n("en")}>
         <Desk client={client} studio={studioList([thread])} slug={thread.slug} backLabel="Back" onBack={() => {}} now={NOW} />
@@ -158,19 +157,16 @@ interface Wired {
   cleanup: () => Promise<void>;
   button: (label: string) => HTMLButtonElement;
   click: (label: string) => Promise<void>;
-  writes: { path: string; body: Record<string, unknown> }[];
+  writes: { body: Record<string, unknown> }[];
   refreshed: () => number;
 }
 
-async function mount(thread: StudioThread, reply: (body: Record<string, unknown>) => Response = () => Response.json({ ok: true, message: "Done." })): Promise<Wired> {
+async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }): Promise<Wired> {
   const dom = mountDom();
-  const writes: { path: string; body: Record<string, unknown> }[] = [];
   let refreshed = 0;
-  const client = createClient(async (path, init) => {
-    const body = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as Record<string, unknown>;
-    writes.push({ path, body });
-    return reply(body);
-  });
+  const client = createMemoryClient();
+  client.seed("studio.act", reply);
+  const writes = { get value() { return client.calls.filter((call) => call.name === "studio.act").map((call) => ({ body: call.args[0] as Record<string, unknown> })); } };
   await act(async () => {
     dom.root.render(
       <I18nProvider value={createI18n("en")}>
@@ -186,7 +182,7 @@ async function mount(thread: StudioThread, reply: (body: Record<string, unknown>
   const click = async (label: string) => {
     await act(async () => { button(label).click(); });
   };
-  return { container: dom.container, cleanup: dom.cleanup, button, click, writes, refreshed: () => refreshed };
+  return { container: dom.container, cleanup: dom.cleanup, button, click, get writes() { return writes.value; }, refreshed: () => refreshed };
 }
 
 const field = (wired: Wired, selector: string): HTMLInputElement | HTMLTextAreaElement => {
@@ -212,7 +208,6 @@ describe("the acts through the Studio act client", () => {
       expect(toggle.getAttribute("aria-checked")).toBe("false");
       await off.click("Think about it tonight");
       expect(off.writes).toHaveLength(1);
-      expect(off.writes[0]?.path).toBe(STUDIO_ACT_PATH);
       expect(off.writes[0]?.body).toMatchObject({ act: "think", thread: budgetThread.slug, on: true });
     } finally {
       await off.cleanup();
@@ -247,7 +242,7 @@ describe("the acts through the Studio act client", () => {
   });
 
   test("finishing a question sends the decision, the expectation and the review date once the form holds them", async () => {
-    const wired = await mount(asQuestion, () => Response.json({ ok: true, message: "Closed as decided." }));
+    const wired = await mount(asQuestion, { ok: true, data: { message: "Closed as decided." } });
     try {
       expect(wired.container.querySelector("textarea")).toBeNull();
       await wired.click("Finish");
@@ -301,7 +296,7 @@ describe("the acts through the Studio act client", () => {
 
   test("a refused act shows Cortex's message in the menu and keeps it open", async () => {
     const refused = "This topic is already on the assistant's list for tonight.";
-    const wired = await mount(budgetThread, () => Response.json({ error: refused }, { status: 409 }));
+    const wired = await mount(budgetThread, { ok: false, message: refused, status: 409 });
     try {
       await wired.click("Think about it tonight");
       expect(wired.container.textContent).toContain(refused);
@@ -329,7 +324,7 @@ describe("the acts through the Studio act client", () => {
 
   test("a refused close shows Cortex's message in the form and keeps what was typed", async () => {
     const refused = "The review date is in the past.";
-    const wired = await mount(asQuestion, () => Response.json({ error: refused }, { status: 400 }));
+    const wired = await mount(asQuestion, { ok: false, message: refused, status: 400 });
     try {
       await wired.click("Finish");
       await inputText(field(wired, 'textarea[aria-label="The decision"]'), "We keep the team.");

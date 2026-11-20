@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createClient, type Fetch } from "../src/ui/api/client";
+import { createClient, type Fetch } from "@desk/client";
 import { QueueContext } from "../src/ui/cards/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { buildQueue, EMPTY_SESSION, pin, skip } from "../src/ui/queue/order";
@@ -41,7 +41,7 @@ describe("buildQueue", () => {
 describe("client", () => {
   test("returns Cortex's error text on a failed write", async () => {
     const fetchStub: Fetch = async () => new Response(JSON.stringify({ ok: false, error: "Ranger actions are not set up on this stack." }), { status: 409 });
-    const result = await createClient(fetchStub).post("/api/desk/action", { action: "ranger.approve", key: "k" });
+    const result = await createClient(fetchStub).queue.action("ranger.approve", "k");
     expect(result).toEqual({ ok: false, message: "Ranger actions are not set up on this stack.", status: 409 });
   });
 
@@ -58,7 +58,7 @@ describe("client", () => {
       seen = init;
       return new Response("{}");
     };
-    await createClient(fetchStub).post("/api/desk/ruling", { key: "k" });
+    await createClient(fetchStub).queue.ruling("k", "Use SQLite.");
     expect(seen?.method).toBe("POST");
     expect(new Headers(seen?.headers).get("content-type")).toBe("application/json");
   });
@@ -101,6 +101,26 @@ describe("queue rendering", () => {
     expect(html).toContain("Which database?");
     expect(html).toContain("SQLite");
     expect(html).toContain("Decide and tell the agent");
+    expect(html).toContain("1 card");
+  });
+
+  test("renders a task-handoff item as a card", () => {
+    const html = render({
+      view: view({
+        items: [
+          item({
+            key: "handoff:h1",
+            kind: "task-handoff",
+            title: "Codex finished “Draft the memo”",
+            actions: [{ id: "task.done", label: "Done", role: "primary", wired: true }],
+            handoff: { id: "h1", state: "ready", line: "Done", since: NOW, result: "The memo." },
+          }),
+        ],
+      }),
+      studio: null,
+      error: null,
+    });
+    expect(html).toContain("Codex finished “Draft the memo”");
     expect(html).toContain("1 card");
   });
 

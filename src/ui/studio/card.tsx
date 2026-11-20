@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { StudioThread } from "../api/types";
+import type { StudioThread } from "@desk/types";
 import { Markdown } from "../markdown";
 import { ErrorLine, Card } from "../cards/parts";
 import { useI18n } from "../i18n";

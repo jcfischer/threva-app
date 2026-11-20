@@ -1,4 +1,4 @@
-import { safeHref } from "../api/safe-link";
+import { safeHref } from "@desk/safe-link";
 
 export interface TextLink {
   from: number;
