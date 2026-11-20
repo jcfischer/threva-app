@@ -190,7 +190,7 @@ export const journeys = {
     await page.getByRole("radio", { name: "Dropped", exact: true }).check();
     await page.getByLabel("Why it is dropped", { exact: true }).fill("The offsite plans itself this year.");
     const close = await act("Close the topic", "Close the topic");
-    if (close.act !== "close" || close.draftRevision === undefined) throw new Error(`The close did not carry the draft revision: ${JSON.stringify(close)}`);
+    if (close.act !== "close" || close.draftRevision !== revision) throw new Error(`The close did not carry the draft revision Threva read: ${JSON.stringify(close)}`);
     await page.locator('[data-desk-outcome="dropped"]').waitFor();
     await page.getByText("The offsite plans itself this year.", { exact: false }).waitFor();
     await shot("topic-closed");

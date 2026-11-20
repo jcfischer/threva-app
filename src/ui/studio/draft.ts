@@ -11,10 +11,14 @@ export interface DraftConflict {
 /** The acts that park or close a topic, which Desk API 2 answers only for the draft revision the user was shown. */
 export const carriesDraftRevision = (act: StudioAct): act is RevisionAct => act.act === "park" || act.act === "close";
 
-/** A topic's draft revision as Cortex serves it, or null when Cortex serves no readable draft. */
-export async function readDraftRevision(client: DeskClient, thread: string): Promise<string | null> {
+/** What Threva read of a topic's draft: its revision (null when the draft has none), or null when the read failed. */
+export type DraftRead = { revision: string | null } | null;
+
+/** A topic's draft revision as Cortex serves it, or null when the read failed and should be tried again. */
+export async function readDraftRevision(client: DeskClient, thread: string): Promise<DraftRead> {
   const read = await client.studio.draft(thread);
-  return read.ok && typeof read.data.revision === "string" ? read.data.revision : null;
+  if (!read.ok) return null;
+  return { revision: typeof read.data.revision === "string" ? read.data.revision : null };
 }
 
 /** Cortex's 409 for a park or close whose thread moved on: the draft as it is now, and its revision. */

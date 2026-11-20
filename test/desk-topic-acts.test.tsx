@@ -388,12 +388,25 @@ describe("parking and finishing under Desk API 2", () => {
     }
   });
 
-  test("a topic whose draft Cortex cannot read parks without a revision, as today", async () => {
+  test("a topic whose draft Cortex cannot read parks without a revision when the read fails again at the park", async () => {
     const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, { ok: false, message: null, status: 0 });
     try {
       await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug, budgetThread.slug]);
       expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug });
       expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a draft read that failed when the topic loaded is read again at the park, and its revision travels", async () => {
+    let served = 0;
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, () => (served++ === 0 ? { ok: false, message: null, status: 0 } : savedDraft));
+    try {
+      await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug, budgetThread.slug]);
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
     } finally {
       await wired.cleanup();
     }
