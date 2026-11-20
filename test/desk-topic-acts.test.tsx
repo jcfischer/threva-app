@@ -4,8 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Result } from "@desk/client";
 import { createMemoryClient, type Answer } from "@desk/memory-client";
 import type { StudioThread } from "@desk/types";
+import { QueueContext } from "../src/ui/cards/act";
 import { Desk } from "../src/ui/desk/desk";
 import { standLine } from "../src/ui/desk/topic-menu";
+import { useStudioAct } from "../src/ui/studio/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { closeAct, outcomesFor, threadType } from "../src/ui/studio/close";
 import { inputText, mountDom } from "./fixtures/dom";
@@ -347,6 +349,8 @@ describe("the acts through the Studio act client", () => {
 
 const savedDraft: Result<unknown> = { ok: true, data: { text: "Two days, no talks, one walk.", revision: "draft-7", editable: true } };
 
+const conflict = (text: string): Result<unknown> => ({ ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text, revision: "draft-9", error: "The Studio draft changed or needs approval." } });
+
 describe("parking and finishing under Desk API 2", () => {
   test("a saved draft's revision travels with the park", async () => {
     const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, savedDraft);
@@ -409,8 +413,7 @@ describe("parking and finishing under Desk API 2", () => {
   });
 
   test("a stale revision shows the draft as Cortex has it now and reports no success", async () => {
-    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "A newer draft, saved elsewhere.", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
-    const wired = await mount(budgetThread, conflict, savedDraft);
+    const wired = await mount(budgetThread, conflict("A newer draft, saved elsewhere."), savedDraft);
     try {
       await wired.click("Park");
       const shown = wired.container.querySelector("[data-desk-draft]");
@@ -426,9 +429,9 @@ describe("parking and finishing under Desk API 2", () => {
   });
 
   test("a park refused for a stale revision parks on the next try with the revision Cortex served", async () => {
-    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "A newer draft, saved elsewhere.", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
-    const answers: Result<unknown>[] = [conflict, { ok: true, data: { message: "Parked." } }];
-    const wired = await mount(budgetThread, () => answers.shift() ?? conflict, savedDraft);
+    const refused = conflict("A newer draft, saved elsewhere.");
+    const answers: Result<unknown>[] = [refused, { ok: true, data: { message: "Parked." } }];
+    const wired = await mount(budgetThread, () => answers.shift() ?? refused, savedDraft);
     try {
       await wired.click("Park");
       expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
@@ -443,8 +446,7 @@ describe("parking and finishing under Desk API 2", () => {
   });
 
   test("a stale revision on the close form shows the draft under the form and keeps what was typed", async () => {
-    const conflict: Result<unknown> = { ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text: "", revision: "draft-9", error: "The Studio draft changed or needs approval." } };
-    const wired = await mount(asQuestion, conflict, savedDraft);
+    const wired = await mount(asQuestion, conflict(""), savedDraft);
     try {
       await wired.click("Finish");
       await inputText(field(wired, 'textarea[aria-label="The decision"]'), "We keep the team.");
@@ -458,4 +460,45 @@ describe("parking and finishing under Desk API 2", () => {
       await wired.cleanup();
     }
   });
+
+  test("a refusal that arrives after the topic changed stays with the topic it was refused for", async () => {
+    const dom = mountDom();
+    const client = createMemoryClient();
+    client.seed("studio.draft", (thread: string) => ({ ok: true, data: { text: "A draft.", revision: `draft-${thread}`, editable: true } }));
+    let settle: (value: Result<unknown>) => void = () => {};
+    const refused = new Promise<Result<unknown>>((resolve) => { settle = resolve; });
+    let first = true;
+    client.seed("studio.act", () => {
+      if (!first) return { ok: true, data: { message: "Parked." } };
+      first = false;
+      return refused;
+    });
+    const page = (thread: string) => (
+      <QueueContext.Provider value={{ client, refresh: () => {} }}>
+        <ParkButton thread={thread} />
+      </QueueContext.Provider>
+    );
+    const park = async () => {
+      const button = dom.container.querySelector("button");
+      if (!button) throw new Error("no Park");
+      await act(async () => { button.click(); });
+    };
+    const writes = () => client.calls.filter((call) => call.name === "studio.act").map((call) => call.args[0]);
+    try {
+      await act(async () => { dom.root.render(page("first-topic")); });
+      await park();
+      await act(async () => { dom.root.render(page("second-topic")); });
+      await act(async () => { settle(conflict("A newer draft, saved elsewhere.")); });
+      await park();
+      expect(writes()[0]).toEqual({ act: "park", thread: "first-topic", draftRevision: "draft-first-topic" });
+      expect(writes()[1]).toEqual({ act: "park", thread: "second-topic", draftRevision: "draft-second-topic" });
+    } finally {
+      await dom.cleanup();
+    }
+  });
 });
+
+function ParkButton({ thread }: { thread: string }) {
+  const { run } = useStudioAct(thread);
+  return <button onClick={() => { void run({ act: "park", thread }); }}>Park</button>;
+}

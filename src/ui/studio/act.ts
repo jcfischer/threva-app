@@ -13,9 +13,10 @@ export function useStudioAct(thread: string | null = null) {
     revision.current = thread === null ? Promise.resolve(null) : readDraftRevision(client, thread);
   }, [client, thread]);
   const run = async (studio: StudioAct) => {
-    const result = await act(studio, async (requestId) => client.studio.act(withDraftRevision(studio, await revision.current), requestId));
+    const shown = revision.current;
+    const result = await act(studio, async (requestId) => client.studio.act(withDraftRevision(studio, await shown), requestId));
     const next = result.ok ? null : refusedRevision(result);
-    if (next !== null) revision.current = Promise.resolve(next);
+    if (next !== null && revision.current === shown) revision.current = Promise.resolve(next);
     return result;
   };
   return { busy, error, run };
