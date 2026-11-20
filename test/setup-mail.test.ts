@@ -14,7 +14,7 @@ const config = join(HOME, ".config", "threva", "mail-accounts.json");
 const stack = join(stackDir, "stacks", "threva.yaml");
 const calendar = join(PREFIX, "var", "threva", "bin", "desk-calendar-mac");
 const name = "personal";
-const service = `threva-mail-${name}-fixture`;
+const service = `threva-mail-${name}`;
 const address = "newcomer@example.org";
 const login = "fixture-login";
 const good = "synthetic mail password";
@@ -29,7 +29,6 @@ const answers = (account: string, passwords: string[], report = "", auth = login
 
 function installed(options: Parameters<typeof harness>[0]) {
   const h = harness(options);
-  h.deps.mailServiceId = () => "fixture";
   for (const bin of ADAPTERS) {
     h.files.set(join(adapterDir, `${bin}.ts`), "");
   }
@@ -81,7 +80,7 @@ test("probes IMAP with desk-imap --config, redacts the latest diagnostic, retrie
   }
   const desk = JSON.parse(h.files.get(stack) ?? "").mc.desk;
   expect(desk.sources).toEqual([{ id: "calendar", command: [calendar, "--days", "5"] }, mailSource(name)]);
-  expect(desk.mail.actions).toEqual({ move: args("desk-mail-move"), trash: args("desk-mail-trash"), draft: args("desk-mail-draft") });
+  expect(desk.mail.actions).toEqual({ move: args("desk-mail-move"), trash: args("desk-mail-move"), draft: args("desk-mail-draft") });
   expect(desk.mail.invitations).toEqual({ command: args("desk-mail-invite") });
   expect(desk.mail.report).toEqual({ command: args("desk-mail-report"), to: reportTo });
 });
@@ -238,6 +237,23 @@ test("recreates a missing Keychain item or recovers a stale item after losing th
   existingKeychain(stale);
   expect(await setup([], stale.deps)).toBe(0);
   expect(stale.mailKeychainInput).toEqual([mailKeychainInput(service, name, good, true) ?? ""]);
+});
+
+test("refers to the secret by the account name alone, so a reconfigure updates one Keychain item", async () => {
+  const first = installed({ answers: answers(name, [good]) });
+  expect(await setupMail(LIBEXEC, HOME, first.deps)).toMatchObject({ ok: true });
+  const written = JSON.parse(first.files.get(config) ?? "").accounts.personal;
+  expect(written.imap.auth.pass).toBe(`keychain:threva-mail-${name}`);
+  expect(written.smtp.auth.pass).toBe(`keychain:threva-mail-${name}`);
+  expect(first.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
+
+  const next = installed({ answers: answers(name, [old]) });
+  next.files.set(config, first.files.get(config) ?? "");
+  existingKeychain(next);
+  expect(await setupMail(LIBEXEC, HOME, next.deps)).toMatchObject({ ok: true });
+  expect(next.calls).toContainEqual({ tool: "security", args: ["find-generic-password", "-s", service, "-a", name, "-g"] });
+  expect(next.mailKeychainInput).toEqual([mailKeychainInput(service, name, old, true) ?? ""]);
+  expect(JSON.parse(next.files.get(config) ?? "").accounts.personal.imap.auth.pass).toBe(`keychain:${service}`);
 });
 
 test("an encoded Keychain snapshot is restored as exact bytes", () => {

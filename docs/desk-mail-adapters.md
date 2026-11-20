@@ -86,12 +86,13 @@ Checked on 2026-11-17 against the tag's sources, extracted with `git archive v0.
 - `desk-mail-move --config <file>` with a move request on stdin tries the file's server and fails with `The test mail server did not accept the connection.` after reading the account, so the action commands read the same file.
 - The password forms were exercised through the reader: a `keychain:` value was passed to `security`, and an `env:` value was read from the environment. No real account was used.
 
-## What node #146 and node #141 still build
+## What `threva setup` writes (nodes #141 and #146)
 
-This prerequisite adds no setup step and no stack entry. The release gives them the command and the file contract above:
+`threva setup` writes the account to its own file, and passes that path as `--config` to every mail command in the stack:
 
-- `threva setup` writes the account to Threva's own file (node #141 names `~/.config/threva/mail-accounts.json`) with the secret as `keychain:threva-mail-<name>`, and passes that path as `--config` to every mail command in the stack.
-- The stack points `mc.desk.sources` at `desk-imap --config <file> --account <name> --sent`, the mail actions at `desk-mail-move --config <file>` and `desk-mail-draft --config <file>`, invitations at `desk-mail-invite --config <file>`, and optionally the report command at `desk-mail-report --config <file>`.
-- Setup can test a new account with `desk-imap --config <file> --account <name> --limit 1` and show the command's last stderr line, which is one plain sentence for each refusal listed above.
-
-Node #146 stays parked until Ranger's resume watch picks it up; this node does not resume it.
+- The file is `~/.config/threva/mail-accounts.json`, mode `0600`, and the secret appears in it only as `keychain:threva-mail-<name>`. The password reaches the macOS Keychain through `security -i` on standard input, so it is never in a file and never in a process argument.
+- The stack points `mc.desk.sources` at `mail-<name>` running `desk-imap --config <file> --account <name> --sent` (`everySeconds: 300`, `timeoutSeconds: 60`).
+- `mc.desk.mail.actions` runs `desk-mail-move --config <file>` for both `move` and `trash`, and `desk-mail-draft --config <file>` for `draft`. Cortex deletes through `move` when a stack sets it, so `desk-mail-trash` stays a legacy command that Threva does not need.
+- `mc.desk.mail.invitations.command` runs `desk-mail-invite --config <file>`, and `mc.desk.mail.report` runs `desk-mail-report --config <file>` with the report address when the person enters one.
+- Every argv carries the absolute path of the installed Bun and of the installed adapter.
+- Before it writes anything, setup runs `desk-imap --config <file> --account <name> --limit 1` against a temporary copy of the account and shows the command's last stderr line when the login or the inbox read fails, which is one plain sentence for each refusal listed above. It then asks for the password again and writes nothing for that account until the account answers.

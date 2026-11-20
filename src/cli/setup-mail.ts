@@ -1,5 +1,4 @@
-import { randomUUID } from "node:crypto";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { mailKeychainInput, mailKeychainRestore } from "./mail-keychain";
 import { COMMAND_NOT_RUN } from "./run";
 import { askUntil } from "./setup-prompts";
@@ -13,9 +12,9 @@ const ACCOUNT_NAME = /^[a-z][a-z0-9-]{0,31}$/;
 const HOST_NAME = /^[a-z0-9][a-z0-9.-]*[a-z0-9]$/i;
 const EXISTING_ACCOUNT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const EMAIL = /^[^\s@<>,;"'()]+@[^\s@<>,;"'()]+\.[^\s@<>,;"'()]+$/;
-export const ADAPTERS = ["desk-imap", "desk-mail-move", "desk-mail-trash", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"] as const;
+export const ADAPTERS = ["desk-imap", "desk-mail-move", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"] as const;
 
-type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "storeMailPassword" | "writeMailConfig"> & Partial<Pick<SetupDeps, "mailServiceId">>;
+type MailDeps = Pick<SetupDeps, "ask" | "say" | "which" | "readFile" | "security" | "mailProbe" | "storeMailPassword" | "writeMailConfig">;
 type Adapter = typeof ADAPTERS[number];
 interface MailSource {
   id: string;
@@ -51,7 +50,7 @@ function mailPlan(config: MailConfig, command: (adapter: Adapter) => string[]): 
   if (!sources.length) return { sources };
   return {
     sources,
-    actions: { move: command("desk-mail-move"), trash: command("desk-mail-trash"), draft: command("desk-mail-draft") },
+    actions: { move: command("desk-mail-move"), trash: command("desk-mail-move"), draft: command("desk-mail-draft") },
     invitations: { command: command("desk-mail-invite") },
     ...(typeof config.phishingReportTo === "string" && EMAIL.test(config.phishingReportTo)
       ? { report: { command: command("desk-mail-report"), to: config.phishingReportTo } }
@@ -143,7 +142,7 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
     deps.say(`The mail config at ${config} could not be read. Setup left it unchanged.`);
     return { ok: false };
   }
-  if (!bun || ADAPTERS.some(adapter => deps.readFile(join(bin, `${adapter}.ts`)) === null)) {
+  if (!bun || !isAbsolute(bun) || ADAPTERS.some(adapter => deps.readFile(join(bin, `${adapter}.ts`)) === null)) {
     if (Object.keys(existing.accounts).length) {
       deps.say("Reinstall Threva to restore the mail adapters. Setup kept the configured mail accounts.");
       return { ok: false };
@@ -158,7 +157,7 @@ export async function setupMail(libexec: string, home: string, deps: MailDeps): 
 
   const { account, reportTo } = await askAccountSettings(deps);
   const probe = JSON.stringify({ accounts: { [name]: account(`env:${PROBE_PASSWORD_ENV}`) } });
-  const service = `${SERVICE_PREFIX}${name}-${(deps.mailServiceId ?? randomUUID)()}`;
+  const service = `${SERVICE_PREFIX}${name}`;
   for (;;) {
     const password = await deps.ask("Mail password (leave empty to keep current accounts or skip mail): ", { secret: true });
     if (!password) return retained;

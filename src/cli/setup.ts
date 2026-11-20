@@ -34,7 +34,6 @@ export interface SetupDeps {
   mkdir: (path: string) => void;
   mailProbe: (command: (config: string) => string[], text: string, env: Record<string, string>) => Promise<RunResult>;
   storeMailPassword: (input: string) => Promise<boolean>;
-  mailServiceId?: () => string;
   writeMailConfig: (path: string, text: string) => void;
   adapter: (args: string[]) => Promise<RunResult>;
   security: (args: string[]) => Promise<RunResult>;
