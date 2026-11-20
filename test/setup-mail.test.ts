@@ -81,9 +81,12 @@ test("probes IMAP with desk-imap --config, redacts the latest diagnostic, retrie
   const desk = JSON.parse(h.files.get(stack) ?? "").mc.desk;
   expect(desk.sources).toEqual([{ id: "calendar", command: [calendar, "--days", "5"] }, mailSource(name)]);
   expect(desk.mail.actions).toEqual({ move: args("desk-mail-move"), trash: args("desk-mail-move"), draft: args("desk-mail-draft") });
-  expect([...ADAPTERS]).toEqual(["desk-imap", "desk-mail-move", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"]);
   expect(desk.mail.invitations).toEqual({ command: args("desk-mail-invite") });
   expect(desk.mail.report).toEqual({ command: args("desk-mail-report"), to: reportTo });
+});
+
+test("demands no legacy trash adapter, because the stack routes Delete through move", () => {
+  expect(ADAPTERS).not.toContain("desk-mail-trash");
 });
 
 test("keeps configured accounts and sources on reconfigure after a failed login is skipped", async () => {
