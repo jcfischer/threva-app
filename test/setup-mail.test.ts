@@ -81,6 +81,7 @@ test("probes IMAP with desk-imap --config, redacts the latest diagnostic, retrie
   const desk = JSON.parse(h.files.get(stack) ?? "").mc.desk;
   expect(desk.sources).toEqual([{ id: "calendar", command: [calendar, "--days", "5"] }, mailSource(name)]);
   expect(desk.mail.actions).toEqual({ move: args("desk-mail-move"), trash: args("desk-mail-move"), draft: args("desk-mail-draft") });
+  expect([...ADAPTERS]).toEqual(["desk-imap", "desk-mail-move", "desk-mail-draft", "desk-mail-invite", "desk-mail-report"]);
   expect(desk.mail.invitations).toEqual({ command: args("desk-mail-invite") });
   expect(desk.mail.report).toEqual({ command: args("desk-mail-report"), to: reportTo });
 });
@@ -243,8 +244,8 @@ test("refers to the secret by the account name alone, so a reconfigure updates o
   const first = installed({ answers: answers(name, [good]) });
   expect(await setupMail(LIBEXEC, HOME, first.deps)).toMatchObject({ ok: true });
   const written = JSON.parse(first.files.get(config) ?? "").accounts.personal;
-  expect(written.imap.auth.pass).toBe(`keychain:threva-mail-${name}`);
-  expect(written.smtp.auth.pass).toBe(`keychain:threva-mail-${name}`);
+  expect(written.imap.auth.pass).toBe(`keychain:${service}`);
+  expect(written.smtp.auth.pass).toBe(`keychain:${service}`);
   expect(first.mailKeychainInput).toEqual([mailKeychainInput(service, name, good) ?? ""]);
 
   const next = installed({ answers: answers(name, [old]) });
@@ -254,6 +255,11 @@ test("refers to the secret by the account name alone, so a reconfigure updates o
   expect(next.calls).toContainEqual({ tool: "security", args: ["find-generic-password", "-s", service, "-a", name, "-g"] });
   expect(next.mailKeychainInput).toEqual([mailKeychainInput(service, name, old, true) ?? ""]);
   expect(JSON.parse(next.files.get(config) ?? "").accounts.personal.imap.auth.pass).toBe(`keychain:${service}`);
+});
+
+test("cites the pinned Cortex tag beside the Delete route that depends on it", async () => {
+  const pinned = (JSON.parse(await readFile("package.json", "utf8")).devDependencies["@the-metafactory/cortex"] as string).split("#")[1];
+  expect(await readFile("docs/desk-mail-adapters.md", "utf8")).toContain(`cortex/blob/${pinned}/src/surface/mc/desk/mail-move.ts`);
 });
 
 test("an encoded Keychain snapshot is restored as exact bytes", () => {
