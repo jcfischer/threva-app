@@ -40,6 +40,8 @@ const reads: Case[] = [
   ["myDay.outline", (c) => c.myDay.outline(), "GET", "/api/desk/my-day", undefined],
   ["studio", (c) => c.studio(), "GET", "/api/desk/studio", undefined],
   ["studio.list", (c) => c.studio.list(), "GET", "/api/desk/studio", undefined],
+  ["studio.draft", (c) => c.studio.draft("budget-next-year"), "GET", "/api/desk/studio/budget-next-year/draft", undefined],
+  ["studio.draft.escaped", (c) => c.studio.draft("a slug/b?#1"), "GET", "/api/desk/studio/a%20slug%2Fb%3F%231/draft", undefined],
   ["contract", (c) => c.contract(), "GET", "/api/desk/contract", undefined],
 ];
 
@@ -139,7 +141,7 @@ describe("failures", () => {
 
   test("an error response carries Cortex's text", async () => {
     const { client } = stub(() => Response.json({ error: "No." }, { status: 503 }));
-    expect(await client.conversations.ask("x")).toEqual({ ok: false, message: "No.", status: 503 });
+    expect(await client.conversations.ask("x")).toMatchObject({ ok: false, message: "No.", status: 503 });
   });
 });
 
@@ -185,7 +187,7 @@ test("write client sends UUID, date, revision and the command over HTTP, and pre
     { op: "outline-complete", revision: 12, id: "due", confirm: true } as const,
     { op: "outline-reopen", revision: 12, id: "done", confirm: true } as const,
   ]) {
-    expect(await client.changeMyDay(DATE, command)).toEqual({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
+    expect(await client.changeMyDay(DATE, command)).toMatchObject({ ok: false, status: 409, message: "The outline changed. Your draft is kept." });
     const call = calls.at(-1)!;
     expect(call.url).toBe("/api/desk/my-day");
     expect(call.init?.method).toBe("POST");

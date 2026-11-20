@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { act } from "react";
 import { createMemoryClient, type MemoryClient } from "@desk/memory-client";
 import { App } from "../src/ui/app";
+import { DESK_API_MAJOR, sameDeskApiMajor } from "@desk/desk-version";
 import { createI18n, I18nProvider, type Locale } from "../src/ui/i18n";
 import { useStartup } from "../src/ui/queue/use-startup";
 import { item, seededApp, view } from "./fixtures/desk";
@@ -32,9 +33,17 @@ async function waitFor(dom: MountedDom, ms: number): Promise<void> {
 
 const arrived = () => view({ items: [item({ key: "m1", kind: "mail", title: "A mail that needs you" })] });
 
+test("Threva speaks Desk API major 2 and takes every 2.x Cortex", () => {
+  expect(DESK_API_MAJOR).toBe("2");
+  expect(sameDeskApiMajor("2.0.0")).toBe(true);
+  expect(sameDeskApiMajor("2.1.0")).toBe(true);
+  expect(sameDeskApiMajor("1.15.1")).toBe(false);
+  expect(sameDeskApiMajor("3.0.0")).toBe(false);
+});
+
 test("a Cortex of the same major version loads the desk as today", async () => {
   const client = createMemoryClient();
-  client.seed("contract", { ok: true, data: { version: "1.9.4" } });
+  client.seed("contract", { ok: true, data: { version: "2.0.0" } });
   seededApp(client, { desk: arrived() });
   const dom = await open(client);
   try {
@@ -47,14 +56,14 @@ test("a Cortex of the same major version loads the desk as today", async () => {
 
 test("a Cortex of another major version is refused with one message naming both versions", async () => {
   const client = createMemoryClient();
-  client.seed("contract", { ok: true, data: { version: "2.1.0" } });
+  client.seed("contract", { ok: true, data: { version: "1.15.0" } });
   seededApp(client, { desk: arrived() });
   const dom = await open(client);
   try {
     const alerts = dom.container.querySelectorAll('[role="alert"]');
     expect(alerts).toHaveLength(1);
-    expect(alerts[0]?.textContent).toBe(t("startup.version", { built: "1", found: "2.1.0" }));
-    expect(alerts[0]?.textContent).toContain("2.1.0");
+    expect(alerts[0]?.textContent).toBe(t("startup.version", { built: "2", found: "1.15.0" }));
+    expect(alerts[0]?.textContent).toContain("1.15.0");
     expect(client.calls.map((call) => call.name)).toEqual(["contract"]);
   } finally {
     await dom.cleanup();
@@ -85,7 +94,7 @@ test("a contract with no answer is asked again until Cortex answers", async () =
   try {
     expect(shown()).toBe("failed");
     const attempts = client.calls.length;
-    client.seed("contract", { ok: true, data: { version: "1.2.3" } });
+    client.seed("contract", { ok: true, data: { version: "2.2.3" } });
     await waitFor(dom, 60);
     expect(shown()).toBe("ready");
     expect(client.calls.length).toBeGreaterThan(attempts);

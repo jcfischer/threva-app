@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Result } from "@desk/client";
-import { createMemoryClient } from "@desk/memory-client";
+import { createMemoryClient, type Answer } from "@desk/memory-client";
 import type { StudioThread } from "@desk/types";
+import { QueueContext } from "../src/ui/cards/act";
 import { Desk } from "../src/ui/desk/desk";
 import { standLine } from "../src/ui/desk/topic-menu";
+import { useStudioAct } from "../src/ui/studio/act";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { closeAct, outcomesFor, threadType } from "../src/ui/studio/close";
 import { inputText, mountDom } from "./fixtures/dom";
@@ -158,15 +160,20 @@ interface Wired {
   button: (label: string) => HTMLButtonElement;
   click: (label: string) => Promise<void>;
   writes: { body: Record<string, unknown> }[];
+  reads: string[];
   refreshed: () => number;
 }
 
-async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, data: { message: "Done." } }): Promise<Wired> {
+const neverEdited: Result<unknown> = { ok: true, data: { text: "", revision: "legacy-1", editable: true } };
+
+async function mount(thread: StudioThread, reply: Answer = { ok: true, data: { message: "Done." } }, draft: Answer = neverEdited): Promise<Wired> {
   const dom = mountDom();
   let refreshed = 0;
   const client = createMemoryClient();
   client.seed("studio.act", reply);
+  client.seed("studio.draft", draft);
   const writes = { get value() { return client.calls.filter((call) => call.name === "studio.act").map((call) => ({ body: call.args[0] as Record<string, unknown> })); } };
+  const reads = { get value() { return client.calls.filter((call) => call.name === "studio.draft").map((call) => String(call.args[0])); } };
   await act(async () => {
     dom.root.render(
       <I18nProvider value={createI18n("en")}>
@@ -182,7 +189,7 @@ async function mount(thread: StudioThread, reply: Result<unknown> = { ok: true, 
   const click = async (label: string) => {
     await act(async () => { button(label).click(); });
   };
-  return { container: dom.container, cleanup: dom.cleanup, button, click, get writes() { return writes.value; }, refreshed: () => refreshed };
+  return { container: dom.container, cleanup: dom.cleanup, button, click, get writes() { return writes.value; }, get reads() { return reads.value; }, refreshed: () => refreshed };
 }
 
 const field = (wired: Wired, selector: string): HTMLInputElement | HTMLTextAreaElement => {
@@ -339,3 +346,159 @@ describe("the acts through the Studio act client", () => {
     }
   });
 });
+
+const savedDraft: Result<unknown> = { ok: true, data: { text: "Two days, no talks, one walk.", revision: "draft-7", editable: true } };
+
+const conflict = (text: string): Result<unknown> => ({ ok: false, message: "The Studio draft changed or needs approval.", status: 409, body: { text, revision: "draft-9", error: "The Studio draft changed or needs approval." } });
+
+describe("parking and finishing under Desk API 2", () => {
+  test("a saved draft's revision travels with the park", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, savedDraft);
+    try {
+      await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a saved draft's revision travels with the close", async () => {
+    const wired = await mount(asTopic, { ok: true, data: { message: "Closed." } }, savedDraft);
+    try {
+      await wired.click("Finish");
+      await chooseOutcome(wired, "Dropped");
+      await inputText(field(wired, 'textarea[aria-label="Why it is dropped"]'), "The question answered itself.");
+      await wired.click("Close the topic");
+      expect(wired.writes[0]?.body).toMatchObject({ act: "close", thread: budgetThread.slug, outcome: "dropped", draftRevision: "draft-7" });
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a never-edited topic parks with the legacy revision Cortex computed, so every park carries one", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, neverEdited);
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "legacy-1" });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a topic whose draft Cortex cannot read parks without a revision", async () => {
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, { ok: false, message: null, status: 0 });
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug });
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a park carries the revision Threva read with the topic, not the one Cortex serves at the moment of the act", async () => {
+    const later: Result<unknown> = { ok: true, data: { text: "A newer draft, saved elsewhere.", revision: "draft-9", editable: true } };
+    let served = 0;
+    const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, () => (served++ === 0 ? savedDraft : later));
+    try {
+      await wired.click("Park");
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a stale revision shows the draft as Cortex has it now and reports no success", async () => {
+    const wired = await mount(budgetThread, conflict("A newer draft, saved elsewhere."), savedDraft);
+    try {
+      await wired.click("Park");
+      const shown = wired.container.querySelector("[data-desk-draft]");
+      expect(shown?.getAttribute("data-desk-draft")).toBe("changed");
+      expect(shown?.textContent).toContain("The draft changed since Threva read it");
+      expect(shown?.textContent).toContain("A newer draft, saved elsewhere.");
+      expect(shown?.textContent).toContain("Draft revision draft-9");
+      expect(wired.container.textContent).not.toContain("Parked.");
+      expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a park refused for a stale revision parks on the next try with the revision Cortex served", async () => {
+    const refused = conflict("A newer draft, saved elsewhere.");
+    const answers: Result<unknown>[] = [refused, { ok: true, data: { message: "Parked." } }];
+    const wired = await mount(budgetThread, () => answers.shift() ?? refused, savedDraft);
+    try {
+      await wired.click("Park");
+      expect(wired.writes[0]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-7" });
+      expect(wired.container.querySelector("[data-desk-draft]")?.textContent).toContain("Draft revision draft-9");
+      await wired.click("Park");
+      expect(wired.writes[1]?.body).toEqual({ act: "park", thread: budgetThread.slug, draftRevision: "draft-9" });
+      expect(wired.reads).toEqual([budgetThread.slug]);
+      expect(wired.refreshed()).toBe(1);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a stale revision on the close form shows the draft under the form and keeps what was typed", async () => {
+    const wired = await mount(asQuestion, conflict(""), savedDraft);
+    try {
+      await wired.click("Finish");
+      await inputText(field(wired, 'textarea[aria-label="The decision"]'), "We keep the team.");
+      await inputText(field(wired, 'input[aria-label="What you expect to see if it was right"]'), "A lighter year.");
+      await inputText(field(wired, 'input[type="date"]'), "2026-12-15");
+      await wired.click("Close the topic");
+      expect(wired.container.querySelector("[data-desk-draft]")?.textContent).toContain("The draft is empty.");
+      expect(field(wired, 'textarea[aria-label="The decision"]').value).toBe("We keep the team.");
+      expect(wired.refreshed()).toBe(0);
+    } finally {
+      await wired.cleanup();
+    }
+  });
+
+  test("a refusal that arrives after the topic changed stays with the topic it was refused for", async () => {
+    const dom = mountDom();
+    const client = createMemoryClient();
+    client.seed("studio.draft", (thread: string) => ({ ok: true, data: { text: "A draft.", revision: `draft-${thread}`, editable: true } }));
+    let settle: (value: Result<unknown>) => void = () => {};
+    const refused = new Promise<Result<unknown>>((resolve) => { settle = resolve; });
+    let first = true;
+    client.seed("studio.act", () => {
+      if (!first) return { ok: true, data: { message: "Parked." } };
+      first = false;
+      return refused;
+    });
+    const page = (thread: string) => (
+      <QueueContext.Provider value={{ client, refresh: () => {} }}>
+        <ParkButton thread={thread} />
+      </QueueContext.Provider>
+    );
+    const park = async () => {
+      const button = dom.container.querySelector("button");
+      if (!button) throw new Error("no Park");
+      await act(async () => { button.click(); });
+    };
+    const writes = () => client.calls.filter((call) => call.name === "studio.act").map((call) => call.args[0]);
+    try {
+      await act(async () => { dom.root.render(page("first-topic")); });
+      await park();
+      await act(async () => { dom.root.render(page("second-topic")); });
+      await act(async () => { settle(conflict("A newer draft, saved elsewhere.")); });
+      await park();
+      expect(writes()[0]).toEqual({ act: "park", thread: "first-topic", draftRevision: "draft-first-topic" });
+      expect(writes()[1]).toEqual({ act: "park", thread: "second-topic", draftRevision: "draft-second-topic" });
+    } finally {
+      await dom.cleanup();
+    }
+  });
+});
+
+function ParkButton({ thread }: { thread: string }) {
+  const { run } = useStudioAct(thread);
+  return <button onClick={() => { void run({ act: "park", thread }); }}>Park</button>;
+}

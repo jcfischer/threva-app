@@ -1,19 +1,26 @@
-import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioAct, StudioList } from "./types";
+import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioAct, StudioDraft, StudioList } from "./types";
 
 import type { DeskSearchResponse } from "@the-metafactory/cortex/desk-api";
 export type { DeskSearchHit } from "@the-metafactory/cortex/desk-api";
 
-export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number };
+export type Result<T> = { ok: true; data: T } | { ok: false; message: string | null; status: number; body?: unknown };
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-async function readError(res: Response): Promise<string | null> {
+interface Failure {
+  message: string | null;
+  body: unknown;
+}
+
+async function readFailure(res: Response): Promise<Failure> {
   try {
-    const body = (await res.json()) as { error?: unknown; message?: unknown };
-    if (typeof body.error === "string") return body.error;
-    if (typeof body.message === "string") return body.message;
+    const body: unknown = await res.json();
+    const fields = body as { error?: unknown; message?: unknown };
+    if (typeof fields.error === "string") return { message: fields.error, body };
+    if (typeof fields.message === "string") return { message: fields.message, body };
+    return { message: null, body };
   } catch {}
-  return null;
+  return { message: null, body: null };
 }
 
 async function call<T>(fetchImpl: Fetch, path: string, init?: RequestInit): Promise<Result<T>> {
@@ -23,7 +30,7 @@ async function call<T>(fetchImpl: Fetch, path: string, init?: RequestInit): Prom
   } catch {
     return { ok: false, message: null, status: 0 };
   }
-  if (!res.ok) return { ok: false, message: await readError(res), status: res.status };
+  if (!res.ok) return { ok: false, status: res.status, ...(await readFailure(res)) };
   try {
     return { ok: true, data: (await res.json()) as T };
   } catch {
@@ -97,6 +104,7 @@ export interface CaptureCalls {
 export interface StudioCalls {
   (): Call<StudioList>;
   list(): Call<StudioList>;
+  draft(thread: string): Call<StudioDraft>;
   act(act: StudioAct, requestId?: string): Call<{ message?: string }>;
 }
 
@@ -165,6 +173,7 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     },
     studio: Object.assign(list, {
       list,
+      draft: (thread: string) => read<StudioDraft>(`${PATHS.studio}/${encodeURIComponent(thread)}/draft`),
       act: (act: StudioAct, requestId: string = newRequestId()) => write<{ message?: string }>(PATHS.studioAct, { ...act, requestId }),
     }),
     conversations: {

@@ -1,9 +1,12 @@
 import { useRef, useState } from "react";
 import { newRequestId, type Result } from "@desk/client";
 
-export type ActError = { message: string | null } | null;
+export type ActError = { message: string | null; body?: unknown } | null;
 
 export type ActCall<T> = (requestId: string) => Promise<Result<T>>;
+
+/** A refused act's message and body, in the shape the error lines and the draft conflict read. */
+export const actError = (result: Extract<Result<unknown>, { ok: false }>): ActError => ({ message: result.message, body: result.body });
 
 export type DeskAct = <T>(identity: unknown, call: ActCall<T>) => Promise<Result<T>>;
 
@@ -32,7 +35,7 @@ export function useDeskAct(refresh?: () => void) {
     }
     last.current = mayHaveBeenWritten(result) ? { key, id } : null;
     if (result.ok) refresh?.();
-    else setError({ message: result.message });
+    else setError(actError(result));
     return result;
   }
   return { busy, error, act, isInFlight: () => inFlight.current };

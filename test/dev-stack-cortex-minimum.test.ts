@@ -61,9 +61,9 @@ describe("checkCortexMinimum", () => {
     expect(MIN_CORTEX_TAG).toMatch(/^v\d+\.\d+\.\d+$/);
   });
 
-  test("pins the verified published Cortex v6.35.0 release with the served Studio thread facts", () => {
-    expect(manifest.devDependencies["@the-metafactory/cortex"]).toBe("github:the-metafactory/cortex#v6.35.0");
-    expect(MIN_CORTEX_TAG).toBe("v6.35.0");
+  test("pins the published Cortex v6.37.0 release that carries Desk API 2", () => {
+    expect(manifest.devDependencies["@the-metafactory/cortex"]).toBe("github:the-metafactory/cortex#v6.37.0");
+    expect(MIN_CORTEX_TAG).toBe("v6.37.0");
   });
 
   test("the default minimum refuses the older checkout and accepts the required tag", () => {
@@ -72,10 +72,10 @@ describe("checkCortexMinimum", () => {
     commit(dir, "before-thread-facts");
     git(dir, "tag", "v6.34.0");
     commit(dir, "with-thread-facts");
-    git(dir, "tag", "v6.35.0");
+    git(dir, "tag", "v6.37.0");
     git(dir, "checkout", "-q", "v6.34.0");
     expect(checkCortexMinimum(dir).ok).toBe(false);
-    git(dir, "checkout", "-q", "v6.35.0");
-    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: "v6.35.0" });
+    git(dir, "checkout", "-q", "v6.37.0");
+    expect(checkCortexMinimum(dir)).toEqual({ ok: true, value: "v6.37.0" });
   });
 });

@@ -7,6 +7,7 @@ import {
   type InviteReply, type MailAction, type Outcome, type SnoozeTime, type WaitingAction,
 } from "../arrivals/outcomes";
 import { useI18n, type TextKey } from "../i18n";
+import { sweepText } from "../i18n/served";
 import { sweepEnter } from "../queue/keys";
 import { useAct, useQueue } from "./act";
 import { Card, ErrorLine, MakeTaskButton } from "./parts";
@@ -271,13 +272,14 @@ export function RuleOfferCard({ item }: { item: DeskItem }) {
 }
 
 export function SweepCard({ sweep }: { sweep: MailSweep }) {
-  const { t, tn } = useI18n();
+  const i18n = useI18n();
+  const { t, tn } = i18n;
   const enter = sweepEnter(sweep);
   const { busy, error, perform } = useAct(enter);
   return (
     <Card eyebrow={t("card.sweep.eyebrow")}>
       <span className="q">{tn(sweep.target === "archive" ? "card.sweep.archiveQuestion" : "card.sweep.question", sweep.mails.length)}</span>
-      <span className="sub">{sweep.title || sweep.label}</span>
+      <span className="sub">{sweep.title || sweepText(sweep, i18n)}</span>
       <span className="faint">{sweep.why}</span>
       <ul className="plain">
         {sweep.mails.slice(0, 5).map((m) => (

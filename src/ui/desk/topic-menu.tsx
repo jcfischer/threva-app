@@ -2,8 +2,10 @@ import { useState } from "react";
 import type { StudioAct, StudioThread } from "@desk/types";
 import type { ActError } from "../cards/act";
 import { ErrorLine } from "../cards/parts";
+import { actError } from "../act/use-act";
 import { useI18n } from "../i18n";
 import { CloseTopicForm, OUTCOME_LABEL, threadType, type RunAct } from "../studio/close";
+import { DraftChanged } from "../studio/conflict";
 
 /** The stand as one quiet line, on a question topic with a stand that is not empty, and nowhere else. */
 export function standLine(thread: StudioThread): string | null {
@@ -38,7 +40,7 @@ export function TopicMenu({ thread, busy, run }: TopicMenuProps) {
   const send = async (act: StudioAct) => {
     setError(null);
     const result = await run(act);
-    if (!result.ok) setError({ message: result.message });
+    if (!result.ok) setError(actError(result));
   };
   return (
     <details className="desk-menu" data-desk-menu="true">
@@ -58,6 +60,7 @@ export function TopicMenu({ thread, busy, run }: TopicMenuProps) {
               {t("desk.finish")}
             </button>
             <ErrorLine error={error} />
+            <DraftChanged error={error} />
           </>
         )}
       </div>

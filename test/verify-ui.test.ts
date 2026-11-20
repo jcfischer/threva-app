@@ -8,7 +8,7 @@ describe("verify:ui arguments", () => {
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.value.url).toBe("http://127.0.0.1:8791/");
     expect(parsed.value.out).toBe("out");
-    expect(parsed.value.names).toEqual(["search", "day", "desk", "notes", "week", "everything"]);
+    expect(parsed.value.names).toEqual(["search", "day", "desk", "topic", "notes", "week", "everything"]);
   });
 
   test("runs the after-meeting dismissal only when explicitly named", () => {

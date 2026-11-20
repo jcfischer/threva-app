@@ -31,8 +31,8 @@ export type SparMode = "think" | "grill" | "other-side" | "red-team" | "first-pr
 export type StudioAct =
   | { act: "respond"; thread: string; text: string }
   | { act: "keep" | "dismiss"; thread: string; note: string }
-  | { act: "park"; thread: string }
+  | { act: "park"; thread: string; draftRevision?: string }
   | { act: "unpark"; thread: string }
   | { act: "think"; thread: string; on: boolean }
   | { act: "spar"; thread: string; mode: SparMode }
-  | { act: "close"; thread: string; outcome: ThreadOutcome; text: string; expect?: string; reviewOn?: string };
+  | { act: "close"; thread: string; outcome: ThreadOutcome; text: string; expect?: string; reviewOn?: string; draftRevision?: string };

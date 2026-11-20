@@ -157,6 +157,44 @@ export const journeys = {
     await shot("material-wide");
     await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
   },
+  topic: async (page, shot) => {
+    await showsThreva(page);
+    await switchView(page, "Everything");
+    await loaded(page, "Loading your outline…");
+    await page.getByRole("button", { name: "Work", exact: true }).click();
+    await page.getByRole("button", { name: "What is the March offsite for?", exact: true }).click();
+    const draftUrl = new URL("/api/desk/studio/offsite-in-march/draft", page.url()).href;
+    const read = await page.request.get(draftUrl);
+    if (!read.ok()) throw new Error(`The topic's draft could not be read: ${await read.text()}`);
+    const draft = await read.json() as { text: string; revision: string };
+    const saved = await page.request.put(draftUrl, { data: { text: `Two days to plan the year. No talks.\n\n${draft.text}`, revision: draft.revision, requestId: crypto.randomUUID() } });
+    if (!saved.ok()) throw new Error(`The topic's draft could not be saved: ${await saved.text()}`);
+    const revision = (await saved.json() as { revision: string }).revision;
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    await page.locator('[data-desk="middle"]').waitFor();
+    const act = async (name: string, button: string): Promise<{ act?: string; draftRevision?: string }> => {
+      const posted = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
+      await page.getByRole("button", { name: button, exact: true }).click();
+      const response = await posted;
+      if (!response.ok()) throw new Error(`${name} refused: ${await response.text()}`);
+      return response.request().postDataJSON() as { act?: string; draftRevision?: string };
+    };
+    await page.locator('[data-desk-menu="true"] summary').click();
+    const park = await act("Park", "Park");
+    if (park.act !== "park" || park.draftRevision !== revision) throw new Error(`The park did not carry the draft revision Threva read: ${JSON.stringify(park)}`);
+    await page.getByRole("button", { name: "Take it up again", exact: true }).waitFor();
+    await shot("topic-parked");
+    const unpark = await act("Take it up again", "Take it up again");
+    if (unpark.act !== "unpark") throw new Error(`The take-up did not send unpark: ${JSON.stringify(unpark)}`);
+    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    await page.getByRole("radio", { name: "Dropped", exact: true }).check();
+    await page.getByLabel("Why it is dropped", { exact: true }).fill("The offsite plans itself this year.");
+    const close = await act("Close the topic", "Close the topic");
+    if (close.act !== "close" || close.draftRevision !== revision) throw new Error(`The close did not carry the draft revision Threva read: ${JSON.stringify(close)}`);
+    await page.locator('[data-desk-outcome="dropped"]').waitFor();
+    await page.getByText("The offsite plans itself this year.", { exact: false }).waitFor();
+    await shot("topic-closed");
+  },
   notes: async (page, shot) => {
     const response = await page.request.get(new URL("/api/desk/studio", page.url()).href);
     if (!response.ok()) throw new Error(`Studio refused: ${await response.text()}`);

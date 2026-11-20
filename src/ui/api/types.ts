@@ -7,6 +7,7 @@ import type {
   DeskInterruptReason,
   DeskItem as CortexDeskItem,
   DeskLink as CortexDeskLink,
+  DeskStudioDraft,
   DeskStudioThread,
   DeskView as CortexDeskView,
   MailRuleView,
@@ -35,7 +36,9 @@ export type {
 
 export type { MyDayCommand, OutlineCommand, OutlineDetails, SparMode, StudioAct } from "./requests";
 
-export type DeskLink = Pick<CortexDeskLink, "label" | "url">;
+export type DeskLink = Pick<CortexDeskLink, "kind" | "url" | "labelPhrase">;
+
+export type StudioDraft = Pick<DeskStudioDraft, "text" | "revision" | "editable">;
 
 export type InterruptReason = { code: string } & Omit<DeskInterruptReason, "code" | "phrase"> & {
   phrase?: DeskInterruptReason["phrase"];
@@ -75,7 +78,7 @@ export interface DeskDay {
 export type MailSweepMail = Pick<SweepMailView, "key" | "from" | "subject" | "url">;
 
 export type MailSweep =
-  Pick<MailSweepView, "id" | "kind" | "target" | "label" | "title" | "why"> & { mails: MailSweepMail[] };
+  Pick<MailSweepView, "id" | "kind" | "basis" | "target" | "labelPhrase" | "title" | "why"> & { mails: MailSweepMail[] };
 
 export type MailRule = Pick<MailRuleView, "id" | "match" | "value" | "action" | "on" | "sentence">;
 
