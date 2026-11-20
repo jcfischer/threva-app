@@ -10,7 +10,7 @@ import { StudioCard } from "../src/ui/studio/card";
 import { dayCard, newestOpenNote, noteIsLong } from "../src/ui/studio/day-card";
 import { item, NOW as DESK_NOW, view } from "./fixtures/desk";
 import { mountDom, inputText, type MountedDom } from "./fixtures/dom";
-import { budgetThread, studioList } from "./fixtures/studio";
+import { budgetThread, served, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
 const noop = () => {};
@@ -25,7 +25,7 @@ const card = (thread: StudioThread = budgetThread, locale: "en" | "de" = "en", n
   renderToStaticMarkup(wrap(<StudioCard thread={thread} now={now} onDesk={noop} />, locale));
 
 const note = (overrides: Partial<StudioNote> = {}): StudioNote => ({ at: "2026-11-13T20:48:41Z", kind: "note", status: "open", text: "One hire waits until summer.", ...overrides });
-const withNotes = (notes: StudioNote[], type: StudioThread["type"] = "question"): StudioThread => ({ ...budgetThread, type, notes });
+const withNotes = (open: StudioNote[], type: StudioThread["type"] = "question"): StudioThread => ({ ...budgetThread, type, notes: open, derived: served(open) });
 
 describe("dayCard", () => {
   test("shows the newest open note, its age and the answer act", () => {
@@ -35,18 +35,20 @@ describe("dayCard", () => {
     expect(shown.reason).toBe("delivered");
   });
 
-  test("a stand, an idea or a relation is kept or dismissed instead of answered", () => {
-    for (const kind of ["stand", "idea", "relation"] as const) expect(dayCard(withNotes([note({ kind })])).acts).toEqual(["keep", "dismiss"]);
+  test("an open stand or an open idea is kept or dismissed instead of answered", () => {
+    for (const kind of ["stand", "idea"] as const) expect(dayCard(withNotes([note({ kind })])).acts).toEqual(["keep", "dismiss"]);
   });
 
-  test("only the newest open note counts, and kept ones stay out", () => {
-    const notes = [note({ at: "2026-11-10T08:00:00Z", text: "Old and dismissed.", status: "dismissed" }), note({ at: "2026-11-12T08:00:00Z", text: "Older open." }), note({ at: "2026-11-13T08:00:00Z", text: "Newest open." })];
-    expect(dayCard(withNotes(notes)).note?.text).toBe("Newest open.");
-    expect(newestOpenNote(withNotes([note({ status: "kept" })]))).toBeNull();
+  test("the newest served open note is the one that waits, and kept notes stay out", () => {
+    const open = [note({ at: "2026-11-12T08:00:00Z", text: "Older open." }), note({ at: "2026-11-13T08:00:00Z", text: "Newest open." })];
+    expect(dayCard(withNotes(open)).note?.text).toBe("Newest open.");
+    const kept = note({ status: "kept" });
+    expect(newestOpenNote({ ...budgetThread, notes: [kept], derived: served([], [kept]) })).toBeNull();
   });
 
   test("a topic with nothing open shows no note, no act and no reason", () => {
-    expect(dayCard(withNotes([note({ status: "kept" })]))).toMatchObject({ note: null, acts: [], reason: null, long: false });
+    expect(dayCard(withNotes([]))).toMatchObject({ note: null, acts: [], reason: null, long: false });
+    expect(dayCard({ ...budgetThread, derived: undefined })).toMatchObject({ note: null, acts: [], reason: null, long: false });
   });
 
   test("the stand is one line on a question topic and nowhere else", () => {
@@ -188,11 +190,19 @@ describe("the acts on the card", () => {
 });
 
 describe("the card in the queue", () => {
-  const answered = { ...budgetThread, responses: [...budgetThread.responses, { at: "2026-11-13T21:00:00Z", text: "One hire waits." }] };
+  const answered = { ...budgetThread, derived: served([budgetThread.notes[0]], [budgetThread.notes[1]], false), responses: [...budgetThread.responses, { at: "2026-11-13T21:00:00Z", text: "One hire waits." }] };
 
   test("a waiting topic comes before fresh items, and leaves once it is answered", () => {
     const desk = view({ items: [item({ key: "fresh", kind: "sensor", score: 1, since: DESK_NOW })] });
     expect(buildQueue(desk, studioList([budgetThread]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["t:budget-next-year", "i:fresh"]);
     expect(buildQueue(desk, studioList([answered]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["i:fresh"]);
+  });
+
+  test("a Studio response without the served fields marks no thread as waiting", () => {
+    const older = { ...budgetThread, derived: undefined };
+    const desk = view({ items: [item({ key: "fresh", kind: "sensor", score: 1, since: DESK_NOW })] });
+    expect(buildQueue(desk, studioList([older]), EMPTY_SESSION, DESK_NOW).map((e) => e.k)).toEqual(["i:fresh"]);
+    expect(card(older)).toContain("What goes into next year&#x27;s budget?");
+    expect(card(older)).not.toContain('aria-label="Your answer"');
   });
 });

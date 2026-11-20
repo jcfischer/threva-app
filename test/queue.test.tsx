@@ -21,12 +21,14 @@ describe("buildQueue", () => {
   });
 
   test("orders waiting agents, waiting threads, fresh items, other items, then today's list", () => {
-    const queue = buildQueue(desk, studio(thread("s1", "open", false), thread("s2", "open", true)), EMPTY_SESSION, NOW);
+    const queue = buildQueue(desk, studio(thread("s1", true), thread("s2", false, true)), EMPTY_SESSION, NOW);
     expect(queue.map((e) => e.k)).toEqual(["i:agent", "t:s1", "i:fresh", "i:old", "d:t1"]);
   });
 
-  test("a thread waits only while its latest note is open and unanswered", () => {
-    const queue = buildQueue(view(), studio(thread("a", "open", false), thread("b", "kept", false), thread("c", "open", true)), EMPTY_SESSION, NOW);
+  test("a thread joins the queue only when Cortex marks it as waiting", () => {
+    const waiting = thread("a", true);
+    const answered = { ...thread("b", false, true), notes: waiting.notes };
+    const queue = buildQueue(view(), studio(waiting, answered), EMPTY_SESSION, NOW);
     expect(queue.map((e) => e.k)).toEqual(["t:a"]);
   });
 

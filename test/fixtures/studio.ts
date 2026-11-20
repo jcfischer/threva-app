@@ -1,9 +1,49 @@
-import type { StudioList, StudioThread, StudioThinking } from "@desk/types";
+import type { StudioNote, StudioList, StudioThread, StudioThinking } from "@desk/types";
 
 // Recorded from the dev stack's Studio list (thread budget-next-year), with a stand proposal, a kept idea
 // and a relation note added in the shape of Cortex's docs/desk-studio.md sample, and the per-thread `thinking`
 // Cortex adds to every thread (cortex#3613) in its open state.
 export const openThinking: Extract<StudioThinking, { kind: "ready" }> = { kind: "ready", budget: "open", reason: null, runs: [] };
+
+const openNote: StudioNote = {
+  at: "2026-11-13T20:48:41Z",
+  trigger: "Sample thread",
+  model: "sample",
+  kind: "note",
+  status: "open",
+  text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
+};
+
+const keptIdea: StudioNote = {
+  at: "2026-11-12T03:12:00Z",
+  trigger: "Stale thread: unchanged for 6 days",
+  model: "local / qwen3",
+  kind: "idea",
+  status: "kept",
+  text: "Ask Ada which hire matters most.",
+};
+
+const standProposal: StudioNote = {
+  at: "2026-11-13T03:14:00Z",
+  trigger: "Stale thread: unchanged for 6 days",
+  model: "local / qwen3",
+  kind: "stand",
+  status: "open",
+  because: "Travel was a third of last year's spend.",
+  text: "Hire one now, the second in summer.",
+};
+
+const relationNote: StudioNote = {
+  at: "2026-11-13T03:15:00Z",
+  trigger: "Shared material",
+  model: "sample",
+  kind: "relation",
+  status: "open",
+  relates: { kind: "thread", label: "offsite-in-march" },
+  text: "This relates to the March offsite.",
+};
+
+export const served = (open: StudioNote[], kept: StudioNote[] = [], waitsOnYou = open.length > 0): StudioThread["derived"] => ({ waitsOnYou, notes: { open, kept } });
 
 export const budgetThread: StudioThread = {
   thinking: openThinking,
@@ -13,42 +53,8 @@ export const budgetThread: StudioThread = {
   thinkTonight: false,
   question: "What goes into next year's budget?",
   stand: "Keep the team as it is and cut travel.",
-  notes: [
-    {
-      at: "2026-11-13T20:48:41Z",
-      trigger: "Sample thread",
-      model: "sample",
-      kind: "note",
-      status: "open",
-      text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
-    },
-    {
-      at: "2026-11-12T03:12:00Z",
-      trigger: "Stale thread: unchanged for 6 days",
-      model: "local / qwen3",
-      kind: "idea",
-      status: "kept",
-      text: "Ask Ada which hire matters most.",
-    },
-    {
-      at: "2026-11-13T03:14:00Z",
-      trigger: "Stale thread: unchanged for 6 days",
-      model: "local / qwen3",
-      kind: "stand",
-      status: "open",
-      because: "Travel was a third of last year's spend.",
-      text: "Hire one now, the second in summer.",
-    },
-    {
-      at: "2026-11-13T03:15:00Z",
-      trigger: "Shared material",
-      model: "sample",
-      kind: "relation",
-      status: "open",
-      relates: { kind: "thread", label: "offsite-in-march" },
-      text: "This relates to the March offsite.",
-    },
-  ],
+  notes: [openNote, keptIdea, standProposal, relationNote],
+  derived: served([openNote], [keptIdea], true),
   responses: [{ at: "2026-11-12T09:40:00Z", re: "2026-11-12T03:12:00Z", text: "Ada says the designer first." }],
   material: [
     { kind: "person", label: "Ada Lovelace" },
@@ -56,8 +62,16 @@ export const budgetThread: StudioThread = {
   ],
 };
 
-// Recorded from the dev stack's Studio list after a close act closed the budget thread as dropped, with the
-// fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp.
+const closedNote: StudioNote = {
+  at: "2026-11-13T20:49:01Z",
+  trigger: "Sample thread",
+  model: "sample",
+  kind: "note",
+  status: "open",
+  text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
+};
+
+/** Recorded from the dev stack's Studio list after a close act closed the budget thread as dropped, with the fields Threva reads kept as Cortex sent them. The `closed` day is a `YYYY-MM-DD` date, not a timestamp. */
 export const closedThread: StudioThread = {
   slug: "budget-next-year",
   type: "question",
@@ -67,16 +81,8 @@ export const closedThread: StudioThread = {
   outcomeText: "It merges into the Desk.",
   question: "What goes into next year's budget?",
   stand: "Keep the team as it is and cut travel.",
-  notes: [
-    {
-      at: "2026-11-13T20:49:01Z",
-      trigger: "Sample thread",
-      model: "sample",
-      kind: "note",
-      status: "open",
-      text: "Ada's draft adds two hires. Does cutting travel still cover them, or does one hire wait until summer?",
-    },
-  ],
+  notes: [closedNote],
+  derived: served([closedNote], [], true),
   responses: [],
   material: [
     { kind: "person", label: "Ada Lovelace" },

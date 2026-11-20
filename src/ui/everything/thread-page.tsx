@@ -6,6 +6,7 @@ import { ErrorLine } from "../cards/parts";
 import { useI18n } from "../i18n";
 import { POLL_MS } from "../queue/use-desk";
 import { useStudioAct } from "../studio/act";
+import { servedNotes } from "../studio/served";
 import { NoteEditor } from "./editor";
 import { useAddressedLines } from "./addressed";
 import { Margin, ThreadDate } from "./margin";
@@ -16,11 +17,11 @@ export interface ThreadEntry {
   text: string;
 }
 
-/** Only accepted notes join the user's responses on the page. Open notes stay in the margin. */
+/** The notes Cortex serves as kept join the user's responses on the page. */
 export function orderedThreadEntries(thread: StudioThread): ThreadEntry[] {
   return [
     ...thread.responses.map(response => ({ at: response.at, author: "you" as const, text: response.text })),
-    ...thread.notes.filter(note => note.status === "kept").map(note => ({ at: note.at, author: "assistant" as const, text: note.text })),
+    ...servedNotes(thread).kept.map(note => ({ at: note.at, author: "assistant" as const, text: note.text })),
   ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
@@ -110,6 +111,6 @@ function ThreadDocument({ thread, closed, assistantName, text, setText }: { thre
         </div>
       </>}
     </div>
-    <Margin notes={thread.notes.filter(note => note.status === "open")} slug={thread.slug} name={name} writable={!closed} />
+    <Margin notes={servedNotes(thread).open} slug={thread.slug} name={name} writable={!closed} />
   </div>;
 }

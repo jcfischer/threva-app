@@ -212,11 +212,6 @@
       "count": 1
     }
   },
-  "src/ui/queue/order.ts": {
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    }
-  },
   "src/ui/queue/queue-view.tsx": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 9
@@ -296,7 +291,7 @@
   },
   "test/fixtures/studio.ts": {
     "threva/no-comments": {
-      "count": 5
+      "count": 3
     }
   },
   "test/i18n.test.ts": {

@@ -157,46 +157,40 @@ export const journeys = {
     await shot("material-wide");
     await page.locator('[data-desk-opened="left"]').getByRole("button", { name: "Put back", exact: true }).click();
   },
-  relations: async (page, shot) => {
+  notes: async (page, shot) => {
     const response = await page.request.get(new URL("/api/desk/studio", page.url()).href);
     if (!response.ok()) throw new Error(`Studio refused: ${await response.text()}`);
     const data = await response.json() as StudioList;
     const source = data.studio?.active.find(topic => topic.slug === "budget-next-year");
-    const relation = source?.notes.find(note => note.kind === "relation" && note.status !== "dismissed" && note.relates?.kind === "thread" && note.relates.label === "offsite-in-march");
-    if (!relation) throw new Error("Cortex did not serve the sample relation with relates. Use a fresh dev stack, or add the relation to its budget topic file.");
+    const open = source?.derived?.notes.open ?? [];
+    const kept = source?.derived?.notes.kept ?? [];
+    if (open.length === 0 && kept.length === 0) throw new Error("Cortex did not serve notes for the sample budget topic. Use a fresh dev stack.");
     await page.reload({ waitUntil: "networkidle" });
     await showsThreva(page);
     await switchView(page, "Everything");
     await loaded(page, "Loading your outline…");
     await page.getByRole("button", { name: "Work", exact: true }).click();
     await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
+    const margin = page.locator(".thread-margin-note");
+    const keptLines = page.locator(".thread-entry.thread-kept");
+    if (open.length > 0) await margin.first().waitFor();
+    if (kept.length > 0) await keptLines.first().waitFor();
+    if (await margin.count() !== open.length) throw new Error(`The margin shows ${await margin.count()} notes, Cortex serves ${open.length} open.`);
+    for (const note of open) await margin.getByText(note.text, { exact: false }).first().waitFor();
+    if (await keptLines.count() !== kept.length) throw new Error(`The page shows ${await keptLines.count()} kept notes, Cortex serves ${kept.length}.`);
+    for (const note of kept) await keptLines.getByText(note.text, { exact: false }).first().waitFor();
+    const served = [...open, ...kept];
+    const hidden = source?.notes.filter(note => !served.some(entry => entry.at === note.at)) ?? [];
+    for (const note of hidden) {
+      if (await page.getByText(note.text, { exact: false }).count() > 0) throw new Error(`A note Cortex leaves out is on the page: ${note.text}`);
+    }
+    await shot("served-notes-page");
     await page.getByRole("button", { name: "Open the desk", exact: true }).click();
     await page.setViewportSize({ width: 1920, height: 1080 });
-    const notes = page.getByRole("complementary", { name: "The assistant's notes", exact: true });
-    await notes.locator("button[data-desk-card]").filter({ hasText: "Relation" }).filter({ hasText: relation.text }).click();
-    const right = page.locator('[data-desk-opened="right"]');
-    await right.getByRole("button", { name: "Follow", exact: true }).click();
-    const left = page.locator('[data-desk-opened="left"]');
-    await left.getByText("What is the March offsite for?", { exact: true }).waitFor();
-    await left.getByText("Grace asks which of the two weeks works.", { exact: true }).waitFor();
-    await page.waitForFunction(() => document.querySelector('[data-desk-opened="left"]')?.getAttribute("data-placed") === "true");
-    const checkLayout = async () => {
-      const a = await left.boundingBox();
-      const b = await right.boundingBox();
-      const middle = await page.locator('[data-desk="middle"]').boundingBox();
-      if (!a || !b || !middle) throw new Error("The followed topic or its relation has no rendered box.");
-      if (a.x + a.width > middle.x + 2 || b.x < middle.x + middle.width - 2) throw new Error("An opened relation card covers the draft.");
-    };
-    await checkLayout();
-    await shot("followed-topic-wide");
-    await page.setViewportSize({ width: 650, height: 900 });
-    await left.getByRole("button", { name: "Open its desk", exact: true }).scrollIntoViewIfNeeded();
-    await shot("followed-topic-narrow");
-    await left.getByRole("button", { name: "Open its desk", exact: true }).click();
-    await page.getByRole("heading", { name: "What is the March offsite for?", exact: true }).waitFor();
-    await left.waitFor({ state: "detached" });
-    await right.waitFor({ state: "detached" });
-    await shot("related-desk");
+    const rail = page.getByRole("complementary", { name: "The assistant's notes", exact: true });
+    await rail.locator("button[data-desk-card]").first().waitFor();
+    if (await rail.locator("button[data-desk-card]").count() !== open.length + kept.length) throw new Error("The desk notes rail does not show exactly the notes Cortex serves.");
+    await shot("served-notes-desk");
   },
   week: async (page, shot) => {
     await showsThreva(page);

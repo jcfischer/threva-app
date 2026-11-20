@@ -311,6 +311,8 @@ test("typing after a save clears the saved line", async () => surface(async (con
   expect(container.querySelector(".note-line")?.textContent).toContain("saved");
   await inputText(field, "## Plan\n\nmore");
   expect(container.querySelector(".note-line")?.textContent).not.toContain("saved");
+  await act(async () => { field.focus(); field.blur(); await drain(); });
+  expect(container.querySelector(".note-line")?.textContent).toContain("saved");
 }));
 
 test("a reload after a save shows the reloaded page while its row stays open", async () => surface(async (container, render) => {

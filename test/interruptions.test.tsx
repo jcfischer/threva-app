@@ -14,7 +14,7 @@ const interrupt = (key: string, overrides: Partial<DeskInterrupt> = {}, extras: 
   key, kind: "mail", score: 0, interrupt: { delivery: "pending", reason: { code: "mail.vip", target: "ada@example.org" }, ...overrides }, ...extras,
 });
 
-const queueKeys = (items: DeskItem[], session = EMPTY_SESSION) => buildQueue(view({ items }), studio(thread("topic", "open", false)), session, NOW).map(e => e.k);
+const queueKeys = (items: DeskItem[], session = EMPTY_SESSION) => buildQueue(view({ items }), studio(thread("topic", true)), session, NOW).map(e => e.k);
 
 describe("Cortex interruption priority", () => {
   const normal = item({ key: "normal", kind: "agent-blocked", score: 999 });

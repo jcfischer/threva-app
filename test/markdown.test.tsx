@@ -7,7 +7,7 @@ import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { Markdown } from "../src/ui/markdown";
 import { StudioCard } from "../src/ui/studio/card";
 import { mountDom, type MountedDom } from "./fixtures/dom";
-import { budgetThread } from "./fixtures/studio";
+import { budgetThread, served } from "./fixtures/studio";
 
 const REPLY = [
   "Two options:",
@@ -55,7 +55,8 @@ function expectFormatted(scope: Element) {
 
 describe("assistant text as Markdown", () => {
   test("a Studio note renders as Markdown", async () => {
-    const thread = { ...budgetThread, notes: [{ ...budgetThread.notes[0]!, text: REPLY }] };
+    const note = { ...budgetThread.notes[0]!, text: REPLY };
+    const thread = { ...budgetThread, notes: [note], derived: served([note]) };
     const container = await render(<StudioCard thread={thread} now={Date.parse("2026-11-14T12:00:00Z")} />);
     expectFormatted(container);
   });

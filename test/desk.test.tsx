@@ -7,7 +7,7 @@ import { Desk } from "../src/ui/desk/desk";
 import { createI18n, I18nProvider } from "../src/ui/i18n";
 import { StudioCard } from "../src/ui/studio/card";
 import type { StudioNote, StudioThread } from "@desk/types";
-import { budgetThread, studioList } from "./fixtures/studio";
+import { budgetThread, served, studioList } from "./fixtures/studio";
 
 const NOW = Date.parse("2026-11-14T12:00:00Z");
 const client = createClient(async () => new Response("{}"));
@@ -25,46 +25,52 @@ describe("desk cards", () => {
     expect(firstSentence("Version 1.2 is out. More")).toBe("Version 1.2 is out.");
   });
 
-  test("notes including relations are newest first, open ones at full strength and dismissed notes out", () => {
-    const cards = noteCards([...budgetThread.notes, { at: "2026-11-10T00:00:00Z", kind: "idea", status: "dismissed", text: "Gone." }]);
+  test("the notes Cortex serves are newest first, the open ones at full strength", () => {
+    const cards = noteCards(budgetThread);
     expect(cards.map((c) => [c.at, c.strength])).toEqual([
       ["2026-11-13T20:48:41Z", "open"],
-      ["2026-11-13T03:15:00Z", "open"],
-      ["2026-11-13T03:14:00Z", "open"],
       ["2026-11-12T03:12:00Z", "dim"],
     ]);
+    expect(noteCards({ ...budgetThread, derived: undefined })).toEqual([]);
   });
 
   test("from the sixth card on, notes that are not open are faint", () => {
-    const notes: StudioNote[] = Array.from({ length: 8 }, (_, i) => ({ at: `2026-11-1${i}T00:00:00Z`, kind: "note", status: "kept", text: `N${i}.` }));
-    expect(noteCards(notes).map((c) => c.strength)).toEqual(["dim", "dim", "dim", "dim", "dim", "faint", "faint", "faint"]);
+    const kept: StudioNote[] = Array.from({ length: 8 }, (_, i) => ({ at: `2026-11-1${i}T00:00:00Z`, kind: "note", status: "kept", text: `N${i}.` }));
+    expect(noteCards({ ...budgetThread, derived: served([], kept) }).map((c) => c.strength)).toEqual(["dim", "dim", "dim", "dim", "dim", "faint", "faint", "faint"]);
   });
 
   test("material goes left, notes right", () => {
     const cards = deskCards(budgetThread);
     expect(cards.filter((c) => c.side === "left").map((c) => c.side === "left" && c.label)).toEqual(["Ada Lovelace", "BRIEF.md"]);
-    expect(cards.filter((c) => c.side === "right")).toHaveLength(4);
+    expect(cards.filter((c) => c.side === "right")).toHaveLength(2);
   });
 });
 
 describe("the desk", () => {
-  test("shows the question, the stand, the responses, notes and material", () => {
+  test("shows the question, the stand, the responses, the served notes and the material", () => {
     const html = render();
     expect(html).toContain("What goes into next year&#x27;s budget?");
     expect(html).toContain("Keep the team as it is and cut travel.");
     expect(html).toContain("Ada says the designer first.");
-    expect(html).toContain("Hire one now, the second in summer.");
-    expect(html).toContain("1 d ago");
+    expect(html).toContain("Ada&#x27;s draft adds two hires.");
+    expect(html).toContain("Ask Ada which hire matters most.");
+    expect(html).toContain("2 d ago");
     expect(html).toContain("desk-card desk-open");
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain('data-desk-card="m1"');
-    expect(html).toContain("March offsite");
-    expect(html).toContain("Relation");
+    expect(html).not.toContain("March offsite");
+    expect(html).not.toContain("Relation");
   });
 
   test("says so when there is no material", () => {
     const thread: StudioThread = { ...budgetThread, material: [] };
     expect(render(studioList([thread]))).toContain("No material yet.");
+  });
+
+  test("a Cortex without the served notes shows an empty notes rail", () => {
+    const html = render(studioList([{ ...budgetThread, derived: undefined }]));
+    expect(html).toContain("No notes.");
+    expect(html).not.toContain('data-desk-card="2026-11-13T20:48:41Z"');
   });
 
   test("an unreadable Studio or a missing topic shows only the message", () => {

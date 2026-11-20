@@ -1,5 +1,5 @@
 import type { MemoryClient } from "@desk/memory-client";
-import type { DeskItem, DeskView, MailRule, MailSweep, MyDayOutline, StudioList, StudioThread } from "@desk/types";
+import type { DeskItem, DeskView, MailRule, MailSweep, MyDayOutline, StudioList, StudioNote, StudioThread } from "@desk/types";
 
 export const NOW = Date.parse("2026-11-13T10:00:00+01:00");
 export const DAY = "2026-11-13";
@@ -48,14 +48,16 @@ export function sweep(overrides: Partial<MailSweep> = {}): MailSweep {
   return { id: "news", kind: "sweep", target: "archive", label: "Newsletters", title: "Weekly news", why: "Unread.", mails: [], ...overrides };
 }
 
-export function thread(slug: string, noteStatus: string, answered: boolean): StudioThread {
+export function thread(slug: string, waitsOnYou: boolean, answered = false): StudioThread {
+  const note: StudioNote = { at: "2026-11-13T08:00:00+01:00", kind: "note", status: "open", text: "A note waiting on you." };
   return {
     slug,
     type: "question",
     question: `Question ${slug}?`,
     stand: "Where it stands.",
-    notes: [{ at: "2026-11-13T08:00:00+01:00", kind: "stand", status: noteStatus as StudioThread["notes"][number]["status"], text: "A proposed stand." }],
-    responses: answered ? [{ at: "2026-11-13T09:00:00+01:00", text: "My answer." }] : [],
+    notes: [note],
+    derived: { waitsOnYou, notes: { open: [note], kept: [] } },
+    responses: answered ? [{ at: "2026-11-13T09:00:00+01:00", re: note.at, text: "My answer." }] : [],
   };
 }
 
