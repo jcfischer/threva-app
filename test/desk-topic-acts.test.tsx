@@ -388,7 +388,7 @@ describe("parking and finishing under Desk API 2", () => {
     }
   });
 
-  test("a topic whose draft Cortex cannot read parks without a revision, which Cortex refuses for any draft that is not legacy", async () => {
+  test("a topic whose draft Cortex cannot read parks without a revision", async () => {
     const wired = await mount(budgetThread, { ok: true, data: { message: "Parked." } }, { ok: false, message: null, status: 0 });
     try {
       await wired.click("Park");
