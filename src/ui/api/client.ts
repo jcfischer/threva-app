@@ -1,4 +1,3 @@
-import type { ConversationDetail, ConversationEntry, ConversationMeta, SessionRequest, SourceConversations, StudioSession } from "./conversations";
 import type { DeskView, MailRules, MyDayChange, MyDayCommand, MyDayOutline, StudioAct, StudioList } from "./types";
 
 import type { DeskSearchResponse } from "@the-metafactory/cortex/desk-api";
@@ -54,15 +53,11 @@ const PATHS = {
   captureUndo: "/api/desk/capture/undo",
   studio: "/api/desk/studio",
   studioAct: "/api/desk/studio/act",
-  studioSession: "/api/desk/studio/session",
   outlineAsk: "/api/desk/outline/ask",
   contract: "/api/desk/contract",
-  conversations: "/api/conversations",
   conversationAsks: "/api/conversations/asks",
-  conversationStarts: "/api/conversations/starts",
 } as const;
 
-const enc = encodeURIComponent;
 const dashedId = (): string => crypto.randomUUID();
 
 export const asUuid = (id: string): string =>
@@ -103,16 +98,10 @@ export interface StudioCalls {
   (): Call<StudioList>;
   list(): Call<StudioList>;
   act(act: StudioAct, requestId?: string): Call<{ message?: string }>;
-  session(request: SessionRequest): Call<{ session: StudioSession }>;
 }
 
 export interface ConversationCalls {
   ask(text: string, startId?: string): Call<Json>;
-  start(thread: string, startId?: string): Call<{ conversation: ConversationMeta }>;
-  source(thread: string): Call<SourceConversations>;
-  send(id: string, inputId: string, text: string): Call<Json>;
-  detail(id: string): Call<ConversationDetail>;
-  entries(id: string): Call<{ entries: ConversationEntry[] }>;
 }
 
 export interface OutlineCalls {
@@ -177,15 +166,9 @@ export function createClient(fetchImpl: Fetch = (input, init) => fetch(input, in
     studio: Object.assign(list, {
       list,
       act: (act: StudioAct, requestId: string = newRequestId()) => write<{ message?: string }>(PATHS.studioAct, { ...act, requestId }),
-      session: (request: SessionRequest) => write<{ session: StudioSession }>(PATHS.studioSession, request),
     }),
     conversations: {
       ask: (text, startId = dashedId()) => write(PATHS.conversationAsks, { text, startId }),
-      start: (thread, startId = dashedId()) => write(PATHS.conversationStarts, { startId, source: { owner: "studio-thread", id: thread } }),
-      source: (thread) => read(`${PATHS.conversations}/source?owner=studio-thread&id=${enc(thread)}`),
-      send: (id, inputId, text) => write(`${PATHS.conversations}/${enc(id)}`, { inputId, transport: "web", text, mode: "queue" }),
-      detail: (id) => read(`${PATHS.conversations}/${enc(id)}`),
-      entries: (id) => read(`${PATHS.conversations}/${enc(id)}/entries?limit=500`),
     },
     outline: {
       ask: (body, requestId = dashedId()) => write(PATHS.outlineAsk, { requestId, ...body }),

@@ -21,7 +21,7 @@ describe("Cortex interruption priority", () => {
   test("interruptions of every item kind precede ordinary cards in Cortex order, regardless of score", () => {
     const urgent = [interrupt("mail"), interrupt("reminder", {}, { kind: "reminder", score: 100 }), interrupt("meeting", {}, { kind: "meeting", score: 500 })];
     expect(queueKeys([normal, ...urgent])).toEqual(["i:mail", "i:reminder", "i:meeting", "i:normal", "t:topic"]);
-    expect(queueKeys([normal, ...urgent], { skip: ["i:mail"], pin: "i:normal", open: "topic" }).slice(0, 3)).toEqual(["i:mail", "i:reminder", "i:meeting"]);
+    expect(queueKeys([normal, ...urgent], { skip: ["i:mail"], pin: "i:normal" }).slice(0, 3)).toEqual(["i:mail", "i:reminder", "i:meeting"]);
   });
   test("held and reasonless markers keep their ordinary place; release promotes them", () => {
     const held = interrupt("held", { delivery: "held" });

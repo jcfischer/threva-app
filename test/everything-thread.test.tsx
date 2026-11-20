@@ -169,6 +169,21 @@ test("a missing mapping state stops rendering instead of guessing from done", ()
   expect(html).not.toContain(budgetThread.question);
 });
 
+test("a topic row keeps its page content and opens its desk", async () => surface(async (container, render) => {
+  const memory = studioClient();
+  const opened: string[] = [];
+  await render(<EverythingView client={memory.client} initialDay={day()} assistantName="Mira" onOpenDesk={slug => { opened.push(slug); }} />);
+  await click(container, "Work");
+  await click(container, budgetThread.question);
+  expect(container.querySelector(".thread-main")?.textContent).toContain("Ada says the designer first.");
+  expect(container.querySelector(".thread-main")?.textContent).toContain("Ask Ada which hire matters most.");
+  expect(container.querySelector(".thread-margin")?.textContent).toContain("Ada's draft adds two hires.");
+  await type(container, "Keep my page draft");
+  await click(container, "Open the desk");
+  expect(opened).toEqual([budgetThread.slug]);
+  expect(container.querySelector("textarea")?.value).toBe("Keep my page draft");
+}));
+
 test("Keep and Dismiss use the Studio act client and reload the page and outline count; refusals sit by their buttons", async () => surface(async (container, render) => {
   const memory = studioClient([{ at: "2026-11-13T21:00:00Z", kind: "note", status: "open", text: "The offsite and the budget share a decision." }]);
   await render(<EverythingView client={memory.client} initialDay={day()} assistantName="Mira" />);

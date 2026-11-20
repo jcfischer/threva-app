@@ -16,10 +16,9 @@ export type Entry =
 export interface Session {
   readonly skip: readonly string[];
   readonly pin: string | null;
-  readonly open: string | null;
 }
 
-export const EMPTY_SESSION: Session = { skip: [], pin: null, open: null };
+export const EMPTY_SESSION: Session = { skip: [], pin: null };
 
 export function isInterrupting(item: DeskItem): boolean {
   return item.interrupt?.reason !== undefined && item.interrupt.delivery !== "held";
@@ -70,11 +69,7 @@ export function buildQueue(
     ...(view.myDay?.items ?? []).map((task): Entry => ({ k: `d:${task.task.id}`, type: "task", task })),
   ];
 
-  const held = openThread(studio, session.open);
-  const withHeld: Entry[] = !held
-    ? queue
-    : [{ k: `t:${held.slug}`, type: "thread", thread: held, waits: waitsOnYou(held) }, ...queue.filter((e) => e.k !== `t:${held.slug}`)];
-  return promoteInterruptions(applySession(withHeld, session), view.items, session.pin);
+  return promoteInterruptions(applySession(queue, session), view.items, session.pin);
 }
 
 function promoteInterruptions(ordered: readonly Entry[], items: readonly DeskItem[], pin: string | null): Entry[] {
@@ -89,11 +84,6 @@ function promoteInterruptions(ordered: readonly Entry[], items: readonly DeskIte
   return [...urgent, ...ordered.filter(entry => !urgentKeys.has(entry.k))];
 }
 
-function openThread(studio: StudioList | null, slug: string | null): StudioThread | null {
-  if (!slug || !studio?.studio) return null;
-  return [...studio.studio.active, ...(studio.studio.parked ?? [])].find((t) => t.slug === slug) ?? null;
-}
-
 export function applySession(queue: readonly Entry[], session: Session): Entry[] {
   const skipped = session.skip.flatMap((k) => queue.filter((e) => e.k === k));
   const ordered = [...queue.filter((e) => !session.skip.includes(e.k)), ...skipped];
@@ -102,16 +92,10 @@ export function applySession(queue: readonly Entry[], session: Session): Entry[]
   return ordered;
 }
 
-const openKey = (session: Session): string | null => (session.open ? `t:${session.open}` : null);
-
 export function skip(session: Session, k: string): Session {
-  return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin, open: openKey(session) === k ? null : session.open };
+  return { skip: [...session.skip.filter((s) => s !== k), k], pin: session.pin === k ? null : session.pin };
 }
 
 export function pin(session: Session, k: string): Session {
-  return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k, open: openKey(session) === k ? session.open : null };
-}
-
-export function openStudio(session: Session, slug: string | null): Session {
-  return { ...session, open: slug };
+  return { ...session, skip: session.skip.filter((s) => s !== k), pin: session.pin === k ? null : k };
 }

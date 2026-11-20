@@ -40,9 +40,6 @@ const reads: Case[] = [
   ["myDay.outline", (c) => c.myDay.outline(), "GET", "/api/desk/my-day", undefined],
   ["studio", (c) => c.studio(), "GET", "/api/desk/studio", undefined],
   ["studio.list", (c) => c.studio.list(), "GET", "/api/desk/studio", undefined],
-  ["conversations.source", (c) => c.conversations.source("a b"), "GET", "/api/conversations/source?owner=studio-thread&id=a%20b", undefined],
-  ["conversations.detail", (c) => c.conversations.detail("c/1"), "GET", "/api/conversations/c%2F1", undefined],
-  ["conversations.entries", (c) => c.conversations.entries("c1"), "GET", "/api/conversations/c1/entries?limit=500", undefined],
   ["contract", (c) => c.contract(), "GET", "/api/desk/contract", undefined],
 ];
 
@@ -78,16 +75,7 @@ const writes: Case[] = [
   ["capture.create", (c) => c.capture.create("capture", { text: "x" }, "abc12345"), "POST", "/api/desk/create", { requestId: "abc12345", kind: "capture", fields: { text: "x" } }],
   ["capture.undo", (c) => c.capture.undo({ id: "capture-1", requestId: "r1" }), "POST", "/api/desk/capture/undo", { id: "capture-1", requestId: "r1" }],
   ["studio.act", (c) => c.studio.act(act, "abc12345"), "POST", "/api/desk/studio/act", { ...(act as object), requestId: "abc12345" }],
-  [
-    "studio.session",
-    (c) => c.studio.session({ action: "say", id: "s", turn: "t", text: "x" }),
-    "POST",
-    "/api/desk/studio/session",
-    { action: "say", id: "s", turn: "t", text: "x" },
-  ],
   ["conversations.ask", (c) => c.conversations.ask("q", ID), "POST", "/api/conversations/asks", { text: "q", startId: ID }],
-  ["conversations.start", (c) => c.conversations.start("th", ID), "POST", "/api/conversations/starts", { startId: ID, source: { owner: "studio-thread", id: "th" } }],
-  ["conversations.send", (c) => c.conversations.send("c1", "in1", "hello"), "POST", "/api/conversations/c1", { inputId: "in1", transport: "web", text: "hello", mode: "queue" }],
   ["outline.ask", (c) => c.outline.ask({ row: "r", kind: "answer", question: "q" }, ID), "POST", "/api/desk/outline/ask", { requestId: ID, row: "r", kind: "answer", question: "q" }],
 ];
 
@@ -109,7 +97,6 @@ describe("request ids", () => {
     ["myDay.change", (c) => c.myDay.change("2026-11-16", {} as never), DASHED],
     ["mail.inviteReply", (c) => c.mail.inviteReply("k", "accept"), DASHED],
     ["outline.ask", (c) => c.outline.ask({ row: "r", kind: "answer" }), DASHED],
-    ["conversations.start", (c) => c.conversations.start("t"), DASHED],
     ["conversations.ask", (c) => c.conversations.ask("q"), DASHED],
     ["queue.ruling", (c) => c.queue.ruling("k", "t"), PLAIN],
     ["mail.studioAdd", (c) => c.mail.studioAdd("k", null), PLAIN],
@@ -174,8 +161,8 @@ describe("memory adapter", () => {
 
   test("a seeded function sees the arguments", async () => {
     const memory = createMemoryClient();
-    memory.seed("conversations.detail", (id: string) => ({ ok: false, message: id, status: 404 }));
-    expect(await memory.conversations.detail("c9")).toEqual({ ok: false, message: "c9", status: 404 });
+    memory.seed("conversations.ask", (text: string) => ({ ok: false, message: text, status: 404 }));
+    expect(await memory.conversations.ask("c9")).toEqual({ ok: false, message: "c9", status: 404 });
   });
 });
 

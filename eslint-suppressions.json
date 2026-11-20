@@ -22,11 +22,6 @@
       "count": 1
     }
   },
-  "src/ui/api/conversations.ts": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    }
-  },
   "src/ui/bar/bar.tsx": {
     "@typescript-eslint/no-base-to-string": {
       "count": 1
@@ -227,25 +222,6 @@
       "count": 1
     }
   },
-  "src/ui/studio/conversation.tsx": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 4
-    },
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 5
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    }
-  },
-  "src/ui/studio/sparring.tsx": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    }
-  },
   "test/agent-card.test.tsx": {
     "threva/no-comments": {
       "count": 1
@@ -348,11 +324,6 @@
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 2
     },
-    "threva/no-comments": {
-      "count": 1
-    }
-  },
-  "test/sparring.test.tsx": {
     "threva/no-comments": {
       "count": 1
     }

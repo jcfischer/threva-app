@@ -55,23 +55,55 @@ export const journeys = {
     await page.route("**/api/desk", async route => {
       const response = await route.fetch();
       const desk = await response.json() as DeskView;
-      await route.fulfill({ response, json: { ...desk, items: [], today: [], myDay: { ...desk.myDay, items: [] } } });
+      await route.fulfill({ response, json: { ...desk, items: desk.items.filter(item => !item.interrupt?.reason) } });
     });
     await page.reload({ waitUntil: "networkidle" });
     await loaded(page, "Loading your cards…");
     const question = page.locator(".card .sub").filter({ hasText: "What goes into next year's budget?" });
+    for (let skipped = 0; !(await question.isVisible()) && skipped < 30; skipped += 1) {
+      await page.getByRole("button", { name: "Not now", exact: true }).click();
+    }
     await question.waitFor();
+    const noOldView = async () => {
+      for (const name of ["Talk it through", "Continue the conversation", "Discuss", "Sparring", "Think now", "Grill me"]) {
+        if (await page.getByText(name, { exact: true }).isVisible()) throw new Error(`Retired Studio control is visible: ${name}`);
+      }
+      if (await page.locator(".studio.card").count()) throw new Error("The retired Studio open view is mounted.");
+    };
+    await noOldView();
     await page.getByRole("textbox", { name: "Your answer", exact: true }).waitFor();
     await shot("studio-note-wide");
     await page.setViewportSize({ width: 650, height: 900 });
     await shot("studio-note-narrow");
-    await page.getByRole("textbox", { name: "Your answer", exact: true }).fill("Day card answer: one hire now, the second in summer.");
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    await page.locator('[data-desk="middle"]').waitFor();
+    await noOldView();
+    await shot("studio-desk");
+    await page.getByRole("button", { name: "Back to the cards", exact: true }).click();
+    await question.waitFor();
+    await noOldView();
+    const answer = "Day card answer: one hire now, the second in summer.";
+    await page.getByRole("textbox", { name: "Your answer", exact: true }).fill(answer);
     const response = page.waitForResponse(r => r.url().endsWith("/api/desk/studio/act") && r.request().method() === "POST");
     await page.getByRole("button", { name: "Send", exact: true }).click();
     const act = await response;
     if (!act.ok()) throw new Error(`Day card respond refused: ${await act.text()}`);
     await question.waitFor({ state: "hidden" });
+    await noOldView();
     await shot("studio-answer-saved");
+    await switchView(page, "Everything");
+    await loaded(page, "Loading your outline…");
+    await page.getByRole("button", { name: "Work", exact: true }).click();
+    await page.getByRole("button", { name: "What goes into next year's budget?", exact: true }).click();
+    await page.locator(".thread-main").getByText(answer, { exact: false }).waitFor();
+    await shot("studio-topic-page");
+    await page.getByRole("button", { name: "Open the desk", exact: true }).click();
+    await page.locator('[data-desk="middle"]').waitFor();
+    await noOldView();
+    await page.getByRole("button", { name: "Back to Everything", exact: true }).click();
+    await page.locator(".thread-main").getByText(answer, { exact: false }).waitFor();
+    await noOldView();
+    await shot("studio-topic-page-return");
   },
   desk: async (page, shot) => {
     await showsThreva(page);
