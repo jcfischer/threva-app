@@ -69,6 +69,8 @@ export const de: Messages = {
   "everything.out": "Heraus",
   "everything.into": "Hinein",
   "everything.chooseParent": "Eine Zeile wählen…",
+  "everything.remove": "Löschen",
+  "everything.removeConfirm": "„{title}“ löschen? Das lässt sich nicht rückgängig machen.",
   "everything.addTo": "Zu {title} hinzufügen",
   "everything.addPlaceholder": "Eine neue Zeile",
   "everything.add": "Hinzufügen",

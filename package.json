@@ -10,6 +10,7 @@
     "build": "bun scripts/build.ts",
     "check": "bun scripts/check.ts",
     "dev:stack": "bun scripts/dev-stack.ts",
+    "deploy:local": "bun scripts/deploy-local.ts",
     "test": "bun test test",
     "lint": "bun eslint/suppressions-guard.ts && bun --bun eslint .",
     "lint:fix": "bun --bun eslint --fix .",
