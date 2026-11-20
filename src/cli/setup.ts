@@ -62,6 +62,7 @@ export interface StackPlan {
   ntfyUrl: string | null;
   threvaBin: string;
   port: number;
+  nats: string;
 }
 
 export interface SetupArgs {
@@ -69,14 +70,24 @@ export interface SetupArgs {
   cortex: string | null;
   ui: string | null;
   port: number;
+  nats: string;
 }
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 
-const SETUP_USAGE = "Usage: threva setup [--reconfigure] [--cortex <dir>] [--ui <dir>] [--port <port>]";
+const SETUP_USAGE = "Usage: threva setup [--reconfigure] [--cortex <dir>] [--ui <dir>] [--port <port>] [--nats <url>]";
+
+export function isNatsUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === "nats:" && url.hostname !== "" && url.username === "" && url.password === "" && url.pathname === "" && url.search === "" && url.hash === "";
+  } catch {
+    return false;
+  }
+}
 
 export function parseSetupArgs(argv: readonly string[]): Checked<SetupArgs> {
-  const args: SetupArgs = { reconfigure: false, cortex: null, ui: null, port: MC_PORT };
+  const args: SetupArgs = { reconfigure: false, cortex: null, ui: null, port: MC_PORT, nats: NATS_URL };
   for (let i = 0; i < argv.length; i++) {
     const name = argv[i];
     const value = argv[i + 1];
@@ -87,6 +98,9 @@ export function parseSetupArgs(argv: readonly string[]): Checked<SetupArgs> {
       i++;
     } else if (name === "--port" && value && /^\d+$/.test(value) && Number(value) >= 1024 && Number(value) <= 65535) {
       args.port = Number(value);
+      i++;
+    } else if (name === "--nats" && value && isNatsUrl(value)) {
+      args.nats = value;
       i++;
     } else {
       return { ok: false, error: SETUP_USAGE };
@@ -151,7 +165,7 @@ export function renderSystem(plan: StackPlan): string {
   const inference = inferenceBlock(plan.provider);
   const system = {
     claude: {},
-    nats: { url: NATS_URL, name: STACK_SLUG },
+    nats: { url: plan.nats, name: STACK_SLUG },
     ...(Object.keys(inference).length > 0 ? { inference } : {}),
   };
   return `${JSON.stringify(system, null, 2)}\n`;
@@ -323,7 +337,7 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     deps.say(`A Threva stack already exists at ${paths.dir}. Setup changed nothing. Run threva setup --reconfigure to set it up again.`);
     return 0;
   }
-  const { port } = parsed.value;
+  const { port, nats } = parsed.value;
   const ownServicePort = written ? writtenPort(deps.readFile(join(paths.dir, "stacks", `${STACK_SLUG}.yaml`))) : null;
   if (ownServicePort !== port && (await answersOn(deps, port))) {
     deps.say(`Another program already answers on port ${port}, perhaps another Cortex. Stop it, or run threva setup --port <port> with a free port.`);
@@ -348,7 +362,7 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
   const calendar = await setupCalendar(prefix, deps);
   const { sources: mailSources, ...mailOptions } = mail.plan;
   const sources = [...(calendar.sources ?? []), ...mailSources];
-  const plan: StackPlan = { sources, mail: mailOptions, ask: calendar.ask, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port };
+  const plan: StackPlan = { sources, mail: mailOptions, ask: calendar.ask, principal: principalId(deps.user), uiDir, studioDir, provider, ntfyUrl, threvaBin: join(prefix, "bin", "threva"), port, nats };
   const stack = await writeStack(deps, paths, plan);
   if (!stack.ok) {
     deps.say(stack.error);
@@ -362,7 +376,9 @@ export async function setup(argv: readonly string[], deps: SetupDeps): Promise<n
     return 1;
   }
 
-  const services: [string, string][] = [["start", "nats-server"], [written ? "restart" : "start", "threva"]];
+  const services: [string, string][] = [[written ? "restart" : "start", "threva"]];
+  if (nats === NATS_URL) services.unshift(["start", "nats-server"]);
+  else deps.say(`Threva uses the NATS server at ${nats}. Setup does not start one for it.`);
   for (const [verb, service] of services) {
     const started = await deps.brew(["services", verb, service]);
     if (started.status !== 0) {

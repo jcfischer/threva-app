@@ -28,7 +28,7 @@ test("the real launcher replaces its PID and preserves Cortex arguments and exit
     ]);
     expect(stderr).toBe("");
     expect(code).toBe(7);
-    expect(JSON.parse(stdout)).toEqual({ pid: child.pid, args: ["--config", config], hasKey: true });
+    expect(JSON.parse(stdout)).toEqual({ pid: child.pid, args: ["start", "--config", config], hasKey: true });
     expect(readFileSync(log, "utf8")).not.toContain("synthetic-key");
   } finally {
     rmSync(root, { recursive: true, force: true });
